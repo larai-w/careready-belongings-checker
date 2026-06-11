@@ -2,11 +2,8 @@
 ### // パーキンソン病患者の施設入所時における動的持ち物チェッカー //
 
 <p align="center">
-  <img width="300" alt="CareReady App Icon" src="https://github.com/user-attachments/assets/6cd68028-d43e-4ccc-9130-05a50e4ec569" />
-</p>
-
+  <img width="300" alt="CareReady App Icon" src="https://github.com/user-attachments/assets/6cd68028-d43e-4ccc-9130-05a50e4ec569" /></p>
 AWS Serverless belongings checker designed for Parkinson's Disease patients during facility transfers to aid caregivers.
-
 ---
 
 ## 📊 System Architecture Primitives (MSCS Focus)
