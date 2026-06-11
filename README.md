@@ -2,7 +2,7 @@
 ### // パーキンソン病患者の施設入所時における動的持ち物チェッカー //
 
 <p align="center">
-  <img width="300" alt="CareReady App Icon" src="https://github.com/user-attachments/assets/83dc8120-7b2c-4d21-8469-e346f57ab486" />
+  <img width="2048" height="2048" alt="Gemini_Generated_Image_8pvnoz8pvnoz8pvn" src="https://github.com/user-attachments/assets/bf9c2cab-84ae-41d8-964f-b9e577b6c1f5" />
 </p>
 
 AWS Serverless belongings checker designed for Parkinson's Disease patients during facility transfers to aid caregivers.
@@ -12,9 +12,6 @@ AWS Serverless belongings checker designed for Parkinson's Disease patients duri
 ## 📊 System Architecture Primitives (MSCS Focus)
 
 This project demonstrates a secure, highly-available AWS Serverless primitives infrastructure.
-
-
-<img width="6285" height="2542" alt="Event-Driven Clinical Data-2026-06-11-001341" src="https://github.com/user-attachments/assets/3fdce311-c9c0-49c1-98a7-cc34a234d6bf" />
 
 ```mermaid
 graph LR
