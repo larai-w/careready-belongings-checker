@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareReady // 持ち物チェッカー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #121824; color: #e2e8f0; }
+        .line-through-text { text-decoration: line-through; color: #4b5563; }
+    </style>
+</head>
+<body class="p-4 md:p-8 font-sans">
+
+    <div class="max-w-xl mx-auto">
+        <div class="text-center my-6">
+            <h1 class="text-3xl font-bold text-cyan-400 tracking-wider">CareReady</h1>
+            <p class="text-sm text-gray-400 mt-1">// 持ち物チェッカー</p>
+        </div>
+
+        <div class="flex justify-center bg-gray-800 rounded-xl p-1 mb-4 max-w-xs mx-auto border border-gray-700">
+            <button id="mode-category" onclick="switchViewMode('category')" class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-slate-900 shadow">
+                📋 場所別リスト
+            </button>
+            <button id="mode-container" onclick="switchViewMode('container')" class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200">
+                📦 コンテナ別ソート
+            </button>
+        </div>
+
+        <div id="location-tabs" class="flex flex-wrap gap-2 justify-center mb-6">
+            <p class="text-gray-500 text-sm">データを読み込み中...</p>
+        </div>
+
+        <div class="flex items-center justify-between mb-4">
+            <div class="text-xs text-gray-400">準備の進捗 (<span id="progress-text">0/0</span>)</div>
+            <button onclick="clearAllChecks()" class="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
+                一括リセット
+            </button>
+        </div>
+        <div class="bg-gray-800 rounded-full h-2.5 mb-6 overflow-hidden">
+            <div id="progress-bar" class="bg-cyan-500 h-2.5 w-0 transition-all duration-300"></div>
+        </div>
+
+        <div id="checklist-container" class="space-y-6"></div>
+    </div>
+
+    <script>
+        // 【重要】Junさんの実際のAPI URLに書き換えてください！
+        const API_URL = 'https://veai.jp/api/あなたのAPIのパス';
+
+        // コンテナ（箱）の選択肢の定義（ここを書き換えて「衣装ケースA」等にすることも可能）
+        const CONTAINERS = [
+            { id: "none", name: "未指定 📦" },
+            { id: "box1", name: "箱 1" },
+            { id: "box2", name: "箱 2" },
+            { id: "box3", name: "箱 3" },
+            { id: "box4", name: "箱 4" },
+            { id: "bag", name: "手提げバッグ" }
+        ];
+
+        let appData = null;
+        let currentSubtype = '';
+        let viewMode = 'category'; // 'category' または 'container'
+
+        // APIからデータを取得
+        async function fetchChecklist() {
+            try {
+                const response = await fetch(API_URL);
+                appData = await response.json();
+                
+                if (appData.locations && appData.locations.length > 0) {
+                    currentSubtype = appData.locations[0].id;
+                }
+                
+                renderTabs();
+                renderChecklist();
+            } catch (error) {
+                console.error('データの取得に失敗しました:', error);
+                document.getElementById('location-tabs').innerHTML = '<p class="text-red-400">API通信エラーが発生しました</p>';
+            }
+        }
+
+        // 表示モードを切り替える
+        function switchViewMode(mode) {
+            viewMode = mode;
+            const catBtn = document.getElementById('mode-category');
+            const conBtn = document.getElementById('mode-container');
+
+            if (mode === 'category') {
+                catBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-slate-900 shadow";
+                conBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200";
+            } else {
+                catBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200";
+                conBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-slate-900 shadow";
+            }
+            renderChecklist();
+        }
+
+        // タブを描画
+        function renderTabs() {
+            const tabsContainer = document.getElementById('location-tabs');
+            tabsContainer.innerHTML = '';
+
+            appData.locations.forEach(loc => {
+                const button = document.createElement('button');
+                button.innerText = loc.name;
+                button.className = `px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    currentSubtype === loc.id 
+                    ? 'bg-cyan-500 text-slate-900 shadow-lg shadow-cyan-500/20' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`;
+                button.onclick = () => {
+                    currentSubtype = loc.id;
+                    renderTabs();
+                    renderChecklist();
+                };
+                tabsContainer.appendChild(button);
+            });
+        }
+
+        // チェックリストを描画（メインロジック）
+        function renderChecklist() {
+            const container = document.getElementById('checklist-container');
+            container.innerHTML = '';
+
+            const savedChecks = JSON.parse(localStorage.getItem('careready_checked_items') || '{}');
+            const savedSkips = JSON.parse(localStorage.getItem('careready_skipped_items') || '{}');
+            const savedContainers = JSON.parse(localStorage.getItem('careready_container_items') || '{}');
+
+            // 現在の場所に該当するアイテムをすべて集める
+            let allFilteredItems = [];
+            appData.categories.forEach(cat => {
+                cat.items.forEach(item => {
+                    if (item.applicable_locations.includes(currentSubtype)) {
+                        // カテゴリー名を紐付け情報として持たせておく
+                        allFilteredItems.push({ ...item, categoryName: cat.name });
+                    }
+                });
+            });
+
+            if (viewMode === 'category') {
+                // 通常の「場所別（カテゴリー別）表示」
+                appData.categories.forEach(cat => {
+                    const filteredItems = cat.items.filter(item => item.applicable_locations.includes(currentSubtype));
+
+                    if (filteredItems.length > 0) {
+                        const catSection = document.createElement('div');
+                        catSection.className = 'bg-gray-800/50 border border-gray-700/60 rounded-xl p-4';
+
+                        const catTitle = document.createElement('h2');
+                        catTitle.className = 'text-md font-bold text-cyan-300 mb-3 border-b border-gray-700 pb-1';
+                        catTitle.innerText = cat.name;
+                        catSection.appendChild(catTitle);
+
+                        const itemSpace = document.createElement('div');
+                        itemSpace.className = 'space-y-3';
+
+                        filteredItems.forEach(item => {
+                            const currentBox = savedContainers[item.id] || 'none';
+                            itemSpace.appendChild(createItemRowHTML(item, savedChecks, savedSkips, currentBox));
+                        });
+
+                        catSection.appendChild(itemSpace);
+                        container.appendChild(catSection);
+                    }
+                });
+            } else {
+                // 🆕「コンテナ（箱）別ソーティング表示」
+                CONTAINERS.forEach(box => {
+                    // この箱に割り当てられているアイテムを抽出
+                    const boxItems = allFilteredItems.filter(item => {
+                        const assignedBox = savedContainers[item.id] || 'none';
+                        return assignedBox === box.id;
+                    });
+
+                    if (boxItems.length > 0) {
+                        const boxSection = document.createElement('div');
+                        boxSection.className = 'bg-slate-800/80 border border-dashed border-cyan-500/30 rounded-xl p-4';
+
+                        const boxTitle = document.createElement('h2');
+                        boxTitle.className = 'text-md font-bold text-amber-400 mb-3 border-b border-gray-700 pb-1 flex justify-between items-center';
+                        boxTitle.innerHTML = `<span>📦 ${box.name}</span> <span class="text-xs text-gray-500">計 ${boxItems.length} 点</span>`;
+                        boxSection.appendChild(boxTitle);
+
+                        const itemSpace = document.createElement('div');
+                        itemSpace.className = 'space-y-3';
+
+                        boxItems.forEach(item => {
+                            itemSpace.appendChild(createItemRowHTML(item, savedChecks, savedSkips, box.id, true));
+                        });
+
+                        boxSection.appendChild(itemSpace);
+                        container.appendChild(boxSection);
+                    }
+                });
+            }
+
+            updateProgress();
+        }
+
+        // アイテム1行分のHTMLを生成する共通ヘルパー関数
+        function createItemRowHTML(item, savedChecks, savedSkips, currentBox, showCategoryBadge = false) {
+            const isChecked = savedChecks[item.id] ? 'checked' : '';
+            const isSkipped = savedSkips[item.id] ? true : false;
+
+            const textClass = isSkipped ? 'line-through-text' : 'text-gray-300';
+            const checkDisabled = isSkipped ? 'disabled opacity-20' : '';
+            const skipBtnClass = isSkipped ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-gray-800 text-gray-500 border-gray-700';
+
+            const itemRow = document.createElement('div');
+            itemRow.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-lg hover:bg-gray-700/10 transition-colors border-b border-gray-800/40 pb-3 sm:pb-2';
+
+            // コンテナ選択ドロップダウンのHTML生成
+            let selectOptions = '';
+            CONTAINERS.forEach(b => {
+                selectOptions += `<option value="${b.id}" ${currentBox === b.id ? 'selected' : ''}>${b.name}</option>`;
+            });
+
+            itemRow.innerHTML = `
+                <div class="flex items-start gap-3 flex-1">
+                    <label class="flex items-start gap-3 cursor-pointer flex-1">
+                        <input type="checkbox" data-id="${item.id}" ${isChecked} ${checkDisabled} onchange="saveCheckState()" class="w-5 h-5 rounded border-gray-600 bg-gray-700 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-800 mt-0.5">
+                        <div class="flex flex-col">
+                            <span class="${textClass} text-sm leading-relaxed">${item.name}</span>
+                            ${showCategoryBadge ? `<span class="text-[10px] text-gray-500 mt-0.5">${item.categoryName}</span>` : ''}
+                        </div>
+                    </label>
+                </div>
+                <div class="flex items-center gap-2 self-end sm:self-center">
+                    <select onchange="saveContainerState('${item.id}', this.value)" ${isSkipped ? 'disabled' : ''} class="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-cyan-400 focus:ring-cyan-500 focus:border-cyan-500 disabled:opacity-20">
+                        ${selectOptions}
+                    </select>
+                    <button onclick="toggleSkip('${item.id}')" class="text-xs px-2 py-1 rounded border transition-colors shrink-0 ${skipBtnClass}">
+                        ${isSkipped ? '使う' : '不要'}
+                    </button>
+                </div>
+            `;
+            return itemRow;
+        }
+
+        // チェック状態を保存
+        function saveCheckState() {
+            const savedChecks = JSON.parse(localStorage.getItem('careready_checked_items') || '{}');
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:not([disabled])');
+            
+            checkboxes.forEach(cb => {
+                const itemId = cb.getAttribute('data-id');
+                if (cb.checked) {
+                    savedChecks[itemId] = true;
+                } else {
+                    delete savedChecks[itemId];
+                }
+            });
+            
+            localStorage.setItem('careready_checked_items', JSON.stringify(savedChecks));
+            updateProgress();
+        }
+
+        // 🆕 コンテナの割り当て状態を保存する
+        function saveContainerState(itemId, boxId) {
+            const savedContainers = JSON.parse(localStorage.getItem('careready_container_items') || '{}');
+            if (boxId === 'none') {
+                delete savedContainers[itemId];
+            } else {
+                savedContainers[itemId] = boxId;
+            }
+            localStorage.setItem('careready_container_items', JSON.stringify(savedContainers));
+            
+            // コンテナモードの場合はリアルタイムに並び替えるために再描画
+            if (viewMode === 'container') {
+                renderChecklist();
+            }
+        }
+
+        // 不要状態（スキップ）を切り替え
+        function toggleSkip(itemId) {
+            const savedSkips = JSON.parse(localStorage.getItem('careready_skipped_items') || '{}');
+            const savedChecks = JSON.parse(localStorage.getItem('careready_checked_items') || '{}');
+            
+            if (savedSkips[itemId]) {
+                delete savedSkips[itemId];
+            } else {
+                savedSkips[itemId] = true;
+                delete savedChecks[itemId];
+            }
+            
+            localStorage.setItem('careready_skipped_items', JSON.stringify(savedSkips));
+            localStorage.setItem('careready_checked_items', JSON.stringify(savedChecks));
+            
+            renderChecklist();
+        }
+
+        // 進捗バーを更新
+        function updateProgress() {
+            const activeCheckboxes = document.querySelectorAll('input[type="checkbox"]:not([disabled])');
+            const checked = document.querySelectorAll('input[type="checkbox"]:not([disabled]):checked');
+            
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            
+            const totalCount = activeCheckboxes.length;
+            const checkedCount = checked.length;
+            
+            progressText.innerText = `${checkedCount} / ${totalCount} 個`;
+            
+            if (totalCount > 0) {
+                const percentage = (checkedCount / totalCount) * 100;
+                progressBar.style.width = `${percentage}%`;
+            } else {
+                progressBar.style.width = '0%';
+            }
+        }
+
+        // すべてを一括リセット
+        function clearAllChecks() {
+            if (confirm('チェック、不要設定、および箱の配置データをすべてリセットしますか？')) {
+                localStorage.removeItem('careready_checked_items');
+                localStorage.removeItem('careready_skipped_items');
+                localStorage.removeItem('careready_container_items');
+                renderChecklist();
+            }
+        }
+
+        // アプリ起動
+        fetchChecklist();
+    </script>
+</body>
+</html>
