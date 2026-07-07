@@ -1,0 +1,73 @@
+{
+  "locations": [
+    { "id": "shortstay", "name": "ショートステイ" },
+    { "id": "hospital", "name": "入院" },
+    { "id": "dayservice", "name": "デイサービス" }
+  ],
+  "categories": [
+    {
+      "id": "clothing",
+      "name": "👕 衣類",
+      "items": [
+        { "id": "cloth_top_bottom", "name": "着替え上下(日数分+予備1組)※全てに名前記入", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "cloth_underwear", "name": "下着・肌着(日数分+予備)", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "cloth_socks", "name": "靴下(日数分)", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "cloth_pajamas", "name": "パジャマ・寝間着(2〜3組)", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "cloth_outer", "name": "羽織り物(カーディガン等・冷房対策)", "applicable_locations": ["shortstay", "hospital", "dayservice"] },
+        { "id": "cloth_slippers", "name": "室内履き(かかとのある滑りにくい物)", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "cloth_spare_day", "name": "着替え1組(失禁・食べこぼし時の予備)", "applicable_locations": ["dayservice"] }
+      ]
+    },
+    {
+      "id": "hygiene",
+      "name": "🧼 衛生用品",
+      "items": [
+        { "id": "hyg_diaper", "name": "紙おむつ・パッド(日数分+予備)", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "hyg_wipes", "name": "おしりふき・清拭シート", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "hyg_toothbrush", "name": "歯ブラシ・コップ", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "hyg_denture", "name": "入れ歯ケース・洗浄剤", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "hyg_towel", "name": "フェイスタオル(日数分)", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "hyg_bathtowel", "name": "バスタオル(2〜3枚)", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "hyg_shampoo", "name": "石けん・シャンプー(施設指定を確認)", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "hyg_tissue", "name": "ティッシュ・ウェットティッシュ", "applicable_locations": ["shortstay", "hospital", "dayservice"] },
+        { "id": "hyg_plasticbag", "name": "ビニール袋(汚れ物持ち帰り用・数枚)", "applicable_locations": ["shortstay", "hospital", "dayservice"] }
+      ]
+    },
+    {
+      "id": "medical",
+      "name": "💊 薬・医療",
+      "items": [
+        { "id": "med_medicine", "name": "常用薬(日数分・一包化推奨)", "applicable_locations": ["shortstay", "hospital", "dayservice"] },
+        { "id": "med_notebook", "name": "お薬手帳", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "med_glasses", "name": "眼鏡・眼鏡ケース ※名前記入", "applicable_locations": ["shortstay", "hospital", "dayservice"] },
+        { "id": "med_hearingaid", "name": "補聴器・予備電池 ※名前記入", "applicable_locations": ["shortstay", "hospital", "dayservice"] },
+        { "id": "med_ointment", "name": "湿布・軟膏・目薬(処方されている物)", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "med_thickener", "name": "とろみ剤(使用している場合)", "applicable_locations": ["shortstay", "hospital", "dayservice"] }
+      ]
+    },
+    {
+      "id": "documents",
+      "name": "📄 書類・貴重品",
+      "items": [
+        { "id": "doc_kaigo", "name": "介護保険証", "applicable_locations": ["shortstay"] },
+        { "id": "doc_hoken", "name": "健康保険証(マイナ保険証)", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "doc_shinsatsu", "name": "診察券", "applicable_locations": ["hospital"] },
+        { "id": "doc_gendogaku", "name": "限度額適用認定証(入院時)", "applicable_locations": ["hospital"] },
+        { "id": "doc_contact", "name": "緊急連絡先メモ", "applicable_locations": ["shortstay", "hospital", "dayservice"] },
+        { "id": "doc_hanko", "name": "印鑑(入院手続き用)", "applicable_locations": ["hospital"] }
+      ]
+    },
+    {
+      "id": "others",
+      "name": "🎒 その他",
+      "items": [
+        { "id": "oth_mask", "name": "マスク(数枚)", "applicable_locations": ["shortstay", "hospital", "dayservice"] },
+        { "id": "oth_drink", "name": "飲み物・水筒 ※名前記入", "applicable_locations": ["dayservice"] },
+        { "id": "oth_bag", "name": "連絡帳・利用者カード", "applicable_locations": ["dayservice"] },
+        { "id": "oth_entertainment", "name": "暇つぶしの物(本・ラジオ等)", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "oth_charger", "name": "携帯電話・充電器", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "oth_smallmoney", "name": "小銭(売店用・施設の規定を確認)", "applicable_locations": ["shortstay", "hospital"] }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+    "name": "CareReady 持ち物チェッカー",
+    "short_name": "CareReady",
+    "description": "介護・入院・ショートステイの持ち物準備チェッカー",
+    "lang": "ja",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "background_color": "#121824",
+    "theme_color": "#121824",
+    "icons": [
+        {
+            "src": "icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
