@@ -6,17 +6,29 @@
 const log = (m) => { document.getElementById('log').textContent += m + '\n'; };
 window.addEventListener('error', (e) => log('WINDOW_ERR: ' + e.message));
 try {
-    log('STEP1 module import');
-    const mod = await import('./storage.js');
-    log('STEP2 initStorage');
-    await mod.initStorage();
-    log('STEP3 fetch data.json');
+    // storage
+    const storage = await import('./storage.js');
+    await storage.initStorage();
+    log('storage OK');
+
+    // data.json
     const res = await fetch('./data.json');
-    log('STEP4 status=' + res.status);
     const data = await res.json();
-    log('STEP5 locations=' + data.locations.length + ' categories=' + data.categories.length);
-    mod.setState('smoke_test', { ok: true });
-    log('STEP6 setState OK');
+    log(`data.json: locations=${data.locations.length} categories=${data.categories.length}`);
+
+    // カスタムアイテム保存・取得
+    storage.setState('customItems', [{ id: 'test_1', name: 'テスト耳栓', categoryId: 'others', categoryName: 'その他', applicable_locations: ['shortstay'], quantity: 2, isCustom: true }]);
+    const saved = storage.getState('customItems', []);
+    log(`customItem saved: ${saved.length === 1 && saved[0].name === 'テスト耳栓' ? 'OK' : 'FAIL'}`);
+
+    // 共有URLエンコード・デコード
+    const shareData = { customItems: saved, containerNames: { box1: '赤いボストン' } };
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(shareData))));
+    const decoded = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    log(`share encode/decode: ${decoded.customItems[0].name === 'テスト耳栓' && decoded.containerNames.box1 === '赤いボストン' ? 'OK' : 'FAIL'}`);
+
+    // クリーンアップ
+    storage.removeState('customItems');
     log('DONE');
 } catch (e) {
     log('ERR: ' + (e && e.stack || e));
