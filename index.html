@@ -14,6 +14,101 @@
         body { background-color: #121824; color: #e2e8f0; }
         .line-through-text { text-decoration: line-through; color: #4b5563; }
 
+        /* ===== ライトテーマ ===== */
+        body.light {
+            background-color: #f5f7fa;
+            color: #1a202c;
+        }
+        body.light .line-through-text {
+            color: #9ca3af;
+        }
+        /* ヘッダー・カード背景 */
+        body.light .bg-gray-800\/50,
+        body.light .bg-slate-800\/60,
+        body.light .bg-slate-800\/80 {
+            background-color: #ffffff !important;
+        }
+        body.light .bg-gray-800\/20 {
+            background-color: #f0f4f8 !important;
+        }
+        body.light .bg-gray-800\/30 {
+            background-color: #f0f4f8 !important;
+        }
+        /* ボーダー */
+        body.light .border-gray-700\/60,
+        body.light .border-gray-700\/40,
+        body.light .border-gray-700\/30,
+        body.light .border-gray-700 {
+            border-color: #d1d5db !important;
+        }
+        body.light .border-gray-800\/40 {
+            border-color: #e5e7eb !important;
+        }
+        /* タブ・ボタン背景 */
+        body.light .bg-gray-800 {
+            background-color: #e9edf2 !important;
+        }
+        body.light .bg-gray-700 {
+            background-color: #dde3ea !important;
+        }
+        body.light .bg-gray-900 {
+            background-color: #ffffff !important;
+        }
+        /* テキスト色 */
+        body.light .text-gray-400 {
+            color: #374151 !important;
+        }
+        body.light .text-gray-500 {
+            color: #4b5563 !important;
+        }
+        body.light .text-gray-600 {
+            color: #6b7280 !important;
+        }
+        body.light .text-gray-300 {
+            color: #1f2937 !important;
+        }
+        body.light .text-gray-200 {
+            color: #111827 !important;
+        }
+        /* チェックボックス背景 */
+        body.light .bg-gray-700.rounded {
+            background-color: #ffffff !important;
+        }
+        /* セレクトボックス */
+        body.light select {
+            background-color: #e9edf2 !important;
+            color: #1f2937 !important;
+            border-color: #d1d5db !important;
+        }
+        /* input */
+        body.light input[type="text"] {
+            background-color: #ffffff !important;
+            color: #1f2937 !important;
+            border-color: #d1d5db !important;
+        }
+        body.light input::placeholder {
+            color: #9ca3af !important;
+        }
+        /* ホバー */
+        body.light .hover\:bg-gray-700\/10:hover {
+            background-color: rgba(209,213,219,0.3) !important;
+        }
+        /* プログレスバー背景 */
+        body.light .bg-gray-800.rounded-full {
+            background-color: #d1d5db !important;
+        }
+        /* トースト */
+        body.light #toast {
+            background-color: #1f2937 !important;
+            color: #f9fafb !important;
+            border-color: #374151 !important;
+        }
+        /* インポートバナー */
+        body.light #import-banner {
+            background-color: #ecfdf5 !important;
+            border-color: #6ee7b7 !important;
+        }
+
         /* ===== 印刷スタイル ===== */
         @media print {
             /* 画面UIを全部隠す */
@@ -97,11 +192,17 @@
                 <p class="text-sm text-gray-400 mt-1">// 持ち物チェッカー</p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
+                <button id="theme-btn" class="flex items-center gap-1.5 text-xs bg-gray-800 border border-gray-700 text-gray-300 hover:text-cyan-400 hover:border-cyan-500/60 rounded-lg px-3 py-2 transition-colors" title="テーマ切替">
+                    🌙
+                </button>
                 <button id="print-btn" class="flex items-center gap-1.5 text-xs bg-gray-800 border border-gray-700 text-gray-300 hover:text-cyan-400 hover:border-cyan-500/60 rounded-lg px-3 py-2 transition-colors">
                     🖨️ 印刷
                 </button>
                 <button id="share-btn" class="flex items-center gap-1.5 text-xs bg-gray-800 border border-gray-700 text-gray-300 hover:text-cyan-400 hover:border-cyan-500/60 rounded-lg px-3 py-2 transition-colors">
                     🔗 共有
+                </button>
+                <button id="line-share-btn" class="flex items-center gap-1.5 text-xs bg-[#06C755]/10 border border-[#06C755]/40 text-[#06C755] hover:bg-[#06C755]/20 hover:border-[#06C755]/70 rounded-lg px-3 py-2 transition-colors">
+                    💬 LINEで送る
                 </button>
             </div>
         </div>
@@ -175,8 +276,16 @@
         <!-- チェックリスト本体 -->
         <div id="checklist-container" class="space-y-6"></div>
 
+        <!-- 公式LINE -->
+        <div class="text-center mt-8 mb-2">
+            <a href="https://line.me/R/ti/p/@775deusn" target="_blank" rel="noopener"
+               class="inline-flex items-center gap-2 text-sm font-bold text-[#06C755] bg-[#06C755]/10 border border-[#06C755]/40 hover:bg-[#06C755]/20 hover:border-[#06C755]/70 rounded-xl px-5 py-2.5 transition-colors">
+                💬 公式LINEで最新情報を受け取る
+            </a>
+        </div>
+
         <!-- 全削除 -->
-        <div class="text-center mt-8 mb-4">
+        <div class="text-center mt-4 mb-4">
             <button id="reset-all" class="text-[11px] text-gray-600 hover:text-red-400 underline transition-colors">
                 すべてのデータを削除(不要設定・箱・カスタムアイテム含む)
             </button>
