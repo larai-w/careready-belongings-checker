@@ -1,0 +1,71 @@
+# S3 + CloudFront へのデプロイ (veai.jp/ready/)
+#
+# 有効化するにはリポジトリに以下を設定する:
+#   Secrets:   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+#   Variables: S3_BUCKET (例: veai-jp-frontend)
+#              S3_PREFIX (省略時: ready)
+#              AWS_REGION (省略時: ap-northeast-1)
+#              CLOUDFRONT_DISTRIBUTION_ID (設定時のみキャッシュ無効化を実行)
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check AWS credentials
+        id: creds
+        run: |
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] || [ -z "${{ vars.S3_BUCKET }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::AWSシークレット/S3_BUCKET が未設定のためデプロイをスキップしました (deploy.yml のコメント参照)"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure AWS credentials
+        if: steps.creds.outputs.configured == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+
+      - name: Build dist
+        if: steps.creds.outputs.configured == 'true'
+        run: |
+          mkdir -p dist
+          cp index.html app.js storage.js sw.js data.json manifest.webmanifest dist/
+          cp -r icons dist/
+
+      - name: Sync to S3
+        if: steps.creds.outputs.configured == 'true'
+        run: |
+          PREFIX="${{ vars.S3_PREFIX || 'ready' }}"
+          # sw.js と index.html は即時更新させたいので短いキャッシュにする
+          aws s3 sync dist/ "s3://${{ vars.S3_BUCKET }}/${PREFIX}/" \
+            --delete \
+            --cache-control "public,max-age=3600" \
+            --exclude "sw.js" --exclude "index.html"
+          aws s3 cp dist/sw.js "s3://${{ vars.S3_BUCKET }}/${PREFIX}/sw.js" \
+            --cache-control "no-cache"
+          aws s3 cp dist/index.html "s3://${{ vars.S3_BUCKET }}/${PREFIX}/index.html" \
+            --cache-control "no-cache"
+
+      - name: Invalidate CloudFront
+        if: steps.creds.outputs.configured == 'true' && vars.CLOUDFRONT_DISTRIBUTION_ID != ''
+        run: |
+          PREFIX="${{ vars.S3_PREFIX || 'ready' }}"
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/${PREFIX}/*"

@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax check (JS)
+        run: |
+          node --check app.js
+          node --check storage.js
+          node --check sw.js
+
+      - name: Validate JSON
+        run: |
+          python3 -c "import json; json.load(open('data.json'))"
+          python3 -c "import json; json.load(open('manifest.webmanifest'))"
+
+      - name: Smoke test (headless Chrome)
+        run: |
+          python3 -m http.server 8000 --bind 127.0.0.1 &
+          sleep 2
+          google-chrome --headless=new --disable-gpu --no-sandbox \
+            --virtual-time-budget=25000 --dump-dom "http://127.0.0.1:8000/" > dom.html 2>/dev/null
+
+          CHECKBOXES=$(grep -o 'type="checkbox"' dom.html | wc -l)
+          echo "checkboxes rendered: $CHECKBOXES"
+          if [ "$CHECKBOXES" -lt 20 ]; then
+            echo "::error::チェックリストが描画されていません (checkboxes=$CHECKBOXES)"
+            exit 1
+          fi
+
+          for LABEL in "帰宅チェックモード" "印刷" "共有" "コンテナ別ソート"; do
+            if ! grep -q "$LABEL" dom.html; then
+              echo "::error::UI要素が見つかりません: $LABEL"
+              exit 1
+            fi
+          done
+          echo "smoke test OK"
