@@ -22,22 +22,22 @@
       "id": "hygiene",
       "name": "🧼 衛生用品",
       "items": [
-        { "id": "hyg_diaper", "name": "紙おむつ・パッド(日数分+予備)", "applicable_locations": ["shortstay", "hospital"] },
-        { "id": "hyg_wipes", "name": "おしりふき・清拭シート", "applicable_locations": ["shortstay", "hospital"] },
+        { "id": "hyg_diaper", "name": "紙おむつ・パッド(日数分+予備)", "applicable_locations": ["shortstay", "hospital"], "consumable": true },
+        { "id": "hyg_wipes", "name": "おしりふき・清拭シート", "applicable_locations": ["shortstay", "hospital"], "consumable": true },
         { "id": "hyg_toothbrush", "name": "歯ブラシ・コップ", "applicable_locations": ["shortstay", "hospital"] },
         { "id": "hyg_denture", "name": "入れ歯ケース・洗浄剤", "applicable_locations": ["shortstay", "hospital"] },
         { "id": "hyg_towel", "name": "フェイスタオル(日数分)", "applicable_locations": ["shortstay", "hospital"] },
         { "id": "hyg_bathtowel", "name": "バスタオル(2〜3枚)", "applicable_locations": ["shortstay", "hospital"] },
         { "id": "hyg_shampoo", "name": "石けん・シャンプー(施設指定を確認)", "applicable_locations": ["shortstay", "hospital"] },
-        { "id": "hyg_tissue", "name": "ティッシュ・ウェットティッシュ", "applicable_locations": ["shortstay", "hospital", "dayservice"] },
-        { "id": "hyg_plasticbag", "name": "ビニール袋(汚れ物持ち帰り用・数枚)", "applicable_locations": ["shortstay", "hospital", "dayservice"] }
+        { "id": "hyg_tissue", "name": "ティッシュ・ウェットティッシュ", "applicable_locations": ["shortstay", "hospital", "dayservice"], "consumable": true },
+        { "id": "hyg_plasticbag", "name": "ビニール袋(汚れ物持ち帰り用・数枚)", "applicable_locations": ["shortstay", "hospital", "dayservice"], "consumable": true }
       ]
     },
     {
       "id": "medical",
       "name": "💊 薬・医療",
       "items": [
-        { "id": "med_medicine", "name": "常用薬(日数分・一包化推奨)", "applicable_locations": ["shortstay", "hospital", "dayservice"] },
+        { "id": "med_medicine", "name": "常用薬(日数分・一包化推奨)", "applicable_locations": ["shortstay", "hospital", "dayservice"], "consumable": true },
         { "id": "med_notebook", "name": "お薬手帳", "applicable_locations": ["shortstay", "hospital"] },
         { "id": "med_glasses", "name": "眼鏡・眼鏡ケース ※名前記入", "applicable_locations": ["shortstay", "hospital", "dayservice"] },
         { "id": "med_hearingaid", "name": "補聴器・予備電池 ※名前記入", "applicable_locations": ["shortstay", "hospital", "dayservice"] },
@@ -61,7 +61,7 @@
       "id": "others",
       "name": "🎒 その他",
       "items": [
-        { "id": "oth_mask", "name": "マスク(数枚)", "applicable_locations": ["shortstay", "hospital", "dayservice"] },
+        { "id": "oth_mask", "name": "マスク(数枚)", "applicable_locations": ["shortstay", "hospital", "dayservice"], "consumable": true },
         { "id": "oth_drink", "name": "飲み物・水筒 ※名前記入", "applicable_locations": ["dayservice"] },
         { "id": "oth_bag", "name": "連絡帳・利用者カード", "applicable_locations": ["dayservice"] },
         { "id": "oth_entertainment", "name": "暇つぶしの物(本・ラジオ等)", "applicable_locations": ["shortstay", "hospital"] },

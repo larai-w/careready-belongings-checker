@@ -18,7 +18,8 @@ const CONTAINERS = [
 
 let appData = null;
 let currentSubtype = '';
-let viewMode = 'category';
+let viewMode = 'category';   // 'category' | 'container'
+let returnMode = false;       // 帰宅チェックモード
 let modalQty = 1;
 let pendingCategoryId = null;
 let pendingImportData = null;
@@ -296,6 +297,40 @@ function handleModalSave() {
     showToast(`「${name}」を追加しました`);
 }
 
+// ---------- Return Mode ----------
+
+function switchReturnMode(enabled) {
+    returnMode = enabled;
+
+    const returnBtn = $('mode-return');
+    const viewModeToggle = $('view-mode-toggle');
+    const progressSection = $('progress-section');
+    const progressBarWrap = $('progress-bar-wrap');
+    const returnProgressSection = $('return-progress-section');
+
+    if (returnMode) {
+        // 帰宅チェックモードON
+        returnBtn.className =
+            'text-xs bg-green-500 text-slate-900 font-bold rounded-xl px-4 py-1.5 transition-colors shadow';
+        returnBtn.textContent = '🏠 帰宅チェックモード (ON)';
+        viewModeToggle.classList.add('opacity-40', 'pointer-events-none');
+        progressSection.classList.add('hidden');
+        progressBarWrap.classList.add('hidden');
+        returnProgressSection.classList.remove('hidden');
+    } else {
+        // 準備モードに戻る
+        returnBtn.className =
+            'text-xs bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-4 py-1.5 transition-colors font-bold';
+        returnBtn.textContent = '🏠 帰宅チェックモード';
+        viewModeToggle.classList.remove('opacity-40', 'pointer-events-none');
+        progressSection.classList.remove('hidden');
+        progressBarWrap.classList.remove('hidden');
+        returnProgressSection.classList.add('hidden');
+    }
+
+    renderChecklist();
+}
+
 // ---------- Render ----------
 
 function switchViewMode(mode) {
@@ -330,6 +365,14 @@ function renderTabs() {
 }
 
 function renderChecklist() {
+    if (returnMode) {
+        renderReturnChecklist();
+    } else {
+        renderPrepChecklist();
+    }
+}
+
+function renderPrepChecklist() {
     const container = $('checklist-container');
     container.textContent = '';
 
@@ -410,6 +453,174 @@ function renderChecklist() {
     }
 
     updateProgress();
+}
+
+function renderReturnChecklist() {
+    const container = $('checklist-container');
+    container.textContent = '';
+
+    const checked = getState('checked', {});
+    const returnChecked = getState('returnChecked', {});
+    const containers = getState('containers', {});
+    const customItems = getCustomItems();
+
+    // 準備時にチェック済みのアイテムのみ対象
+    const allItems = [];
+    appData.categories.forEach((cat) => {
+        (cat.items || []).forEach((item) => {
+            if (
+                (item.applicable_locations || []).includes(currentSubtype) &&
+                checked[item.id]
+            ) {
+                allItems.push({ ...item, categoryName: cat.name });
+            }
+        });
+    });
+    customItems.forEach((item) => {
+        if (
+            (item.applicable_locations || []).includes(currentSubtype) &&
+            checked[item.id]
+        ) {
+            allItems.push(item);
+        }
+    });
+
+    if (allItems.length === 0) {
+        const empty = document.createElement('div');
+        empty.className =
+            'text-center py-10 text-gray-500 bg-gray-800/30 border border-gray-700/40 rounded-xl';
+        const emptyMsg = document.createElement('p');
+        emptyMsg.className = 'text-sm';
+        emptyMsg.textContent = '準備モードでチェックしたアイテムがありません。';
+        const hint = document.createElement('p');
+        hint.className = 'text-xs mt-1 text-gray-600';
+        hint.textContent = '先に準備モードでアイテムにチェックを入れてください。';
+        empty.append(emptyMsg, hint);
+        container.appendChild(empty);
+        updateReturnProgress([], []);
+        return;
+    }
+
+    // 消耗品と返却品に分類
+    const returnableItems = allItems.filter((item) => !item.consumable);
+    const consumableItems = allItems.filter((item) => item.consumable);
+
+    // カテゴリ別にグループ化(返却品)
+    if (returnableItems.length > 0) {
+        const byCategory = {};
+        returnableItems.forEach((item) => {
+            const key = item.categoryId || item.categoryName || 'その他';
+            if (!byCategory[key]) byCategory[key] = { name: item.categoryName || key, items: [] };
+            byCategory[key].items.push(item);
+        });
+
+        Object.values(byCategory).forEach((group) => {
+            const section = document.createElement('div');
+            section.className = 'bg-gray-800/50 border border-gray-700/60 rounded-xl p-4';
+
+            const titleRow = document.createElement('div');
+            titleRow.className = 'flex items-center mb-3 border-b border-gray-700 pb-1';
+            const title = document.createElement('h2');
+            title.className = 'text-md font-bold text-green-300';
+            title.textContent = group.name;
+            titleRow.appendChild(title);
+            section.appendChild(titleRow);
+
+            const itemSpace = document.createElement('div');
+            itemSpace.className = 'space-y-3';
+            group.items.forEach((item) => {
+                itemSpace.appendChild(
+                    createReturnItemRow(item, returnChecked, containers[item.id] || 'none')
+                );
+            });
+            section.appendChild(itemSpace);
+            container.appendChild(section);
+        });
+    }
+
+    // 消耗品セクション(グレー表示)
+    if (consumableItems.length > 0) {
+        const consSection = document.createElement('div');
+        consSection.className = 'bg-gray-800/20 border border-gray-700/30 rounded-xl p-4 opacity-60';
+
+        const consTitleRow = document.createElement('div');
+        consTitleRow.className = 'flex items-center mb-3 border-b border-gray-700/50 pb-1';
+        const consTitle = document.createElement('h2');
+        consTitle.className = 'text-md font-bold text-gray-500';
+        consTitle.textContent = '🗑️ 消耗品(返却不要)';
+        consTitleRow.appendChild(consTitle);
+        consSection.appendChild(consTitleRow);
+
+        const consItemSpace = document.createElement('div');
+        consItemSpace.className = 'space-y-2';
+        consumableItems.forEach((item) => {
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-3 p-2';
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'text-sm text-gray-600';
+            nameSpan.textContent = item.name;
+            row.appendChild(nameSpan);
+            consItemSpace.appendChild(row);
+        });
+        consSection.appendChild(consItemSpace);
+        container.appendChild(consSection);
+    }
+
+    updateReturnProgress(returnableItems, returnChecked);
+}
+
+function createReturnItemRow(item, returnChecked, currentBox) {
+    const isReturned = Boolean(returnChecked[item.id]);
+    const qty = item.quantity && item.quantity > 1 ? item.quantity : null;
+    const boxId = currentBox !== 'none' ? currentBox : null;
+
+    const itemRow = document.createElement('div');
+    itemRow.className =
+        'flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-lg hover:bg-gray-700/10 transition-colors border-b border-gray-800/40 pb-3 sm:pb-2';
+
+    const left = document.createElement('div');
+    left.className = 'flex items-start gap-3 flex-1';
+    const label = document.createElement('label');
+    label.className = 'flex items-start gap-3 cursor-pointer flex-1';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = isReturned;
+    checkbox.className =
+        'w-5 h-5 rounded border-gray-600 bg-gray-700 text-green-500 focus:ring-green-500 focus:ring-offset-gray-800 mt-0.5 accent-green-500';
+    checkbox.addEventListener('change', () => setReturnChecked(item.id, checkbox.checked));
+
+    const textWrap = document.createElement('div');
+    textWrap.className = 'flex flex-col';
+
+    const nameWrap = document.createElement('div');
+    nameWrap.className = 'flex items-center flex-wrap gap-1.5';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = `${isReturned ? 'line-through-text' : 'text-gray-300'} text-sm leading-relaxed`;
+    nameSpan.textContent = item.name;
+    nameWrap.appendChild(nameSpan);
+
+    if (qty) {
+        const qtyBadge = document.createElement('span');
+        qtyBadge.className =
+            'text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded';
+        qtyBadge.textContent = `×${qty}`;
+        nameWrap.appendChild(qtyBadge);
+    }
+    textWrap.appendChild(nameWrap);
+
+    if (boxId) {
+        const boxBadge = document.createElement('span');
+        boxBadge.className = 'text-[10px] text-gray-500 mt-0.5';
+        boxBadge.textContent = `📦 ${getContainerName(boxId)}`;
+        textWrap.appendChild(boxBadge);
+    }
+
+    label.append(checkbox, textWrap);
+    left.appendChild(label);
+    itemRow.appendChild(left);
+
+    return itemRow;
 }
 
 function buildContainerSection(boxId, items, checked, skipped, containers) {
@@ -564,6 +775,45 @@ function setChecked(itemId, isChecked) {
     updateProgress();
 }
 
+function setReturnChecked(itemId, isChecked) {
+    const returnChecked = getState('returnChecked', {});
+    if (isChecked) returnChecked[itemId] = true;
+    else delete returnChecked[itemId];
+    setState('returnChecked', returnChecked);
+
+    // チェック状態に応じてアイテム行のテキストスタイルを即座に更新
+    const checked = getState('checked', {});
+    const allReturnableItems = getReturnableCheckedItems();
+    updateReturnProgress(allReturnableItems, returnChecked);
+}
+
+function getReturnableCheckedItems() {
+    const checked = getState('checked', {});
+    const customItems = getCustomItems();
+    const items = [];
+    appData.categories.forEach((cat) => {
+        (cat.items || []).forEach((item) => {
+            if (
+                (item.applicable_locations || []).includes(currentSubtype) &&
+                checked[item.id] &&
+                !item.consumable
+            ) {
+                items.push(item);
+            }
+        });
+    });
+    customItems.forEach((item) => {
+        if (
+            (item.applicable_locations || []).includes(currentSubtype) &&
+            checked[item.id] &&
+            !item.consumable
+        ) {
+            items.push(item);
+        }
+    });
+    return items;
+}
+
 function setContainer(itemId, boxId) {
     const containers = getState('containers', {});
     if (boxId === 'none') delete containers[itemId];
@@ -625,9 +875,23 @@ function updateProgress() {
     $('progress-bar').style.width = total > 0 ? `${(done / total) * 100}%` : '0%';
 }
 
+function updateReturnProgress(returnableItems, returnChecked) {
+    const total = returnableItems.length;
+    const done = returnableItems.filter((item) => returnChecked[item.id]).length;
+    $('return-progress-text').textContent = `${done} / ${total} 個`;
+    $('return-progress-bar').style.width = total > 0 ? `${(done / total) * 100}%` : '0%';
+}
+
 function resetChecks() {
     if (confirm('チェックをリセットしますか？\n(箱の割り当てと「不要」の設定は保持されます)')) {
         setState('checked', {});
+        renderChecklist();
+    }
+}
+
+function resetReturnChecks() {
+    if (confirm('帰宅チェックをリセットしますか？')) {
+        removeState('returnChecked');
         renderChecklist();
     }
 }
@@ -643,8 +907,151 @@ function resetAll() {
         removeState('containers');
         removeState('customItems');
         removeState('containerNames');
+        removeState('returnChecked');
         renderChecklist();
     }
+}
+
+// ---------- 未返却リストをコピー ----------
+
+async function copyMissingItems() {
+    const checked = getState('checked', {});
+    const returnChecked = getState('returnChecked', {});
+    const containers = getState('containers', {});
+    const customItems = getCustomItems();
+
+    const missingItems = [];
+
+    appData.categories.forEach((cat) => {
+        (cat.items || []).forEach((item) => {
+            if (
+                (item.applicable_locations || []).includes(currentSubtype) &&
+                checked[item.id] &&
+                !item.consumable &&
+                !returnChecked[item.id]
+            ) {
+                missingItems.push(item);
+            }
+        });
+    });
+    customItems.forEach((item) => {
+        if (
+            (item.applicable_locations || []).includes(currentSubtype) &&
+            checked[item.id] &&
+            !item.consumable &&
+            !returnChecked[item.id]
+        ) {
+            missingItems.push(item);
+        }
+    });
+
+    if (missingItems.length === 0) {
+        showToast('未返却のアイテムはありません ✅');
+        return;
+    }
+
+    const locationName = (appData.locations.find((l) => l.id === currentSubtype) || {}).name || currentSubtype;
+    const lines = missingItems.map((item) => {
+        const boxId = containers[item.id];
+        if (boxId && boxId !== 'none') {
+            return `・${item.name}(${getContainerName(boxId)})`;
+        }
+        return `・${item.name}`;
+    });
+
+    const text =
+        `お世話になっております。以下の持ち物が見当たらないため、ご確認をお願いできますでしょうか。\n` +
+        lines.join('\n');
+
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast(`未返却リスト(${missingItems.length}点)をコピーしました 📋`);
+    } catch {
+        showToast('コピーに失敗しました。', 3000);
+    }
+}
+
+// ---------- 印刷 ----------
+
+function handlePrint() {
+    if (!appData) return;
+
+    const locationObj = appData.locations.find((l) => l.id === currentSubtype);
+    const locationName = locationObj ? locationObj.name : currentSubtype;
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
+
+    const checked = getState('checked', {});
+    const skipped = getState('skipped', {});
+    const containers = getState('containers', {});
+    const customItems = getCustomItems();
+
+    const printArea = $('print-area');
+    printArea.textContent = '';
+
+    // 印刷ヘッダー
+    const h1 = document.createElement('h1');
+    h1.textContent = `CareReady 持ち物リスト — ${locationName}`;
+    const dateLine = document.createElement('p');
+    dateLine.className = 'print-date';
+    dateLine.textContent = `印刷日: ${dateStr}`;
+    printArea.append(h1, dateLine);
+
+    // カテゴリ別にアイテムを出力(スキップ済みは除く)
+    appData.categories.forEach((cat) => {
+        const officialItems = (cat.items || []).filter(
+            (item) =>
+                (item.applicable_locations || []).includes(currentSubtype) &&
+                !skipped[item.id]
+        );
+        const myCustomItems = customItems.filter(
+            (item) =>
+                item.categoryId === cat.id &&
+                (item.applicable_locations || []).includes(currentSubtype) &&
+                !skipped[item.id]
+        );
+        const filteredItems = [...officialItems, ...myCustomItems];
+        if (filteredItems.length === 0) return;
+
+        const catTitle = document.createElement('div');
+        catTitle.className = 'print-category-title';
+        catTitle.textContent = cat.name;
+        printArea.appendChild(catTitle);
+
+        filteredItems.forEach((item) => {
+            const row = document.createElement('div');
+            row.className = 'print-item';
+
+            const cb = document.createElement('span');
+            cb.className = 'print-checkbox';
+            cb.textContent = checked[item.id] ? '☑' : '□';
+
+            const name = document.createElement('span');
+            name.className = 'print-item-name';
+            name.textContent = item.name;
+
+            row.append(cb, name);
+
+            if (item.quantity && item.quantity > 1) {
+                const qty = document.createElement('span');
+                qty.className = 'print-qty';
+                qty.textContent = `×${item.quantity}`;
+                row.appendChild(qty);
+            }
+
+            const boxId = containers[item.id];
+            if (boxId && boxId !== 'none') {
+                const box = document.createElement('span');
+                box.className = 'print-box';
+                box.textContent = `📦 ${getContainerName(boxId)}`;
+                row.appendChild(box);
+            }
+
+            printArea.appendChild(row);
+        });
+    });
+
+    window.print();
 }
 
 // ---------- Toast ----------
@@ -670,9 +1077,13 @@ function showToast(message, duration = 2500) {
 
 $('mode-category').addEventListener('click', () => switchViewMode('category'));
 $('mode-container').addEventListener('click', () => switchViewMode('container'));
+$('mode-return').addEventListener('click', () => switchReturnMode(!returnMode));
 $('reset-checks').addEventListener('click', resetChecks);
+$('reset-return-checks').addEventListener('click', resetReturnChecks);
+$('copy-missing-btn').addEventListener('click', copyMissingItems);
 $('reset-all').addEventListener('click', resetAll);
 $('share-btn').addEventListener('click', handleShare);
+$('print-btn').addEventListener('click', handlePrint);
 $('import-ok').addEventListener('click', handleImportOk);
 $('import-cancel').addEventListener('click', dismissImport);
 $('modal-cancel').addEventListener('click', closeModal);

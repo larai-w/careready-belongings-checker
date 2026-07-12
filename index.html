@@ -13,6 +13,78 @@
     <style>
         body { background-color: #121824; color: #e2e8f0; }
         .line-through-text { text-decoration: line-through; color: #4b5563; }
+
+        /* ===== 印刷スタイル ===== */
+        @media print {
+            /* 画面UIを全部隠す */
+            body > div,
+            #toast {
+                display: none !important;
+            }
+            /* 印刷専用コンテナだけ表示 */
+            #print-area {
+                display: block !important;
+            }
+            body {
+                background: #fff !important;
+                color: #111 !important;
+                font-family: sans-serif;
+                margin: 0;
+                padding: 16px;
+            }
+            #print-area {
+                max-width: 100%;
+            }
+            #print-area h1 {
+                font-size: 16pt;
+                font-weight: bold;
+                margin-bottom: 4px;
+                border-bottom: 2px solid #333;
+                padding-bottom: 4px;
+            }
+            #print-area .print-date {
+                font-size: 9pt;
+                color: #555;
+                margin-bottom: 16px;
+            }
+            #print-area .print-category-title {
+                font-size: 12pt;
+                font-weight: bold;
+                margin-top: 16px;
+                margin-bottom: 6px;
+                border-bottom: 1px solid #aaa;
+                padding-bottom: 2px;
+            }
+            #print-area .print-item {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+                padding: 4px 0;
+                font-size: 10pt;
+                break-inside: avoid;
+            }
+            #print-area .print-checkbox {
+                flex-shrink: 0;
+                font-size: 13pt;
+            }
+            #print-area .print-item-name {
+                flex: 1;
+            }
+            #print-area .print-qty {
+                font-size: 9pt;
+                color: #666;
+                white-space: nowrap;
+            }
+            #print-area .print-box {
+                font-size: 9pt;
+                color: #444;
+                white-space: nowrap;
+            }
+        }
+        /* 画面では印刷エリアを隠す */
+        #print-area {
+            display: none;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8 font-sans">
@@ -24,9 +96,14 @@
                 <h1 class="text-3xl font-bold text-cyan-400 tracking-wider">CareReady</h1>
                 <p class="text-sm text-gray-400 mt-1">// 持ち物チェッカー</p>
             </div>
-            <button id="share-btn" class="flex items-center gap-1.5 text-xs bg-gray-800 border border-gray-700 text-gray-300 hover:text-cyan-400 hover:border-cyan-500/60 rounded-lg px-3 py-2 transition-colors shrink-0">
-                🔗 共有
-            </button>
+            <div class="flex items-center gap-2 shrink-0">
+                <button id="print-btn" class="flex items-center gap-1.5 text-xs bg-gray-800 border border-gray-700 text-gray-300 hover:text-cyan-400 hover:border-cyan-500/60 rounded-lg px-3 py-2 transition-colors">
+                    🖨️ 印刷
+                </button>
+                <button id="share-btn" class="flex items-center gap-1.5 text-xs bg-gray-800 border border-gray-700 text-gray-300 hover:text-cyan-400 hover:border-cyan-500/60 rounded-lg px-3 py-2 transition-colors">
+                    🔗 共有
+                </button>
+            </div>
         </div>
 
         <!-- テンプレ取り込みバナー -->
@@ -44,8 +121,8 @@
         <!-- API フォールバックバナー -->
         <div id="data-banner" class="hidden"></div>
 
-        <!-- 表示モード切替 -->
-        <div class="flex justify-center bg-gray-800 rounded-xl p-1 mb-4 max-w-xs mx-auto border border-gray-700">
+        <!-- 表示モード切替 (準備モード) -->
+        <div id="view-mode-toggle" class="flex justify-center bg-gray-800 rounded-xl p-1 mb-3 max-w-xs mx-auto border border-gray-700">
             <button id="mode-category" class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-slate-900 shadow">
                 📋 場所別リスト
             </button>
@@ -54,20 +131,45 @@
             </button>
         </div>
 
+        <!-- 帰宅チェックモード切替 -->
+        <div class="flex justify-center mb-4">
+            <button id="mode-return" class="text-xs bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-4 py-1.5 transition-colors font-bold">
+                🏠 帰宅チェックモード
+            </button>
+        </div>
+
         <!-- 場所タブ -->
         <div id="location-tabs" class="flex flex-wrap gap-2 justify-center mb-6">
             <p class="text-gray-500 text-sm">データを読み込み中...</p>
         </div>
 
-        <!-- 進捗バー -->
-        <div class="flex items-center justify-between mb-4">
+        <!-- 進捗バー (準備モード) -->
+        <div id="progress-section" class="flex items-center justify-between mb-4">
             <div class="text-xs text-gray-400">準備の進捗 (<span id="progress-text">0/0</span>)</div>
             <button id="reset-checks" class="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
                 チェックをリセット
             </button>
         </div>
-        <div class="bg-gray-800 rounded-full h-2.5 mb-6 overflow-hidden">
+        <div id="progress-bar-wrap" class="bg-gray-800 rounded-full h-2.5 mb-6 overflow-hidden">
             <div id="progress-bar" class="bg-cyan-500 h-2.5 w-0 transition-all duration-300"></div>
+        </div>
+
+        <!-- 帰宅チェック進捗バー -->
+        <div id="return-progress-section" class="hidden">
+            <div class="flex items-center justify-between mb-4">
+                <div class="text-xs text-green-400">帰宅確認の進捗 (<span id="return-progress-text">0/0</span>)</div>
+                <div class="flex gap-2">
+                    <button id="copy-missing-btn" class="text-xs text-amber-400 hover:text-amber-300 transition-colors bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
+                        📋 未返却リストをコピー
+                    </button>
+                    <button id="reset-return-checks" class="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
+                        帰宅チェックをリセット
+                    </button>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-full h-2.5 mb-6 overflow-hidden">
+                <div id="return-progress-bar" class="bg-green-500 h-2.5 w-0 transition-all duration-300"></div>
+            </div>
         </div>
 
         <!-- チェックリスト本体 -->
@@ -123,6 +225,9 @@
             </div>
         </div>
     </div>
+
+    <!-- 印刷専用エリア (通常非表示、@media print で表示) -->
+    <div id="print-area"></div>
 
     <script type="module" src="./app.js"></script>
 </body>
