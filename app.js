@@ -100,6 +100,7 @@ function showDataBanner(source) {
 
 async function startApp() {
     await initStorage();
+    restoreTheme();
     checkImportParam();
     try {
         const { data, source } = await loadChecklist();
@@ -211,6 +212,40 @@ async function handleShare() {
     } catch {
         showToast('URLのコピーに失敗しました。ブラウザのアドレスバーからコピーしてください。', 5000);
     }
+}
+
+// ---------- LINE Share ----------
+
+function handleLineShare() {
+    const url = generateShareURL();
+    const text = url + '\nCareReadyで持ち物リストを共有します';
+    window.open('https://line.me/R/share?text=' + encodeURIComponent(text), '_blank', 'noopener');
+}
+
+// ---------- Theme ----------
+
+function applyTheme(isLight) {
+    if (isLight) {
+        document.body.classList.add('light');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f5f7fa');
+        $('theme-btn').textContent = '☀️';
+    } else {
+        document.body.classList.remove('light');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#121824');
+        $('theme-btn').textContent = '🌙';
+    }
+}
+
+function handleThemeToggle() {
+    const current = getState('theme', 'dark');
+    const next = current === 'dark' ? 'light' : 'dark';
+    setState('theme', next);
+    applyTheme(next === 'light');
+}
+
+function restoreTheme() {
+    const saved = getState('theme', 'dark');
+    applyTheme(saved === 'light');
 }
 
 // ---------- Modal ----------
@@ -1083,6 +1118,8 @@ $('reset-return-checks').addEventListener('click', resetReturnChecks);
 $('copy-missing-btn').addEventListener('click', copyMissingItems);
 $('reset-all').addEventListener('click', resetAll);
 $('share-btn').addEventListener('click', handleShare);
+$('line-share-btn').addEventListener('click', handleLineShare);
+$('theme-btn').addEventListener('click', handleThemeToggle);
 $('print-btn').addEventListener('click', handlePrint);
 $('import-ok').addEventListener('click', handleImportOk);
 $('import-cancel').addEventListener('click', dismissImport);
