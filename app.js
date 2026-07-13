@@ -5,6 +5,9 @@ import { initStorage, getState, setState, removeState } from './storage.js';
 // 例: const API_URL = 'https://veai.jp/api/checklist';
 const API_URL = '';
 
+// バックエンドAPIベースURL (B-3 施設テンプレ)
+const API_BASE = 'https://6r6n0fjn4d.execute-api.ap-northeast-1.amazonaws.com';
+
 const FETCH_TIMEOUT_MS = 8000;
 
 const CONTAINERS = [
@@ -25,6 +28,9 @@ let pendingCategoryId = null;
 let pendingImportData = null;
 let toastTimer = null;
 
+// 施設コードモーダル状態
+let fcRedeemState = null;   // null | { name, items, overrides, facilityName, code }
+
 const $ = (id) => document.getElementById(id);
 
 // ---------- State helpers ----------
@@ -37,6 +43,79 @@ function getContainerName(id) {
     const names = getState('containerNames', {});
     const def = CONTAINERS.find((c) => c.id === id);
     return names[id] || (def ? def.name : id);
+}
+
+// ---------- Condition helpers ----------
+
+function getConditionState() {
+    return getState('conditions', {});
+}
+
+function isConditionActive(conditionId) {
+    if (!appData || !appData.conditions) return true;
+    const cond = appData.conditions.find((c) => c.id === conditionId);
+    if (!cond) return true;
+    const saved = getConditionState();
+    return saved[conditionId] !== undefined ? saved[conditionId] : cond.default;
+}
+
+// アイテムが現在の条件設定で表示すべきか判定
+function isItemVisible(item) {
+    if (!item.condition) return true;
+    return isConditionActive(item.condition);
+}
+
+// ---------- Facility template helpers ----------
+
+function getFacilityTemplate() {
+    return getState('facilityTemplate', null);
+}
+
+// 施設テンプレのhide対象IDセットを返す
+function getFacilityHideSet() {
+    const tpl = getFacilityTemplate();
+    if (!tpl || !tpl.overrides || !Array.isArray(tpl.overrides.hide)) return new Set();
+    return new Set(tpl.overrides.hide);
+}
+
+// 施設テンプレのアイテムをカテゴリIDごとにまとめて返す
+// facilityItems はカテゴリIDをキーとした配列オブジェクト
+function getFacilityItemsByCategory() {
+    const tpl = getFacilityTemplate();
+    if (!tpl || !Array.isArray(tpl.items)) return {};
+    const result = {};
+    tpl.items.forEach((item) => {
+        const catId = item.categoryId || '__facility__';
+        if (!result[catId]) result[catId] = [];
+        result[catId].push({ ...item, isFacility: true });
+    });
+    return result;
+}
+
+// 施設テンプレバナーを更新する
+function updateFacilityBanner() {
+    const tpl = getFacilityTemplate();
+    const banner = $('facility-banner');
+    const noteBanner = $('facility-note-banner');
+
+    if (tpl) {
+        const nameEl = $('facility-banner-name');
+        nameEl.textContent = tpl.name + (tpl.facilityName ? ' — ' + tpl.facilityName : '');
+        banner.classList.remove('hidden');
+        banner.classList.add('flex');
+
+        if (tpl.overrides && tpl.overrides.note) {
+            const noteText = $('facility-note-text');
+            noteText.textContent = tpl.overrides.note;
+            noteBanner.classList.remove('hidden');
+        } else {
+            noteBanner.classList.add('hidden');
+        }
+    } else {
+        banner.classList.add('hidden');
+        banner.classList.remove('flex');
+        noteBanner.classList.add('hidden');
+    }
 }
 
 // ---------- Data loading ----------
@@ -107,8 +186,12 @@ async function startApp() {
         appData = data;
         showDataBanner(source);
         currentSubtype = appData.locations[0].id;
+        updateFacilityBanner();
+        renderConditionToggles();
         renderTabs();
         renderChecklist();
+        // ?fc= パラメータ処理 (data読込後)
+        checkFacilityCodeParam();
     } catch (e) {
         console.error('データの取得に失敗しました:', e);
         const tabs = $('location-tabs');
@@ -184,6 +267,200 @@ function dismissImport() {
     $('import-banner').classList.add('hidden');
     $('import-banner').classList.remove('flex');
     window.history.replaceState({}, '', window.location.pathname);
+}
+
+// ---------- 施設コード取込 (B-3) ----------
+
+async function redeemFacilityCode(code) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+        const res = await fetch(`${API_BASE}/v1/templates/redeem`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code.toUpperCase() }),
+            signal: controller.signal,
+        });
+        clearTimeout(timer);
+        const json = await res.json();
+        if (!res.ok) {
+            throw new Error(json.error || `HTTP ${res.status}`);
+        }
+        return json;
+    } catch (e) {
+        clearTimeout(timer);
+        throw e;
+    }
+}
+
+// URLパラメータ ?fc= の自動取込
+function checkFacilityCodeParam() {
+    const fc = new URLSearchParams(window.location.search).get('fc');
+    if (!fc) return;
+    // パラメータをすぐ除去
+    window.history.replaceState({}, '', window.location.pathname);
+    // オフラインチェック
+    if (!navigator.onLine) {
+        showToast('オフラインのため施設コードを取り込めません');
+        return;
+    }
+    redeemFacilityCode(fc).then((tpl) => {
+        const saved = {
+            code: fc.toUpperCase(),
+            name: tpl.name,
+            items: tpl.items || [],
+            overrides: tpl.overrides || {},
+            facilityName: tpl.facilityName || '',
+            shareCode: tpl.shareCode || fc.toUpperCase(),
+            redeemedAt: new Date().toISOString(),
+        };
+        setState('facilityTemplate', saved);
+        updateFacilityBanner();
+        renderChecklist();
+        showToast(`🏥 施設テンプレ「${tpl.name}」を取り込みました`);
+    }).catch((e) => {
+        showToast('施設コードの取り込みに失敗しました: ' + e.message, 4000);
+    });
+}
+
+// 施設コードモーダルを開く
+function openFcModal() {
+    fcRedeemState = null;
+    const input = $('fc-code-input');
+    input.value = '';
+    $('fc-confirm-area').classList.add('hidden');
+    $('fc-error-msg').classList.add('hidden');
+    $('fc-modal-submit').textContent = '受け取る';
+    $('fc-modal').classList.remove('hidden');
+    $('fc-modal').classList.add('flex');
+    setTimeout(() => input.focus(), 50);
+}
+
+function closeFcModal() {
+    fcRedeemState = null;
+    $('fc-modal').classList.add('hidden');
+    $('fc-modal').classList.remove('flex');
+}
+
+async function handleFcModalSubmit() {
+    const input = $('fc-code-input');
+    const code = input.value.trim().toUpperCase();
+    const errorEl = $('fc-error-msg');
+    const confirmArea = $('fc-confirm-area');
+
+    errorEl.classList.add('hidden');
+
+    // 確認フェーズ: fcRedeemStateがあればそのまま保存
+    if (fcRedeemState) {
+        const saved = {
+            code: fcRedeemState.code,
+            name: fcRedeemState.name,
+            items: fcRedeemState.items || [],
+            overrides: fcRedeemState.overrides || {},
+            facilityName: fcRedeemState.facilityName || '',
+            shareCode: fcRedeemState.shareCode || fcRedeemState.code,
+            redeemedAt: new Date().toISOString(),
+        };
+        setState('facilityTemplate', saved);
+        closeFcModal();
+        updateFacilityBanner();
+        renderChecklist();
+        showToast(`🏥 施設テンプレ「${saved.name}」を取り込みました`);
+        return;
+    }
+
+    if (code.length < 1) {
+        errorEl.textContent = '施設コードを入力してください';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    if (!navigator.onLine) {
+        errorEl.textContent = 'オフラインのため取り込めません。オンラインで再試行してください。';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    const submitBtn = $('fc-modal-submit');
+    submitBtn.textContent = '確認中…';
+    submitBtn.disabled = true;
+
+    try {
+        const tpl = await redeemFacilityCode(code);
+        fcRedeemState = {
+            code,
+            name: tpl.name,
+            items: tpl.items || [],
+            overrides: tpl.overrides || {},
+            facilityName: tpl.facilityName || '',
+            shareCode: tpl.shareCode || code,
+        };
+        // 確認UI表示
+        $('fc-confirm-name').textContent = tpl.name;
+        $('fc-confirm-facility').textContent = tpl.facilityName ? '施設: ' + tpl.facilityName : '';
+        confirmArea.classList.remove('hidden');
+        submitBtn.textContent = '取り込む';
+        submitBtn.disabled = false;
+        input.disabled = true;
+    } catch (e) {
+        const msg = e.name === 'AbortError' ? 'タイムアウトしました。再試行してください。' : (e.message || '取り込みに失敗しました');
+        errorEl.textContent = msg;
+        errorEl.classList.remove('hidden');
+        submitBtn.textContent = '受け取る';
+        submitBtn.disabled = false;
+    }
+}
+
+function revokeFacilityTemplate() {
+    if (!confirm('施設テンプレを解除しますか？\n標準リストに戻ります。')) return;
+    removeState('facilityTemplate');
+    updateFacilityBanner();
+    renderChecklist();
+    showToast('施設テンプレを解除しました');
+}
+
+// ---------- 条件トグルUI ----------
+
+function renderConditionToggles() {
+    const wrap = $('condition-toggles');
+    if (!appData || !Array.isArray(appData.conditions) || appData.conditions.length === 0) {
+        wrap.classList.add('hidden');
+        return;
+    }
+    wrap.textContent = '';
+    wrap.classList.remove('hidden');
+
+    const condState = getConditionState();
+    appData.conditions.forEach((cond) => {
+        const isOn = condState[cond.id] !== undefined ? condState[cond.id] : cond.default;
+
+        const btn = document.createElement('button');
+        btn.className = isOn
+            ? 'flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-colors bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+            : 'flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-colors bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-600';
+
+        const indicator = document.createElement('span');
+        indicator.textContent = isOn ? '●' : '○';
+        indicator.className = isOn ? 'text-cyan-400' : 'text-gray-600';
+
+        const label = document.createElement('span');
+        label.textContent = cond.name;
+
+        btn.append(indicator, label);
+        btn.setAttribute('data-condition-id', cond.id);
+        btn.addEventListener('click', () => toggleCondition(cond.id));
+        wrap.appendChild(btn);
+    });
+}
+
+function toggleCondition(conditionId) {
+    const condState = getConditionState();
+    const cond = appData.conditions.find((c) => c.id === conditionId);
+    const current = condState[conditionId] !== undefined ? condState[conditionId] : (cond ? cond.default : true);
+    condState[conditionId] = !current;
+    setState('conditions', condState);
+    renderConditionToggles();
+    renderChecklist();
 }
 
 function generateShareURL() {
@@ -416,17 +693,30 @@ function renderPrepChecklist() {
     const containers = getState('containers', {});
     const customItems = getCustomItems();
 
+    // 3層マージ: 施設テンプレのhideセットと追加アイテム
+    const hideSet = getFacilityHideSet();
+    const facilityItemsByCategory = getFacilityItemsByCategory();
+
     if (viewMode === 'category') {
+        // 通常カテゴリを処理
         appData.categories.forEach((cat) => {
             const officialItems = (cat.items || []).filter((item) =>
-                (item.applicable_locations || []).includes(currentSubtype)
+                (item.applicable_locations || []).includes(currentSubtype) &&
+                !hideSet.has(item.id) &&
+                isItemVisible(item)
             );
             const myCustomItems = customItems.filter(
                 (item) =>
                     item.categoryId === cat.id &&
-                    (item.applicable_locations || []).includes(currentSubtype)
+                    (item.applicable_locations || []).includes(currentSubtype) &&
+                    isItemVisible(item)
             );
-            const filteredItems = [...officialItems, ...myCustomItems];
+            // 施設テンプレのアイテム(このカテゴリに属するもの)
+            const facItems = (facilityItemsByCategory[cat.id] || []).filter((item) =>
+                !item.applicable_locations ||
+                (item.applicable_locations || []).includes(currentSubtype)
+            );
+            const filteredItems = [...officialItems, ...facItems, ...myCustomItems];
             if (filteredItems.length === 0) return;
 
             const section = document.createElement('div');
@@ -456,18 +746,62 @@ function renderPrepChecklist() {
             section.appendChild(itemSpace);
             container.appendChild(section);
         });
+
+        // 施設専用カテゴリ(__facility__)のアイテムがあれば専用セクションを追加
+        const facilityOnlyItems = (facilityItemsByCategory['__facility__'] || []).filter((item) =>
+            !item.applicable_locations ||
+            (item.applicable_locations || []).includes(currentSubtype)
+        );
+        if (facilityOnlyItems.length > 0) {
+            const section = document.createElement('div');
+            section.className = 'bg-blue-900/20 border border-blue-700/40 rounded-xl p-4';
+
+            const titleRow = document.createElement('div');
+            titleRow.className = 'flex items-center justify-between mb-3 border-b border-blue-700/40 pb-1';
+            const title = document.createElement('h2');
+            title.className = 'text-md font-bold text-blue-300';
+            title.textContent = '🏥 施設指定アイテム';
+            titleRow.appendChild(title);
+            section.appendChild(titleRow);
+
+            const itemSpace = document.createElement('div');
+            itemSpace.className = 'space-y-3';
+            facilityOnlyItems.forEach((item) => {
+                itemSpace.appendChild(
+                    createItemRow(item, checked, skipped, containers[item.id] || 'none')
+                );
+            });
+            section.appendChild(itemSpace);
+            container.appendChild(section);
+        }
     } else {
         // コンテナ別ビュー
         const allFilteredItems = [];
         appData.categories.forEach((cat) => {
             (cat.items || []).forEach((item) => {
-                if ((item.applicable_locations || []).includes(currentSubtype)) {
+                if (
+                    (item.applicable_locations || []).includes(currentSubtype) &&
+                    !hideSet.has(item.id) &&
+                    isItemVisible(item)
+                ) {
+                    allFilteredItems.push({ ...item, categoryName: cat.name });
+                }
+            });
+            // 施設テンプレのカテゴリ別アイテム
+            (facilityItemsByCategory[cat.id] || []).forEach((item) => {
+                if (!item.applicable_locations || (item.applicable_locations || []).includes(currentSubtype)) {
                     allFilteredItems.push({ ...item, categoryName: cat.name });
                 }
             });
         });
+        // 施設専用カテゴリのアイテム
+        (facilityItemsByCategory['__facility__'] || []).forEach((item) => {
+            if (!item.applicable_locations || (item.applicable_locations || []).includes(currentSubtype)) {
+                allFilteredItems.push({ ...item, categoryName: '🏥 施設指定' });
+            }
+        });
         customItems.forEach((item) => {
-            if ((item.applicable_locations || []).includes(currentSubtype)) {
+            if ((item.applicable_locations || []).includes(currentSubtype) && isItemVisible(item)) {
                 allFilteredItems.push(item);
             }
         });
@@ -499,13 +833,18 @@ function renderReturnChecklist() {
     const containers = getState('containers', {});
     const customItems = getCustomItems();
 
+    // 3層マージ用
+    const hideSet = getFacilityHideSet();
+
     // 準備時にチェック済みのアイテムのみ対象
     const allItems = [];
     appData.categories.forEach((cat) => {
         (cat.items || []).forEach((item) => {
             if (
                 (item.applicable_locations || []).includes(currentSubtype) &&
-                checked[item.id]
+                checked[item.id] &&
+                !hideSet.has(item.id) &&
+                isItemVisible(item)
             ) {
                 allItems.push({ ...item, categoryName: cat.name });
             }
@@ -514,7 +853,8 @@ function renderReturnChecklist() {
     customItems.forEach((item) => {
         if (
             (item.applicable_locations || []).includes(currentSubtype) &&
-            checked[item.id]
+            checked[item.id] &&
+            isItemVisible(item)
         ) {
             allItems.push(item);
         }
@@ -745,6 +1085,12 @@ function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = f
         customBadge.textContent = 'カスタム';
         nameWrap.appendChild(customBadge);
     }
+    if (item.isFacility) {
+        const facBadge = document.createElement('span');
+        facBadge.className = 'text-[9px] text-blue-400 border border-blue-500/40 px-1 py-0.5 rounded';
+        facBadge.textContent = '🏥施設';
+        nameWrap.appendChild(facBadge);
+    }
     textWrap.appendChild(nameWrap);
 
     if (showCategoryBadge && item.categoryName) {
@@ -825,13 +1171,16 @@ function setReturnChecked(itemId, isChecked) {
 function getReturnableCheckedItems() {
     const checked = getState('checked', {});
     const customItems = getCustomItems();
+    const hideSet = getFacilityHideSet();
     const items = [];
     appData.categories.forEach((cat) => {
         (cat.items || []).forEach((item) => {
             if (
                 (item.applicable_locations || []).includes(currentSubtype) &&
                 checked[item.id] &&
-                !item.consumable
+                !item.consumable &&
+                !hideSet.has(item.id) &&
+                isItemVisible(item)
             ) {
                 items.push(item);
             }
@@ -841,7 +1190,8 @@ function getReturnableCheckedItems() {
         if (
             (item.applicable_locations || []).includes(currentSubtype) &&
             checked[item.id] &&
-            !item.consumable
+            !item.consumable &&
+            isItemVisible(item)
         ) {
             items.push(item);
         }
@@ -943,6 +1293,10 @@ function resetAll() {
         removeState('customItems');
         removeState('containerNames');
         removeState('returnChecked');
+        removeState('facilityTemplate');
+        removeState('conditions');
+        updateFacilityBanner();
+        renderConditionToggles();
         renderChecklist();
     }
 }
@@ -955,6 +1309,7 @@ async function copyMissingItems() {
     const containers = getState('containers', {});
     const customItems = getCustomItems();
 
+    const hideSet = getFacilityHideSet();
     const missingItems = [];
 
     appData.categories.forEach((cat) => {
@@ -963,7 +1318,9 @@ async function copyMissingItems() {
                 (item.applicable_locations || []).includes(currentSubtype) &&
                 checked[item.id] &&
                 !item.consumable &&
-                !returnChecked[item.id]
+                !returnChecked[item.id] &&
+                !hideSet.has(item.id) &&
+                isItemVisible(item)
             ) {
                 missingItems.push(item);
             }
@@ -974,7 +1331,8 @@ async function copyMissingItems() {
             (item.applicable_locations || []).includes(currentSubtype) &&
             checked[item.id] &&
             !item.consumable &&
-            !returnChecked[item.id]
+            !returnChecked[item.id] &&
+            isItemVisible(item)
         ) {
             missingItems.push(item);
         }
@@ -1032,20 +1390,31 @@ function handlePrint() {
     dateLine.textContent = `印刷日: ${dateStr}`;
     printArea.append(h1, dateLine);
 
+    // 3層マージ
+    const hideSet = getFacilityHideSet();
+    const facilityItemsByCategory = getFacilityItemsByCategory();
+
     // カテゴリ別にアイテムを出力(スキップ済みは除く)
     appData.categories.forEach((cat) => {
         const officialItems = (cat.items || []).filter(
             (item) =>
                 (item.applicable_locations || []).includes(currentSubtype) &&
-                !skipped[item.id]
+                !skipped[item.id] &&
+                !hideSet.has(item.id) &&
+                isItemVisible(item)
+        );
+        const facItems = (facilityItemsByCategory[cat.id] || []).filter((item) =>
+            (!item.applicable_locations || (item.applicable_locations || []).includes(currentSubtype)) &&
+            !skipped[item.id]
         );
         const myCustomItems = customItems.filter(
             (item) =>
                 item.categoryId === cat.id &&
                 (item.applicable_locations || []).includes(currentSubtype) &&
-                !skipped[item.id]
+                !skipped[item.id] &&
+                isItemVisible(item)
         );
-        const filteredItems = [...officialItems, ...myCustomItems];
+        const filteredItems = [...officialItems, ...facItems, ...myCustomItems];
         if (filteredItems.length === 0) return;
 
         const catTitle = document.createElement('div');
@@ -1109,6 +1478,20 @@ function showToast(message, duration = 2500) {
 }
 
 // ---------- Event wiring ----------
+
+// 施設コードモーダル
+$('fc-open-btn').addEventListener('click', openFcModal);
+$('fc-modal-cancel').addEventListener('click', closeFcModal);
+$('fc-modal').addEventListener('click', (e) => { if (e.target === $('fc-modal')) closeFcModal(); });
+$('fc-modal-submit').addEventListener('click', handleFcModalSubmit);
+$('fc-code-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleFcModalSubmit();
+    if (e.key === 'Escape') closeFcModal();
+});
+$('fc-code-input').addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase();
+});
+$('facility-revoke').addEventListener('click', revokeFacilityTemplate);
 
 $('mode-category').addEventListener('click', () => switchViewMode('category'));
 $('mode-container').addEventListener('click', () => switchViewMode('container'));

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>CareReady 施設管理画面</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body { background-color: #0b1220; color: #e5e7eb; }
+    .cr-card { background-color: #111a2e; border: 1px solid #1e2b45; }
+    .cr-input {
+      background-color: #0b1220; border: 1px solid #29406b; color: #e5e7eb;
+      border-radius: 0.5rem; padding: 0.5rem 0.75rem; width: 100%;
+    }
+    .cr-input:focus { outline: none; border-color: #22d3ee; box-shadow: 0 0 0 2px rgba(34,211,238,.25); }
+    .cr-btn { border-radius: 0.5rem; padding: 0.5rem 1rem; font-weight: 600; cursor: pointer; }
+    .cr-btn-primary { background-color: #06b6d4; color: #06202a; }
+    .cr-btn-primary:hover { background-color: #22d3ee; }
+    .cr-btn-ghost { border: 1px solid #29406b; color: #cbd5e1; }
+    .cr-btn-ghost:hover { background-color: #16223b; }
+    .cr-btn-danger { border: 1px solid #7f1d1d; color: #fca5a5; }
+    .cr-btn-danger:hover { background-color: #3b1212; }
+    .hidden { display: none !important; }
+
+    /* 印刷: 配布画面だけを印刷する */
+    @media print {
+      body * { visibility: hidden !important; }
+      #printArea, #printArea * { visibility: visible !important; }
+      #printArea {
+        position: absolute; left: 0; top: 0; width: 100%;
+        background: #fff !important; color: #000 !important;
+        padding: 24px !important; border: none !important;
+      }
+      #printArea .no-print, .no-print { display: none !important; }
+      #printArea .print-text { color: #000 !important; }
+      #printArea canvas { background: #fff !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <!-- ヘッダー -->
+  <header id="appHeader" class="hidden border-b border-[#1e2b45] bg-[#0e1729] no-print">
+    <div class="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-cyan-400 text-xl font-bold">CareReady</span>
+        <span class="text-slate-400 text-sm">施設管理画面</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="userLabel" class="text-slate-400 text-sm"></span>
+        <button id="logoutBtn" class="cr-btn cr-btn-ghost text-sm">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 通知 -->
+  <div id="toast" class="hidden fixed top-4 right-4 z-50 cr-card rounded-lg px-4 py-3 shadow-lg max-w-sm no-print"></div>
+
+  <main class="max-w-5xl mx-auto px-6 py-8">
+
+    <!-- ===== ログイン画面 ===== -->
+    <section id="loginView">
+      <div class="max-w-md mx-auto mt-10">
+        <div class="text-center mb-6">
+          <div class="text-cyan-400 text-3xl font-bold">CareReady</div>
+          <p class="text-slate-400 mt-1">施設向け管理画面にログイン</p>
+        </div>
+        <form id="loginForm" class="cr-card rounded-xl p-6 space-y-4">
+          <div>
+            <label for="email" class="block text-sm text-slate-300 mb-1">メールアドレス</label>
+            <input id="email" name="email" type="email" autocomplete="username" required class="cr-input" placeholder="staff@example.jp" />
+          </div>
+          <div>
+            <label for="password" class="block text-sm text-slate-300 mb-1">パスワード</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required class="cr-input" placeholder="パスワード" />
+          </div>
+          <p id="loginError" class="hidden text-red-400 text-sm"></p>
+          <button id="loginBtn" type="submit" class="cr-btn cr-btn-primary w-full">ログイン</button>
+        </form>
+        <p class="text-slate-500 text-xs mt-4 text-center">
+          アカウントは施設管理者が発行します。ログインできない場合はご担当者にお問い合わせください。
+        </p>
+      </div>
+    </section>
+
+    <!-- ===== テンプレ一覧 ===== -->
+    <section id="listView" class="hidden">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-xl font-bold">持ち物リスト一覧</h1>
+        <button id="newTplBtn" class="cr-btn cr-btn-primary">＋ 新規作成</button>
+      </div>
+      <div id="listLoading" class="text-slate-400 py-8 text-center">読み込み中...</div>
+      <div id="listEmpty" class="hidden cr-card rounded-xl p-8 text-center text-slate-400">
+        まだリストがありません。「＋ 新規作成」から最初のリストを作りましょう。
+      </div>
+      <div id="tplList" class="space-y-3"></div>
+    </section>
+
+    <!-- ===== テンプレ編集フォーム ===== -->
+    <section id="editView" class="hidden">
+      <div class="flex items-center justify-between mb-6">
+        <h1 id="editTitle" class="text-xl font-bold">リストを作成</h1>
+        <button id="backToListBtn" class="cr-btn cr-btn-ghost text-sm">← 一覧に戻る</button>
+      </div>
+
+      <div class="space-y-6">
+        <!-- 基本情報 -->
+        <div class="cr-card rounded-xl p-6 space-y-4">
+          <div>
+            <label for="tplName" class="block text-sm text-slate-300 mb-1">リスト名<span class="text-red-400">*</span></label>
+            <input id="tplName" type="text" class="cr-input" maxlength="100" placeholder="例: 当施設 ショートステイ持ち物リスト" />
+          </div>
+          <div>
+            <label for="tplNote" class="block text-sm text-slate-300 mb-1">施設からのお知らせ（任意）</label>
+            <textarea id="tplNote" rows="3" class="cr-input" placeholder="例: 全ての持ち物にお名前をご記入ください。シャンプー・石けんは施設に備え付けがあります。"></textarea>
+            <p class="text-slate-500 text-xs mt-1">ご家族のリスト上部に表示されます。</p>
+          </div>
+        </div>
+
+        <!-- 標準アイテムの持込設定 -->
+        <div class="cr-card rounded-xl p-6">
+          <h2 class="font-bold mb-1">標準アイテムの持込設定</h2>
+          <p class="text-slate-500 text-xs mb-4">施設で用意があり「持ってこなくてよい」ものにチェックを入れてください。チェックしたものはご家族のリストから除外されます。</p>
+          <div id="stdItems" class="space-y-5"></div>
+        </div>
+
+        <!-- 施設独自アイテム -->
+        <div class="cr-card rounded-xl p-6">
+          <div class="flex items-center justify-between mb-1">
+            <h2 class="font-bold">施設独自の持ち物</h2>
+            <button id="addFacItemBtn" type="button" class="cr-btn cr-btn-ghost text-sm">＋ 行を追加</button>
+          </div>
+          <p class="text-slate-500 text-xs mb-4">標準リストにない、この施設ならではの持ち物を追加できます。</p>
+          <div id="facItemsHead" class="hidden grid grid-cols-12 gap-2 text-xs text-slate-400 px-1 mb-2">
+            <div class="col-span-5">持ち物名</div>
+            <div class="col-span-2">数量</div>
+            <div class="col-span-4">対象の行き先</div>
+            <div class="col-span-1"></div>
+          </div>
+          <div id="facItems" class="space-y-2"></div>
+          <p id="facItemsEmpty" class="text-slate-500 text-sm py-2">独自の持ち物はまだありません。</p>
+        </div>
+
+        <div class="flex items-center gap-3 pb-8">
+          <button id="saveTplBtn" class="cr-btn cr-btn-primary">保存する</button>
+          <button id="cancelEditBtn" class="cr-btn cr-btn-ghost">キャンセル</button>
+          <span id="saveStatus" class="text-slate-400 text-sm"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 配布画面 ===== -->
+    <section id="shareView" class="hidden">
+      <div class="flex items-center justify-between mb-6 no-print">
+        <h1 class="text-xl font-bold">配布する</h1>
+        <button id="shareBackBtn" class="cr-btn cr-btn-ghost text-sm">← 一覧に戻る</button>
+      </div>
+
+      <div id="printArea" class="cr-card rounded-xl p-8 max-w-xl mx-auto text-center">
+        <p class="text-slate-400 text-sm print-text mb-2">CareReady 持ち物リスト</p>
+        <h2 id="shareTplName" class="text-2xl font-bold print-text mb-6"></h2>
+
+        <div class="mb-6">
+          <p class="text-slate-400 text-sm print-text mb-1">共有コード</p>
+          <p id="shareCode" class="text-4xl font-mono font-bold tracking-widest text-cyan-400 print-text"></p>
+        </div>
+
+        <div class="flex justify-center mb-4">
+          <div class="bg-white p-3 rounded-lg inline-block">
+            <canvas id="qrCanvas"></canvas>
+          </div>
+        </div>
+
+        <p class="text-slate-300 print-text text-sm mb-1">スマホでQRコードを読み取るか、下のURLからアクセスしてください。</p>
+        <p id="shareUrl" class="text-cyan-400 print-text break-all text-sm mb-4"></p>
+
+        <div class="no-print flex items-center justify-center gap-3">
+          <button id="copyUrlBtn" class="cr-btn cr-btn-ghost text-sm">URLをコピー</button>
+          <button id="printBtn" class="cr-btn cr-btn-primary text-sm">印刷して掲示する</button>
+        </div>
+      </div>
+
+      <div class="text-center mt-6 no-print">
+        <button id="editFromShareBtn" class="cr-btn cr-btn-ghost text-sm">このリストを編集する</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="./admin.js"></script>
+</body>
+</html>
