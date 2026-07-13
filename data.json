@@ -1,4 +1,7 @@
 {
+  "conditions": [
+    { "id": "diaper", "name": "おむつを使用する", "default": true }
+  ],
   "locations": [
     { "id": "shortstay", "name": "ショートステイ" },
     { "id": "hospital", "name": "入院" },
@@ -22,8 +25,8 @@
       "id": "hygiene",
       "name": "🧼 衛生用品",
       "items": [
-        { "id": "hyg_diaper", "name": "紙おむつ・パッド(日数分+予備)", "applicable_locations": ["shortstay", "hospital"], "consumable": true },
-        { "id": "hyg_wipes", "name": "おしりふき・清拭シート", "applicable_locations": ["shortstay", "hospital"], "consumable": true },
+        { "id": "hyg_diaper", "name": "紙おむつ・パッド(日数分+予備)", "applicable_locations": ["shortstay", "hospital"], "consumable": true, "condition": "diaper" },
+        { "id": "hyg_wipes", "name": "おしりふき・清拭シート", "applicable_locations": ["shortstay", "hospital"], "consumable": true, "condition": "diaper" },
         { "id": "hyg_toothbrush", "name": "歯ブラシ・コップ", "applicable_locations": ["shortstay", "hospital"] },
         { "id": "hyg_denture", "name": "入れ歯ケース・洗浄剤", "applicable_locations": ["shortstay", "hospital"] },
         { "id": "hyg_towel", "name": "フェイスタオル(日数分)", "applicable_locations": ["shortstay", "hospital"] },
