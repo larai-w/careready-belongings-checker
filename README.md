@@ -1,93 +1,166 @@
-# CareReady // Dynamic Belongings Checker for Parkinson's
-### // パーキンソン病患者の施設入所時における動的持ち物チェッカー //
+# CareReady — Dynamic Belongings Checklist for Care Facility Transfers
 
-<p align="center">
-  <img width="300" alt="CareReady App Icon" src="https://github.com/user-attachments/assets/6cd68028-d43e-4ccc-9130-05a50e4ec569" /></p>
-AWS Serverless belongings checker designed for Parkinson's Disease patients during facility transfers to aid caregivers.
+A serverless PWA that helps families of Parkinson's Disease patients prepare and verify
+personal belongings when moving between care settings (hospital, short stay, day service).
+Facility staff publish a template via a 6-character share code; families redeem it on any
+browser—no app install, no login required.
 
-**🌐 Live: https://veai.jp/ready/**
+**Status:** In development · [https://veai.jp/apps/careready/](https://veai.jp/apps/careready/)
 
 ---
 
-## 📊 System Architecture Primitives (MSCS Focus)
+## Status & Limitations
 
-This project demonstrates a secure, highly-available AWS Serverless primitives infrastructure with a full CI/CD pipeline.
+| State | Detail |
+|---|---|
+| Working | PWA checklist with IndexedDB persistence, facility template redeem via share code, return-check mode, CI/CD to S3/CloudFront |
+| Working | Backend CRUD API (Lambda + DynamoDB) with Cognito JWT auth for staff, deployed to `ap-northeast-1` |
+| In progress | Facility admin portal (`/ready/admin/`) — template editor and QR poster generation |
+| Future | Multi-facility onboarding flow, accessibility improvements, native app packaging |
+
+This is an in-development project by VEAI LAB. It is not a medical device
+and does not make clinical recommendations.
+
+---
+
+## Architecture
 
 ```mermaid
 graph LR
-    User[Family <br/> Mobile / PWA] -->|Access /ready/| CF[AWS CloudFront]
-    Staff[Facility Staff <br/> PC Browser] -->|/ready/admin/| CF
+    Family[Family / Mobile PWA] -->|"/ready/"| CF[CloudFront CDN]
+    Staff[Facility Staff / PC] -->|"/ready/admin/"| CF
 
-    subgraph "Edge Compute"
-        CF -->|Viewer Request| CFF[CloudFront Functions <br/> URL Rewriter]
+    subgraph "Edge"
+        CF --> CFF[CloudFront Function\nURL rewriter]
     end
 
     subgraph "Frontend Hosting"
-        CF -->|Fetch Assets| S3[AWS S3 Bucket <br/> /ready/ folder]
+        CF --> S3[S3 Static Assets]
     end
 
-    subgraph "Backend (CareReadyBackendStack / CDK)"
-        User -->|redeem shareCode| APIGW[API Gateway <br/> HTTP API]
-        Staff -->|template CRUD + JWT| APIGW
-        APIGW --> Lambda[AWS Lambda <br/> Python Router]
-        Lambda --> DDB[(DynamoDB <br/> single-table)]
-        Staff -.->|Auth| COG[Cognito <br/> User Pool]
-        APIGW -.->|JWT Authorizer| COG
+    subgraph "Backend — CareReadyBackendStack (CDK, ap-northeast-1)"
+        Family -->|POST /v1/templates/redeem| APIGW[API Gateway HTTP API]
+        Staff  -->|Template CRUD + JWT| APIGW
+        APIGW  --> Lambda[Lambda\nPython 3.12\ncareready-api]
+        Lambda --> DDB[(DynamoDB\ncareready-main\nsingle-table)]
+        Staff  -.->|sign-in| COG[Cognito User Pool\ncareready-facility]
+        APIGW  -.->|JWT authorizer| COG
     end
 
     subgraph "CI/CD"
-        GH[GitHub Actions] -->|syntax check / smoke test| GH
-        GH -->|s3 sync + invalidation| S3
+        GHA[GitHub Actions] -->|syntax check + headless smoke test| GHA
+        GHA -->|s3 sync + CloudFront invalidation on main| S3
     end
-
-    %% Styling
-    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:white;
-    classDef user fill:#ffffff,stroke:#333333,stroke-width:2px,color:#333333;
-    classDef compute fill:#00A1C1,stroke:#232F3E,stroke-width:1px,color:white;
-
-    class User,Staff user;
-    class CF,S3,APIGW,COG aws;
-    class CFF,Lambda,DDB,GH compute;
 ```
 
-### 🛠️ Key Infrastructure primitives:
-*   **CloudFront & CloudFront Functions:** CDN for fast content delivery and Edge Computing primitives for URL re-writing (clean URLs like `/ready/`).
-*   **AWS S3:** Highly scalable primitives for frontend static website hosting.
-*   **API Gateway (HTTP API) + Lambda (Python):** Serverless REST API for facility template distribution (`POST /v1/templates/redeem`, facility CRUD).
-*   **DynamoDB (single-table design):** Facility templates resolved by 6-char shareCode via GSI. On-demand billing, `RemovalPolicy.RETAIN`.
-*   **Cognito:** JWT-based authentication for facility staff (email + password, admin-managed sign-up).
-*   **AWS CDK (Python):** Full infrastructure-as-code — `backend/infra/` ([deploy guide](backend/README.md)).
-*   **GitHub Actions CI/CD:** Syntax checks + headless-Chrome smoke tests on every push; auto-deploy to S3 with CloudFront invalidation on `main`.
+**DynamoDB key design:**
+
+| Pattern | PK | SK | GSI1PK |
+|---|---|---|---|
+| Facility template | `FAC#<facilityId>` | `TPL#<tplId>` | `CODE#<shareCode>` |
+
+GSI1 resolves a 6-character share code (alphanumeric, `I/O/0/1` excluded) to the full
+template without knowing the facility ID — this is the public redeem path.
 
 ---
 
-## 🌟 PMP Approach & Deliverables
+## Tech Stack
 
-Agile development (Scrum) methodology is used. This demonstrates PMP skills in defining deliverables and managing stakeholders.
-
-*   **Tailoring:** Feature-based grey-out functional primitives ('Not Needed'), profile-level condition toggles (e.g. diaper use), and check memory (IndexedDB primitives) for enhanced integration control.
-*   **Traceability:** Container (Box) management with custom naming, sorting views, and **return-check mode** to ensure asset traceability across facility transfers (lost-item prevention).
-*   **Quality Management:** Primitives verified through agile acceptance criteria reviews with stakeholders (helpers), automated CI smoke tests, and live E2E verification against production APIs.
+| Layer | Technology |
+|---|---|
+| Frontend | Vanilla JS PWA, Service Worker, IndexedDB |
+| Hosting | AWS S3 + CloudFront + CloudFront Functions |
+| API | AWS API Gateway HTTP API + Lambda (Python 3.12, boto3 only) |
+| Database | DynamoDB single-table, on-demand billing, `RemovalPolicy.RETAIN` |
+| Auth | AWS Cognito User Pool (admin-managed sign-up, email + password) |
+| IaC | AWS CDK v2 (Python) — `backend/infra/` |
+| CI/CD | GitHub Actions — headless Chrome smoke tests + S3 deploy |
 
 ---
 
-## 🚀 Current Feature Set
+## API Routes
 
-### For Families (PWA, no login required)
-*   [x] Location-based checklists (Short stay / Hospital / Day service) with progress tracking
-*   [x] Custom items with quantity badges, per-item 'Not Needed' toggle
-*   [x] Container (box) assignment, custom box naming, sort-by-container view
-*   [x] **Return-check mode** — verify everything came back home; consumables auto-excluded; copy an inquiry message for unreturned items
-*   [x] **Facility code redeem** — enter a 6-char code (or scan QR / open `?fc=CODE` URL) to receive the facility's official list
-*   [x] Condition toggles (e.g. "uses diapers") that show/hide related items across all views
-*   [x] Print-ready A4 output, LINE share, light/dark theme, offline-first (Service Worker + IndexedDB)
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| `POST` | `/v1/templates/redeem` | None | Resolve share code → template |
+| `GET` | `/v1/facility/templates` | Cognito JWT | List facility templates |
+| `POST` | `/v1/facility/templates` | Cognito JWT | Create template (generates share code) |
+| `GET/PUT/DELETE` | `/v1/facility/templates/{tplId}` | Cognito JWT | Read / update / delete |
 
-### For Facilities (Admin Portal: `/ready/admin/`)
-*   [x] Template editor — hide standard items, add facility-specific items, attach notices
-*   [x] shareCode + QR code distribution (printable poster)
+Validation limits: name ≤ 100 chars, items ≤ 200 entries, item name ≤ 100 chars.
 
-### Docs
-*   📁 [Planning & strategy docs (JA)](docs/README.md) — user stories, roadmap, backend design, cost estimates
-*   🔧 [Development guide](docs/DEVELOPMENT.md) / [Backend deploy guide](backend/README.md)
+---
 
-> **Summary:** This demonstrates PM skills in defining functional primitives and MSCS skills in delivering secure, data-driven serverless solutions through agile development.
+## Testing
+
+Backend: **pytest + moto** (mocked DynamoDB). 9 test cases covering:
+
+- `POST /v1/templates/redeem` — happy path and 404
+- Facility template CRUD round-trip (create → get → update → delete → 404)
+- Input validation (empty name, >200 items, item name >100 chars)
+- `facilityId` fallback to Cognito `sub` when `custom:facilityId` is absent
+
+```bash
+# Run backend tests
+python -m venv backend/.venv && source backend/.venv/bin/activate
+pip install --prefer-binary aws-cdk-lib constructs pytest moto boto3
+python -m pytest backend/tests/ -q
+```
+
+Frontend CI: syntax check + headless Chrome smoke test on every push (GitHub Actions).
+
+---
+
+## Local Development
+
+```bash
+# Frontend (static, no build step required)
+python3 -m http.server 8000   # serves index.html from repo root
+# or open index.html directly in a browser
+
+# Backend CDK synthesis (no AWS credentials needed)
+cd backend/infra
+source ../.venv/bin/activate
+cdk synth --quiet
+```
+
+Set `DYNAMODB_ENDPOINT` to a local DynamoDB instance to run Lambda locally.
+CORS allows `http://localhost:8000` in addition to `https://veai.jp`.
+
+---
+
+## Deployment
+
+```bash
+cd backend/infra
+source ../.venv/bin/activate
+
+# First time only
+cdk bootstrap aws://<ACCOUNT_ID>/ap-northeast-1
+
+cdk deploy
+```
+
+CDK outputs: `ApiUrl`, `UserPoolId`, `UserPoolClientId`, `TableName`.
+
+Frontend: GitHub Actions deploys to S3 on push to `main` and invalidates CloudFront.
+
+---
+
+## 日本語
+
+パーキンソン病患者が施設入所・帰宅する際に、家族が使う持ち物チェッカー PWA です。
+施設スタッフが管理ポータルでテンプレートを作り、6 文字のシェアコードを配布すると、
+家族がコードを入力するだけで施設専用リストを取り込めます。IndexedDB でオフライン動作し、
+「返却チェックモード」で未返却品を確認できます。
+バックエンドは AWS CDK で管理する完全サーバーレス構成（Lambda + DynamoDB + Cognito）。
+
+---
+
+## License
+
+MIT License
+
+---
+
+Part of the [VEAI LAB.](https://veai.jp) ecosystem · [Product page](https://veai.jp/apps/careready/)
