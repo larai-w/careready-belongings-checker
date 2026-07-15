@@ -10,17 +10,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Syntax check (JS)
         run: |
           node --check app.js
           node --check storage.js
           node --check sw.js
+          node --check admin/admin.js
 
       - name: Validate JSON
         run: |
           python3 -c "import json; json.load(open('data.json'))"
           python3 -c "import json; json.load(open('manifest.webmanifest'))"
+
+      - name: Validate product and draft content
+        run: python3 scripts/validate_content.py
+
+      - name: Validate frontend source policies
+        env:
+          CACHE_COMPARE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python3 scripts/validate_source_policy.py --base "$CACHE_COMPARE_BASE"
+
+      - name: Backend tests
+        run: |
+          python3 -m pip install -r backend/requirements-test.txt
+          python3 -m pytest backend/tests/ -q
 
       - name: Smoke test (headless Chrome)
         run: |
@@ -31,7 +47,7 @@ jobs:
 
           CHECKBOXES=$(grep -o 'type="checkbox"' dom.html | wc -l)
           echo "checkboxes rendered: $CHECKBOXES"
-          if [ "$CHECKBOXES" -lt 20 ]; then
+          if [ "$CHECKBOXES" -lt 28 ]; then
             echo "::error::チェックリストが描画されていません (checkboxes=$CHECKBOXES)"
             exit 1
           fi
