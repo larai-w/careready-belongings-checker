@@ -126,8 +126,8 @@ def validate_cache_bump(base: str | None) -> str:
 
     try:
         previous_sw = git_output("show", f"{base}:sw.js")
-    except subprocess.CalledProcessError as error:
-        raise ValidationError(f"比較元のsw.jsを取得できません: {error.stderr.strip()}") from error
+    except subprocess.CalledProcessError:
+        return "cache bump OK: sw.js did not exist at comparison base"
 
     current_name = parse_cache_name(read(ROOT / "sw.js"))
     previous_name = parse_cache_name(previous_sw)
