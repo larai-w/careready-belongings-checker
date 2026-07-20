@@ -23,9 +23,10 @@ async function waitFor(fn, timeout = 15000, step = 100) {
     return false;
 }
 
-// 指定URLの iframe を生成し、実アプリのDOM出現まで待って返す。
-// 初期 about:blank は readyState=complete でも #checklist-container を持たないため、
-// load イベントではなく既知要素の出現で判定する。
+// 指定URLの iframe を生成し、アプリ初期化完了まで待って返す。
+// #checklist-container は静的マークアップに最初から存在するため、その出現では
+// app.js の実行を保証できない(checkImportParam 等が未実行のまま返ってしまう)。
+// チェックボックスが描画されたこと = 初期化・描画が走ったこと、を待機条件にする。
 async function loadFrame(url) {
     const frame = document.createElement('iframe');
     frame.style.cssText = 'width:430px;height:900px;border:0';
@@ -34,9 +35,9 @@ async function loadFrame(url) {
     await waitFor(() => {
         try {
             const d = frame.contentDocument;
-            return !!(d && d.getElementById('checklist-container'));
+            return !!(d && d.querySelectorAll('#checklist-container input[type=checkbox]').length >= 1);
         } catch (e) { return false; }
-    });
+    }, 20000);
     return frame;
 }
 
