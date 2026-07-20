@@ -257,10 +257,22 @@ def test_looks_like_item_filters_headers_and_noise(dynamodb_table):
     assert ok("くつした") is True
     assert ok("a") is False                        # 短すぎ
     assert ok("12345") is False                    # 数字のみ(かな/漢字/英字なし)
-    assert ok("持ち物リスト") is False              # 見出し語
-    assert ok("氏名 山田太郎") is False             # 個人情報の見出し
-    assert ok("TEL 03-1234-5678") is False         # tel 除外
     assert ok("x" * 101) is False                  # 長すぎ
+    # 見出し・欄ラベルは除外
+    assert ok("持ち物リスト") is False              # 見出し語(部分一致)
+    assert ok("チェックリスト") is False            # 見出し語尾
+    assert ok("氏名 山田太郎") is False             # 欄ラベル+値
+    assert ok("施設名: さくら苑") is False          # ラベル+「名」+区切り
+    assert ok("TEL 03-1234-5678") is False         # tel ラベル
+
+
+def test_looks_like_item_keeps_items_with_header_substrings(dynamodb_table):
+    """見出し語を部分的に含むだけの正当な持ち物は残す(役割別判定の回帰防止)。"""
+    ok = dynamodb_table._looks_like_item
+    assert ok("リストバンド") is True               # 「リスト」を含むが品名
+    assert ok("お名前シール") is True               # 「名前」を含むが行頭ではない
+    assert ok("名前ペン") is True                   # 「名前」直後が複合語
+    assert ok("施設着") is True                     # 「施設」直後が複合語
 
 
 def test_extract_item_candidates_dedups_and_splits(dynamodb_table):
