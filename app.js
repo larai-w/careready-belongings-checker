@@ -324,7 +324,8 @@ function checkFacilityCodeParam() {
         renderChecklist();
         showToast(`🏥 施設テンプレ「${tpl.name}」を取り込みました`);
     }).catch((e) => {
-        showToast('施設コードの取り込みに失敗しました: ' + e.message, 4000);
+        const msg = e.name === 'AbortError' ? 'タイムアウトしました。再試行してください。' : '施設コードの取り込みに失敗しました。コードをお確かめの上、再試行してください。';
+        showToast(msg, 4000);
     });
 }
 
@@ -871,11 +872,11 @@ function applyTheme(isLight) {
     if (isLight) {
         document.body.classList.add('light');
         document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f5f7fa');
-        $('theme-btn').textContent = '☀️';
+        $('theme-btn').textContent = '☀️ ライト';
     } else {
         document.body.classList.remove('light');
         document.querySelector('meta[name="theme-color"]').setAttribute('content', '#121824');
-        $('theme-btn').textContent = '🌙';
+        $('theme-btn').textContent = '🌙 ダーク';
     }
 }
 
@@ -1634,37 +1635,81 @@ function updateReturnProgress(returnableItems, returnChecked) {
 }
 
 function resetChecks() {
-    if (confirm('チェックをリセットしますか？\n(箱の割り当てと「不要」の設定は保持されます)')) {
-        setState('checked', {});
-        renderChecklist();
+    const prev = getState('checked', {});
+    if (Object.keys(prev).length === 0) {
+        showToast('チェックはまだありません');
+        return;
     }
+    setState('checked', {});
+    renderChecklist();
+    showToast('チェックをリセットしました', 6000, {
+        label: '元に戻す',
+        onClick: () => {
+            setState('checked', prev);
+            renderChecklist();
+            showToast('元に戻しました ✅');
+        },
+    });
 }
 
 function resetReturnChecks() {
-    if (confirm('帰宅チェックをリセットしますか？')) {
-        removeState('returnChecked');
-        renderChecklist();
+    const prev = getState('returnChecked', {});
+    if (Object.keys(prev).length === 0) {
+        showToast('帰宅チェックはまだありません');
+        return;
     }
+    removeState('returnChecked');
+    renderChecklist();
+    showToast('帰宅チェックをリセットしました', 6000, {
+        label: '元に戻す',
+        onClick: () => {
+            setState('returnChecked', prev);
+            renderChecklist();
+            showToast('元に戻しました ✅');
+        },
+    });
 }
 
 function resetAll() {
     if (
-        confirm(
-            'チェック・不要設定・箱の割り当て・カスタムアイテムをすべて削除しますか？\nこの操作は元に戻せません。'
-        )
+        !confirm('チェック・不要設定・箱の割り当て・カスタムアイテムをすべて削除しますか？')
     ) {
-        removeState('checked');
-        removeState('skipped');
-        removeState('containers');
-        removeState('customItems');
-        removeState('containerNames');
-        removeState('returnChecked');
-        removeState('facilityTemplate');
-        removeState('conditions');
-        updateFacilityBanner();
-        renderConditionToggles();
-        renderChecklist();
+        return;
     }
+    const keys = [
+        'checked',
+        'skipped',
+        'containers',
+        'customItems',
+        'containerNames',
+        'returnChecked',
+        'facilityTemplate',
+        'conditions',
+    ];
+    const snapshot = {};
+    keys.forEach((k) => {
+        snapshot[k] = getState(k, null);
+        removeState(k);
+    });
+    updateFacilityBanner();
+    renderConditionToggles();
+    renderChecklist();
+    showToast('すべて削除しました', 8000, {
+        label: '元に戻す',
+        onClick: () => {
+            keys.forEach((k) => {
+                if (snapshot[k] === null) {
+                    removeState(k);
+                } else {
+                    setState(k, snapshot[k]);
+                }
+            });
+            updateFacilityBanner();
+            renderConditionToggles();
+            renderChecklist();
+            showToast('元に戻しました ✅');
+        },
+    });
 }
 
 // ---------- 未返却リストをコピー ----------
@@ -1826,16 +1871,30 @@ function handlePrint() {
 
 // ---------- Toast ----------
 
-function showToast(message, duration = 2500) {
+function showToast(message, duration = 2500, action = null) {
     let toast = document.getElementById('toast');
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'toast';
-        toast.className =
-            'fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-700 border border-gray-600 text-gray-200 text-sm px-4 py-2.5 rounded-xl shadow-xl z-50 max-w-xs text-center transition-opacity duration-300';
         document.body.appendChild(toast);
     }
-    toast.textContent = message;
+    toast.className =
+        'fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-700 border border-gray-600 text-gray-200 text-sm px-4 py-2.5 rounded-xl shadow-xl z-50 max-w-xs transition-opacity duration-300 flex items-center justify-center gap-3';
+    toast.replaceChildren();
+    const span = document.createElement('span');
+    span.textContent = message;
+    toast.appendChild(span);
+    if (action && action.label && typeof action.onClick === 'function') {
+        const btn = document.createElement('button');
+        btn.textContent = action.label;
+        btn.className = 'shrink-0 font-bold text-cyan-300 hover:text-cyan-200 underline underline-offset-2';
+        btn.addEventListener('click', () => {
+            clearTimeout(toastTimer);
+            toast.style.opacity = '0';
+            action.onClick();
+        });
+        toast.appendChild(btn);
+    }
     toast.style.opacity = '1';
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
