@@ -57,4 +57,4 @@ const API_URL = 'https://veai.jp/api/checklist';
 
 ## 開発ロードマップ
 
-[docs/02_開発戦略.md](docs/02_開発戦略.md) を参照。現在は **Phase 0(足場固め)** 完了段階。
+開発順序はGitHub Projectの公開バックログとIssueの受け入れ条件を参照する。

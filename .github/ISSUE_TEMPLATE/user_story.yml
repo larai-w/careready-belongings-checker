@@ -1,0 +1,65 @@
+name: User story
+description: Capture a user need with testable acceptance criteria.
+title: '[Story] '
+labels: [user-story]
+body:
+  - type: markdown
+    attributes:
+      value: Describe the need from the user's point of view. Do not include names, health information, or facility-identifying details.
+  - type: textarea
+    id: story
+    attributes:
+      label: User story
+      description: As a [user], I want [capability], so that [outcome].
+      placeholder: As a family caregiver, I want to reuse the facility list offline, so that a weak connection does not interrupt packing.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and context
+      description: Link anonymised feedback, research, an existing story ID, or an operational problem. State clearly when this is still a hypothesis.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Use checkboxes for observable, testable outcomes.
+      placeholder: |
+        - [ ] An imported facility template remains available after reconnecting offline.
+        - [ ] The existing local checklist continues to work without a login.
+        - [ ] Automated and manual verification steps are recorded in the PR.
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 - Safety or release blocker
+        - P1 - Pilot-critical
+        - P2 - Valuable after evidence
+        - P3 - Later
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Family experience
+        - Facility experience
+        - Content
+        - Backend / API
+        - Security / Privacy
+        - Offline / PWA
+        - Delivery / CI
+        - Pilot / Research
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and constraints
+      description: Include privacy, safety, accessibility, offline, operational, and scope considerations where relevant.
