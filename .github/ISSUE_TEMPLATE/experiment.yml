@@ -1,0 +1,42 @@
+name: Product experiment
+description: Define a pilot, interview, or validation activity before running it.
+title: '[Experiment] '
+labels: [experiment]
+body:
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis
+      placeholder: We believe [user] will [behaviour] because [reason].
+    validations:
+      required: true
+  - type: textarea
+    id: method
+    attributes:
+      label: Method and participants
+      description: Describe roles without personal or health information.
+    validations:
+      required: true
+  - type: textarea
+    id: signals
+    attributes:
+      label: Decision signals
+      description: Define what evidence would support, weaken, or invalidate the hypothesis.
+      placeholder: |
+        Support: two families complete the flow twice without assisted recovery.
+        Weaken: the facility code needs explanation in most sessions.
+        Stop: any cross-facility data exposure or authentication bypass.
+    validations:
+      required: true
+  - type: textarea
+    id: safeguards
+    attributes:
+      label: Safeguards
+      description: Record consent, privacy, data-minimisation, and stop conditions.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Result and decision
+      description: Complete after the experiment with anonymised evidence and the resulting backlog or roadmap decision.

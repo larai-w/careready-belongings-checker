@@ -13,6 +13,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Enforce public repository boundary
+        run: python3 scripts/check_public_repo.py --tracked
+
       - name: Syntax check (JS)
         run: |
           node --check app.js
@@ -25,7 +28,7 @@ jobs:
           python3 -c "import json; json.load(open('data.json'))"
           python3 -c "import json; json.load(open('manifest.webmanifest'))"
 
-      - name: Validate product and draft content
+      - name: Validate product content
         run: python3 scripts/validate_content.py
 
       - name: Validate frontend source policies

@@ -1,0 +1,41 @@
+name: Delivery task
+description: Track work linked to a story, risk, or decision.
+title: '[Task] '
+labels: [task]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Intended outcome
+      description: Describe the outcome, not only the activity.
+    validations:
+      required: true
+  - type: textarea
+    id: traceability
+    attributes:
+      label: Traceability
+      description: Link the parent story, decision, risk, milestone, or pilot finding.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      placeholder: |
+        - [ ] The change or operational action is completed.
+        - [ ] Relevant automated checks pass.
+        - [ ] Manual evidence is attached when automation cannot verify the outcome.
+        - [ ] Documentation and status are updated.
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 - Safety or release blocker
+        - P1 - Pilot-critical
+        - P2 - Normal
+        - P3 - Later
+    validations:
+      required: true
