@@ -136,6 +136,51 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
             await waitFor(() => !facBanner.classList.contains('hidden')));
         check('施設バナーにテンプレ名が出る',
             doc().getElementById('facility-banner-name').textContent.includes(TEMPLATE.name));
+
+        // ================= Phase 4: OCR取込UI =================
+        log('# Phase 4: OCR取込UI(写真→候補→取込)');
+        // Phase 1 で帰宅チェックモードに入ったため、準備モードへ戻す
+        // (帰宅モードのリストはチェック済み品のみ描画され、新規品が現れないため)
+        if (!doc().getElementById('return-progress-section').classList.contains('hidden')) {
+            doc().getElementById('mode-return').click();
+            await waitFor(() => doc().getElementById('return-progress-section').classList.contains('hidden'));
+        }
+        const win = frame.contentWindow;
+        // headless の仮想時間下では Image デコードと canvas.toBlob が非決定的で
+        // フレークの原因になる。これらは実アプリロジックではなくブラウザ配管なので
+        // スタブし、検証対象の OCR UIロジック(候補描画→選択→取込)を安定させる。
+        const pngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
+        win.URL.createObjectURL = () => 'data:image/png;base64,' + pngB64;
+        win.HTMLCanvasElement.prototype.toBlob = function (cb) {
+            cb(new win.Blob([win.Uint8Array.from([255, 216, 255, 217])], { type: 'image/jpeg' }));
+        };
+        // OCR エンドポイントをモック(決定的に候補を返す)
+        win.fetch = async () => ({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                items: [{ name: 'E2Eガーゼ', confidence: 88 }, { name: 'E2E綿棒', confidence: 80 }],
+                lineCount: 2, pageCount: 1, provider: 'openai',
+            }),
+        });
+        doc().getElementById('ocr-open-btn').click();
+        check('OCRモーダルが開く',
+            await waitFor(() => !doc().getElementById('ocr-modal').classList.contains('hidden')));
+
+        // 1x1 PNG を File として file input に設定(iframe realm の File/DataTransfer を使う)
+        const bytes = win.Uint8Array.from(win.atob(pngB64), (c) => c.charCodeAt(0));
+        const dt = new win.DataTransfer();
+        dt.items.add(new win.File([bytes], 'shot.png', { type: 'image/png' }));
+        doc().getElementById('ocr-file-input').files = dt.files;
+
+        doc().getElementById('ocr-start-btn').click();
+        check('OCR候補が描画される',
+            await waitFor(() => doc().querySelectorAll('#ocr-candidate-list input[type=checkbox]').length >= 2));
+        check('候補件数が表示される', doc().getElementById('ocr-count').textContent.includes('2'));
+
+        doc().getElementById('ocr-import-btn').click();
+        check('OCR取込品目がチェックリストに現れる',
+            await waitFor(() => doc().getElementById('checklist-container').textContent.includes('E2Eガーゼ')));
     } catch (e) {
         log('ERR: ' + ((e && e.stack) || e));
         failures += 1;
