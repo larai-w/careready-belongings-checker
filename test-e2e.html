@@ -5,7 +5,7 @@
 <pre id="log"></pre>
 <!-- 実アプリを同一オリジンの iframe で読み込み、実DOMを操作して家族フローを検証する。
      依存を増やさず headless Chrome の --dump-dom で結果(E2E_RESULT)を回収できる。 -->
-<iframe id="app" src="./index.html" style="width:430px;height:900px;border:0"></iframe>
+<div id="frames"></div>
 <script>
 const logEl = document.getElementById('log');
 const log = (m) => { logEl.textContent += m + '\n'; };
@@ -23,23 +23,37 @@ async function waitFor(fn, timeout = 15000, step = 100) {
     return false;
 }
 
+// 指定URLの iframe を生成し、実アプリのDOM出現まで待って返す。
+// 初期 about:blank は readyState=complete でも #checklist-container を持たないため、
+// load イベントではなく既知要素の出現で判定する。
+async function loadFrame(url) {
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'width:430px;height:900px;border:0';
+    frame.src = url;
+    document.getElementById('frames').appendChild(frame);
+    await waitFor(() => {
+        try {
+            const d = frame.contentDocument;
+            return !!(d && d.getElementById('checklist-container'));
+        } catch (e) { return false; }
+    });
+    return frame;
+}
+
+const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+
 (async () => {
     try {
-        const frame = document.getElementById('app');
-        await new Promise((res) => {
-            const d = frame.contentDocument;
-            if (d && d.readyState === 'complete') res();
-            else frame.addEventListener('load', res, { once: true });
-        });
+        // ================= Phase 1: 家族の準備フロー =================
+        log('# Phase 1: 準備→帰宅チェック→印刷');
+        const frame = await loadFrame('./index.html');
         const doc = () => frame.contentDocument;
         const boxes = () => doc().querySelectorAll('#checklist-container input[type=checkbox]');
 
-        // 1. 既定の持ち物チェックリストが描画される
         const rendered = await waitFor(() => boxes().length >= 10);
         check('既定チェックリストが描画される (>=10)', rendered);
         if (!rendered) throw new Error('checklist did not render');
 
-        // 2. 未チェックの先頭3項目をチェック → 準備の進捗が更新される
         const progText = () => doc().getElementById('progress-text').textContent.trim();
         const before = progText();
         const unchecked = Array.from(boxes()).filter((cb) => !cb.checked).slice(0, 3);
@@ -53,19 +67,75 @@ async function waitFor(fn, timeout = 15000, step = 100) {
         check('チェックで準備の進捗が増える', before !== after && /^[1-9]/.test(after));
         log(`progress: "${before}" -> "${after}"`);
 
-        // 3. 帰宅チェックモードに切替 → 帰宅確認セクションが表示される
         const retSec = doc().getElementById('return-progress-section');
         doc().getElementById('mode-return').click();
-        const retShown = await waitFor(() => !retSec.classList.contains('hidden'));
-        check('帰宅チェックモードに切替できる', retShown);
+        check('帰宅チェックモードに切替できる', await waitFor(() => !retSec.classList.contains('hidden')));
         check('帰宅モードでも項目が描画される', boxes().length >= 1);
 
-        // 4. 印刷ビューが構築される(headless で window.print は無効化)
         frame.contentWindow.print = () => {};
         doc().getElementById('print-btn').click();
         await sleep(150);
         const printArea = doc().getElementById('print-area');
         check('印刷ビューが構築される', !!printArea && printArea.children.length > 0);
+
+        // ================= Phase 2: 共有URLの往復 =================
+        log('# Phase 2: 共有URL(?t=)の取込');
+        const appData = await (await fetch('./data.json')).json();
+        const allLocations = appData.locations.map((l) => l.id);
+        const cat = appData.categories[0];
+        const SHARE_NAME = 'E2E共有テスト品';
+        const shareData = {
+            customItems: [{
+                id: 'e2e_share_1',
+                name: SHARE_NAME,
+                categoryId: cat.id,
+                categoryName: cat.name,
+                applicable_locations: allLocations,
+                quantity: 1,
+                isCustom: true,
+            }],
+        };
+        const frame2 = await loadFrame('./index.html?t=' + encodeURIComponent(share(shareData)));
+        const doc2 = () => frame2.contentDocument;
+        const banner = () => doc2().getElementById('import-banner');
+        check('共有データで取込バナーが表示される',
+            await waitFor(() => !banner().classList.contains('hidden')));
+        doc2().getElementById('import-ok').click();
+        check('取込でバナーが閉じる', await waitFor(() => banner().classList.contains('hidden')));
+        const shown = await waitFor(
+            () => doc2().getElementById('checklist-container').textContent.includes(SHARE_NAME)
+        );
+        check('取り込んだ品目がチェックリストに現れる', shown);
+
+        // ================= Phase 3: 施設コード取込(fetchモック)=================
+        log('# Phase 3: 施設コード取込');
+        const TEMPLATE = {
+            name: 'E2Eテスト施設リスト',
+            items: [{ name: '施設タオル' }],
+            overrides: {},
+            facilityName: 'テスト苑',
+            shareCode: 'ABC234',
+        };
+        // バックエンド fetch をモック(決定的に templates/redeem を返す)
+        frame.contentWindow.fetch = async () => ({
+            ok: true,
+            status: 200,
+            json: async () => TEMPLATE,
+        });
+        doc().getElementById('fc-open-btn').click();
+        await waitFor(() => !doc().getElementById('fc-modal').classList.contains('hidden'));
+        doc().getElementById('fc-code-input').value = 'ABC234';
+        const confirmArea = doc().getElementById('fc-confirm-area');
+        doc().getElementById('fc-modal-submit').click();               // 1回目: 確認取得
+        check('施設コード確認フェーズに進む', await waitFor(() => !confirmArea.classList.contains('hidden')));
+        check('確認名にテンプレ名が出る',
+            doc().getElementById('fc-confirm-name').textContent.includes(TEMPLATE.name));
+        doc().getElementById('fc-modal-submit').click();               // 2回目: 適用
+        const facBanner = doc().getElementById('facility-banner');
+        check('施設テンプレ適用でバナーが表示される',
+            await waitFor(() => !facBanner.classList.contains('hidden')));
+        check('施設バナーにテンプレ名が出る',
+            doc().getElementById('facility-banner-name').textContent.includes(TEMPLATE.name));
     } catch (e) {
         log('ERR: ' + ((e && e.stack) || e));
         failures += 1;
