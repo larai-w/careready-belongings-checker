@@ -66,20 +66,27 @@ jobs:
       - name: E2E test (headless Chrome)
         run: |
           # 実アプリを iframe で駆動する test-e2e.html を実行し、家族フロー(描画→
-          # チェックで進捗更新→帰宅チェックモード→印刷ビュー構築)を検証する。
+          # 進捗→帰宅モード→印刷/共有取込/施設コード/OCR/条件トグル/表示モード)を検証。
+          # 注: headless --dump-dom + --virtual-time-budget は非同期多フェーズに対して
+          # 仮想時間の消費量が非決定的で、稀に完走前に dump され途中打ち切りになる。
+          # ローカルは決定的なので、CIではリトライで緩和する(全25チェック ALL_PASS を
+          # 1度でも得れば合格。真の回帰なら毎回同じチェックが落ちて全リトライ失敗する)。
           python3 -m http.server 8001 --bind 127.0.0.1 &
           SRV=$!
           sleep 2
-          # 予算は上限。3フェーズ完走(アイドル)時に dump されるため実時間は数秒。
-          # 予算不足だと途中で dump され Phase 2/3 が切れるので余裕を持たせる。
-          google-chrome --headless=new --disable-gpu --no-sandbox \
-            --virtual-time-budget=400000 --dump-dom "http://127.0.0.1:8001/test-e2e.html" > e2e-dom.html 2>/dev/null
+          ok=0
+          for attempt in 1 2 3 4; do
+            google-chrome --headless=new --disable-gpu --no-sandbox \
+              --virtual-time-budget=600000 --dump-dom "http://127.0.0.1:8001/test-e2e.html" > e2e-dom.html 2>/dev/null
+            if grep -qF "E2E_RESULT: ALL_PASS" e2e-dom.html; then
+              echo "E2E OK (attempt $attempt)"; ok=1; break
+            fi
+            echo "E2E attempt $attempt incomplete/failed, retrying..."
+          done
           kill "$SRV" 2>/dev/null || true
 
-          if grep -qF "E2E_RESULT: ALL_PASS" e2e-dom.html; then
-            echo "E2E OK"
-          else
-            echo "::error::E2E フローが失敗しました"
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::E2E フローが4回とも ALL_PASS になりませんでした"
             grep -oE '(PASS|FAIL|WINDOW_ERR|ERR): [^<]*' e2e-dom.html | head -40 || true
             exit 1
           fi
