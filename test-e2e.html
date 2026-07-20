@@ -17,7 +17,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // 反復回数でポーリングする。--virtual-time-budget 下では Date.now() が一気に
 // 飛び、経過時間ベースだと非同期初期化の完了前に「0回ポーリングでタイムアウト」
 // しうる。各反復は必ず await sleep で1回イベントループへ譲り、所定回数だけ待つ。
-async function waitFor(fn, timeout = 15000, step = 100) {
+async function waitFor(fn, timeout = 10000, step = 100) {
     const maxIter = Math.max(1, Math.ceil(timeout / step));
     for (let i = 0; i < maxIter; i++) {
         try { if (fn()) return true; } catch (e) { /* not ready yet */ }

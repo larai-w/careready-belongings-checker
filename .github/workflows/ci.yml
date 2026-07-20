@@ -73,7 +73,7 @@ jobs:
           # 予算は上限。3フェーズ完走(アイドル)時に dump されるため実時間は数秒。
           # 予算不足だと途中で dump され Phase 2/3 が切れるので余裕を持たせる。
           google-chrome --headless=new --disable-gpu --no-sandbox \
-            --virtual-time-budget=150000 --dump-dom "http://127.0.0.1:8001/test-e2e.html" > e2e-dom.html 2>/dev/null
+            --virtual-time-budget=400000 --dump-dom "http://127.0.0.1:8001/test-e2e.html" > e2e-dom.html 2>/dev/null
           kill "$SRV" 2>/dev/null || true
 
           if grep -qF "E2E_RESULT: ALL_PASS" e2e-dom.html; then
