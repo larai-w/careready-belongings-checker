@@ -99,6 +99,15 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
         const frame2 = await loadFrame('./index.html?t=' + encodeURIComponent(share(shareData)));
         const doc2 = () => frame2.contentDocument;
         const banner = () => doc2().getElementById('import-banner');
+        // --- 診断(CIでのPhase2失敗を切り分ける。原因判明後に削除)---
+        try {
+            const w2 = frame2.contentWindow;
+            const tv = new w2.URLSearchParams(w2.location.search).get('t');
+            log('DBG2 searchLen=' + w2.location.search.length + ' tLen=' + (tv ? tv.length : 'null'));
+            log('DBG2 banner=' + (banner() ? banner().className.slice(-24) : 'NULL'));
+            log('DBG2 cbCount=' + doc2().querySelectorAll('#checklist-container input[type=checkbox]').length);
+            log('DBG2 bodyLen=' + (doc2().body ? doc2().body.textContent.length : 'no-body'));
+        } catch (e) { log('DBG2 ERR ' + e); }
         check('共有データで取込バナーが表示される',
             await waitFor(() => !banner().classList.contains('hidden')));
         doc2().getElementById('import-ok').click();
