@@ -14,13 +14,16 @@ const check = (name, cond) => { log((cond ? 'PASS' : 'FAIL') + ': ' + name); if 
 window.addEventListener('error', (e) => log('WINDOW_ERR: ' + e.message));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 反復回数でポーリングする。--virtual-time-budget 下では Date.now() が一気に
+// 飛び、経過時間ベースだと非同期初期化の完了前に「0回ポーリングでタイムアウト」
+// しうる。各反復は必ず await sleep で1回イベントループへ譲り、所定回数だけ待つ。
 async function waitFor(fn, timeout = 15000, step = 100) {
-    const start = Date.now();
-    while (Date.now() - start < timeout) {
+    const maxIter = Math.max(1, Math.ceil(timeout / step));
+    for (let i = 0; i < maxIter; i++) {
         try { if (fn()) return true; } catch (e) { /* not ready yet */ }
         await sleep(step);
     }
-    return false;
+    try { return !!fn(); } catch (e) { return false; }
 }
 
 // 指定URLの iframe を生成し、アプリ初期化完了まで待って返す。
@@ -99,15 +102,6 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
         const frame2 = await loadFrame('./index.html?t=' + encodeURIComponent(share(shareData)));
         const doc2 = () => frame2.contentDocument;
         const banner = () => doc2().getElementById('import-banner');
-        // --- 診断(CIでのPhase2失敗を切り分ける。原因判明後に削除)---
-        try {
-            const w2 = frame2.contentWindow;
-            const tv = new w2.URLSearchParams(w2.location.search).get('t');
-            log('DBG2 searchLen=' + w2.location.search.length + ' tLen=' + (tv ? tv.length : 'null'));
-            log('DBG2 banner=' + (banner() ? banner().className.slice(-24) : 'NULL'));
-            log('DBG2 cbCount=' + doc2().querySelectorAll('#checklist-container input[type=checkbox]').length);
-            log('DBG2 bodyLen=' + (doc2().body ? doc2().body.textContent.length : 'no-body'));
-        } catch (e) { log('DBG2 ERR ' + e); }
         check('共有データで取込バナーが表示される',
             await waitFor(() => !banner().classList.contains('hidden')));
         doc2().getElementById('import-ok').click();
