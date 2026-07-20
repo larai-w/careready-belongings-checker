@@ -62,3 +62,22 @@ jobs:
             fi
           done
           echo "smoke test OK"
+
+      - name: E2E test (headless Chrome)
+        run: |
+          # 実アプリを iframe で駆動する test-e2e.html を実行し、家族フロー(描画→
+          # チェックで進捗更新→帰宅チェックモード→印刷ビュー構築)を検証する。
+          python3 -m http.server 8001 --bind 127.0.0.1 &
+          SRV=$!
+          sleep 2
+          google-chrome --headless=new --disable-gpu --no-sandbox \
+            --virtual-time-budget=25000 --dump-dom "http://127.0.0.1:8001/test-e2e.html" > e2e-dom.html 2>/dev/null
+          kill "$SRV" 2>/dev/null || true
+
+          if grep -qF "E2E_RESULT: ALL_PASS" e2e-dom.html; then
+            echo "E2E OK"
+          else
+            echo "::error::E2E フローが失敗しました"
+            grep -oE '(PASS|FAIL|WINDOW_ERR|ERR): [^<]*' e2e-dom.html | head -40 || true
+            exit 1
+          fi
