@@ -145,32 +145,42 @@ def _clean_ocr_line(text):
     return text.strip(" :：")
 
 
+# 品名にまず現れない見出し語(部分一致で除外してよい)
+_HEADING_SUBSTRINGS = ("持ち物", "注意", "お願い", "ページ")
+# 見出しの語尾(行末/完全一致のときだけ除外。「持ち物リスト」は落とし「リストバンド」は残す)
+_HEADING_SUFFIXES = ("チェックリスト", "チェック表", "リスト", "一覧", "チェック")
+# 欄ラベル(行頭でラベルとして使われているときだけ除外。「お名前シール」「施設着」は残す)
+_LABEL_PREFIXES = (
+    "氏名", "名前", "利用者", "入所日", "退所日", "施設", "病院",
+    "電話", "住所", "担当", "tel", "fax", "email",
+)
+_LABEL_SEPARATORS = " :：　、/／ー-"
+
+
+def _is_header_or_label(text):
+    """見出し行・欄ラベル行を判定する(持ち物名の部分一致では落とさない)。"""
+    lowered = text.lower()
+    if any(term in lowered for term in _HEADING_SUBSTRINGS):
+        return True
+    if any(lowered == s or lowered.endswith(s) for s in _HEADING_SUFFIXES):
+        return True
+    for label in _LABEL_PREFIXES:
+        if lowered == label:
+            return True
+        if lowered.startswith(label):
+            rest = text[len(label):]
+            if rest.startswith("名"):  # 「施設名」「利用者名」などのラベル
+                rest = rest[1:]
+            # 直後が区切り/数字/行末 = 値を伴うラベル。複合語(名前ペン等)は残す
+            if not rest or rest[0] in _LABEL_SEPARATORS or rest[0].isdigit():
+                return True
+    return False
+
+
 def _looks_like_item(text):
     if len(text) < 2 or len(text) > _MAX_NAME_LEN:
         return False
-    normalized = text.lower()
-    ignored_terms = (
-        "持ち物",
-        "リスト",
-        "チェック",
-        "氏名",
-        "名前",
-        "利用者",
-        "入所日",
-        "退所日",
-        "施設",
-        "病院",
-        "電話",
-        "住所",
-        "担当",
-        "注意",
-        "お願い",
-        "ページ",
-        "tel",
-        "fax",
-        "email",
-    )
-    if any(term in normalized for term in ignored_terms):
+    if _is_header_or_label(text):
         return False
     return any(ch.isalpha() or "\u3040" <= ch <= "\u30ff" or "\u4e00" <= ch <= "\u9fff" for ch in text)
 
