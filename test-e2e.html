@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"><title>e2e</title></head>
+<body>
+<pre id="log"></pre>
+<!-- 実アプリを同一オリジンの iframe で読み込み、実DOMを操作して家族フローを検証する。
+     依存を増やさず headless Chrome の --dump-dom で結果(E2E_RESULT)を回収できる。 -->
+<iframe id="app" src="./index.html" style="width:430px;height:900px;border:0"></iframe>
+<script>
+const logEl = document.getElementById('log');
+const log = (m) => { logEl.textContent += m + '\n'; };
+let failures = 0;
+const check = (name, cond) => { log((cond ? 'PASS' : 'FAIL') + ': ' + name); if (!cond) failures += 1; };
+window.addEventListener('error', (e) => log('WINDOW_ERR: ' + e.message));
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function waitFor(fn, timeout = 15000, step = 100) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+        try { if (fn()) return true; } catch (e) { /* not ready yet */ }
+        await sleep(step);
+    }
+    return false;
+}
+
+(async () => {
+    try {
+        const frame = document.getElementById('app');
+        await new Promise((res) => {
+            const d = frame.contentDocument;
+            if (d && d.readyState === 'complete') res();
+            else frame.addEventListener('load', res, { once: true });
+        });
+        const doc = () => frame.contentDocument;
+        const boxes = () => doc().querySelectorAll('#checklist-container input[type=checkbox]');
+
+        // 1. 既定の持ち物チェックリストが描画される
+        const rendered = await waitFor(() => boxes().length >= 10);
+        check('既定チェックリストが描画される (>=10)', rendered);
+        if (!rendered) throw new Error('checklist did not render');
+
+        // 2. 未チェックの先頭3項目をチェック → 準備の進捗が更新される
+        const progText = () => doc().getElementById('progress-text').textContent.trim();
+        const before = progText();
+        const unchecked = Array.from(boxes()).filter((cb) => !cb.checked).slice(0, 3);
+        check('チェック可能な未チェック項目がある', unchecked.length >= 1);
+        for (const cb of unchecked) {
+            cb.checked = true;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        await sleep(150);
+        const after = progText();
+        check('チェックで準備の進捗が増える', before !== after && /^[1-9]/.test(after));
+        log(`progress: "${before}" -> "${after}"`);
+
+        // 3. 帰宅チェックモードに切替 → 帰宅確認セクションが表示される
+        const retSec = doc().getElementById('return-progress-section');
+        doc().getElementById('mode-return').click();
+        const retShown = await waitFor(() => !retSec.classList.contains('hidden'));
+        check('帰宅チェックモードに切替できる', retShown);
+        check('帰宅モードでも項目が描画される', boxes().length >= 1);
+
+        // 4. 印刷ビューが構築される(headless で window.print は無効化)
+        frame.contentWindow.print = () => {};
+        doc().getElementById('print-btn').click();
+        await sleep(150);
+        const printArea = doc().getElementById('print-area');
+        check('印刷ビューが構築される', !!printArea && printArea.children.length > 0);
+    } catch (e) {
+        log('ERR: ' + ((e && e.stack) || e));
+        failures += 1;
+    } finally {
+        // マーカーは連結で組み立てる(スクリプト原文に完全一致文字列を残さず、dump-dom の誤検出を防ぐ)
+        log('E2E_' + 'RESULT: ' + (failures === 0 ? 'ALL_' + 'PASS' : 'FAILURES=' + failures));
+        log('DONE');
+    }
+})();
+</script>
+</body>
+</html>
