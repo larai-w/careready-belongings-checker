@@ -9,6 +9,10 @@ const API_URL = '';
 const API_BASE = 'https://6r6n0fjn4d.execute-api.ap-northeast-1.amazonaws.com';
 
 const FETCH_TIMEOUT_MS = 8000;
+const OCR_TIMEOUT_MS = 30000;
+const OCR_MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+const OCR_MAX_IMAGE_SIDE = 1800;
+const OCR_JPEG_QUALITY = 0.85;
 
 const CONTAINERS = [
     { id: 'none', name: '未指定 📦' },
@@ -27,6 +31,7 @@ let modalQty = 1;
 let pendingCategoryId = null;
 let pendingImportData = null;
 let toastTimer = null;
+let ocrCandidates = [];
 
 // 施設コードモーダル状態
 let fcRedeemState = null;   // null | { name, items, overrides, facilityName, code }
@@ -417,6 +422,367 @@ function revokeFacilityTemplate() {
     updateFacilityBanner();
     renderChecklist();
     showToast('施設テンプレを解除しました');
+}
+
+// ---------- OCR取込 ----------
+
+const OCR_CATEGORY_HINTS = {
+    clothing: ['着替', '衣類', '服', '肌着', '下着', '靴下', 'パジャマ', '寝間着', '上着', '羽織', 'カーディガン', '室内履き', 'スリッパ'],
+    hygiene: ['タオル', '歯ブラシ', 'コップ', '入れ歯', '洗浄', 'おむつ', 'パッド', 'おしりふき', '清拭', 'シャンプー', '石けん', 'ティッシュ', '袋'],
+    medical: ['薬', 'お薬', '服薬', '処方', '目薬', '軟膏', '湿布', 'とろみ', '眼鏡', '補聴器', '電池'],
+    documents: ['保険証', '診察券', '認定証', '印鑑', '連絡先', '書類', '同意書', '利用票', '介護保険'],
+    others: ['マスク', '水筒', '飲み物', '連絡帳', 'カード', '本', 'ラジオ', '携帯', '充電器', '小銭', '財布'],
+};
+
+function normalizeOcrText(text) {
+    return (text || '')
+        .normalize('NFKC')
+        .toLowerCase()
+        .replace(/[\s・、。,.／/()（）[\]【】「」『』:：\-ー〜~]+/g, '');
+}
+
+function getCategoryName(categoryId) {
+    const cat = appData && appData.categories.find((c) => c.id === categoryId);
+    return cat ? cat.name : '🎒 その他';
+}
+
+function inferOcrCategory(name) {
+    const normalized = normalizeOcrText(name);
+    if (!appData) return 'others';
+
+    for (const cat of appData.categories) {
+        for (const item of cat.items || []) {
+            const itemKey = normalizeOcrText(item.name);
+            if (itemKey && normalized.length >= 3 && (itemKey.includes(normalized) || normalized.includes(itemKey))) {
+                return cat.id;
+            }
+        }
+    }
+
+    for (const [categoryId, hints] of Object.entries(OCR_CATEGORY_HINTS)) {
+        if (hints.some((hint) => normalized.includes(normalizeOcrText(hint)))) {
+            return categoryId;
+        }
+    }
+    return 'others';
+}
+
+function getKnownItemNames() {
+    const names = [];
+    if (appData) {
+        appData.categories.forEach((cat) => {
+            (cat.items || []).forEach((item) => names.push(item.name));
+        });
+    }
+    const facilityTemplate = getFacilityTemplate();
+    if (facilityTemplate && Array.isArray(facilityTemplate.items)) {
+        facilityTemplate.items.forEach((item) => names.push(item.name));
+    }
+    getCustomItems().forEach((item) => names.push(item.name));
+    return names;
+}
+
+function isKnownOcrItem(name) {
+    const candidateKey = normalizeOcrText(name);
+    if (candidateKey.length < 2) return false;
+    return getKnownItemNames().some((knownName) => {
+        const knownKey = normalizeOcrText(knownName);
+        return knownKey.length >= 2 && (
+            knownKey.includes(candidateKey) ||
+            (candidateKey.length >= 4 && candidateKey.includes(knownKey))
+        );
+    });
+}
+
+function guessQuantity(name) {
+    const normalized = (name || '').normalize('NFKC');
+    const match = normalized.match(/(\d{1,2})\s*(枚|個|本|組|足|箱|日分|セット)/);
+    if (!match) return 1;
+    const qty = Number(match[1]);
+    return Number.isFinite(qty) && qty > 0 ? Math.min(qty, 99) : 1;
+}
+
+function setOcrError(message) {
+    const errorEl = $('ocr-error-msg');
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+}
+
+function clearOcrError() {
+    const errorEl = $('ocr-error-msg');
+    errorEl.textContent = '';
+    errorEl.classList.add('hidden');
+}
+
+function updateOcrImportButton() {
+    const selected = ocrCandidates.filter((candidate) => candidate.checked && candidate.name.trim());
+    const importBtn = $('ocr-import-btn');
+    importBtn.disabled = selected.length === 0;
+    importBtn.textContent = selected.length > 0 ? `${selected.length}件を追加する` : '追加する';
+}
+
+function resetOcrModal() {
+    ocrCandidates = [];
+    $('ocr-file-input').value = '';
+    $('ocr-status').textContent = '';
+    $('ocr-candidate-list').textContent = '';
+    $('ocr-results').classList.add('hidden');
+    $('ocr-start-btn').classList.remove('hidden');
+    $('ocr-start-btn').disabled = false;
+    $('ocr-start-btn').textContent = '読み取る';
+    $('ocr-import-btn').classList.add('hidden');
+    $('ocr-import-btn').disabled = true;
+    clearOcrError();
+}
+
+function openOcrModal() {
+    resetOcrModal();
+    $('ocr-modal').classList.remove('hidden');
+    $('ocr-modal').classList.add('flex');
+}
+
+function closeOcrModal() {
+    $('ocr-modal').classList.add('hidden');
+    $('ocr-modal').classList.remove('flex');
+}
+
+function loadImageElement(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(img);
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('写真を読み込めませんでした。JPEGまたはPNGで試してください。'));
+        };
+        img.src = url;
+    });
+}
+
+function canvasToJpegBlob(canvas, quality) {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (!blob) reject(new Error('写真の変換に失敗しました。'));
+            else resolve(blob);
+        }, 'image/jpeg', quality);
+    });
+}
+
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = String(reader.result || '');
+            resolve(result.slice(result.indexOf(',') + 1));
+        };
+        reader.onerror = () => reject(new Error('写真を読み込めませんでした。'));
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function prepareOcrImage(file) {
+    if (!file || !file.type.startsWith('image/')) {
+        throw new Error('写真ファイルを選択してください。');
+    }
+
+    const img = await loadImageElement(file);
+    const scale = Math.min(1, OCR_MAX_IMAGE_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    let blob = await canvasToJpegBlob(canvas, OCR_JPEG_QUALITY);
+    if (blob.size > OCR_MAX_UPLOAD_BYTES) {
+        blob = await canvasToJpegBlob(canvas, 0.68);
+    }
+    if (blob.size > OCR_MAX_UPLOAD_BYTES) {
+        throw new Error('写真が大きすぎます。少し離れて1枚に収めるか、余白を切り取ってください。');
+    }
+    return blobToBase64(blob);
+}
+
+async function requestOcrItems(imageBase64, mimeType) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), OCR_TIMEOUT_MS);
+    try {
+        const res = await fetch(`${API_BASE}/v1/ocr/items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64, mimeType }),
+            signal: controller.signal,
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            if (res.status === 429) {
+                throw new Error('今日の読み取り回数の上限に達しました。明日もう一度試すか、手入力で追加してください。');
+            }
+            if (res.status === 502 || res.status === 503) {
+                throw new Error('読み取り機能を一時的に利用できません。写真の内容は保存されていません。時間を置いて再試行してください。');
+            }
+            throw new Error(json.error || `HTTP ${res.status}`);
+        }
+        return json;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+function renderOcrCandidates(items) {
+    const list = $('ocr-candidate-list');
+    list.textContent = '';
+
+    ocrCandidates = (items || []).map((item, index) => {
+        const name = String(item.name || '').trim().slice(0, 50);
+        const duplicate = isKnownOcrItem(name);
+        const categoryId = inferOcrCategory(name);
+        return {
+            id: `ocr_${Date.now()}_${index}`,
+            name,
+            confidence: item.confidence,
+            categoryId,
+            quantity: guessQuantity(name),
+            checked: !duplicate,
+            duplicate,
+        };
+    }).filter((candidate) => candidate.name);
+
+    $('ocr-count').textContent = `${ocrCandidates.length}件`;
+    $('ocr-results').classList.toggle('hidden', ocrCandidates.length === 0);
+    $('ocr-start-btn').classList.add('hidden');
+    $('ocr-import-btn').classList.remove('hidden');
+
+    if (ocrCandidates.length === 0) {
+        $('ocr-status').textContent = '追加候補を見つけられませんでした。明るい場所で、紙全体が写るように撮り直してください。';
+        updateOcrImportButton();
+        return;
+    }
+
+    $('ocr-status').textContent = '必要なものだけ選んで、名前やカテゴリーを確認してください。';
+
+    ocrCandidates.forEach((candidate) => {
+        const row = document.createElement('div');
+        row.className = 'bg-gray-800/70 border border-gray-700 rounded-xl p-3 space-y-2';
+
+        const top = document.createElement('div');
+        top.className = 'flex items-center gap-2';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = candidate.checked;
+        cb.className = 'w-5 h-5 accent-amber-500';
+        cb.addEventListener('change', () => {
+            candidate.checked = cb.checked;
+            updateOcrImportButton();
+        });
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = candidate.name;
+        nameInput.maxLength = 50;
+        nameInput.className = 'flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500';
+        nameInput.addEventListener('input', () => {
+            candidate.name = nameInput.value.trim();
+            updateOcrImportButton();
+        });
+
+        top.append(cb, nameInput);
+        row.appendChild(top);
+
+        const bottom = document.createElement('div');
+        bottom.className = 'flex items-center gap-2';
+
+        const select = document.createElement('select');
+        select.className = 'flex-1 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-amber-500';
+        appData.categories.forEach((cat) => {
+            const opt = document.createElement('option');
+            opt.value = cat.id;
+            opt.textContent = cat.name;
+            opt.selected = cat.id === candidate.categoryId;
+            select.appendChild(opt);
+        });
+        select.addEventListener('change', () => {
+            candidate.categoryId = select.value;
+        });
+        bottom.appendChild(select);
+
+        if (candidate.duplicate) {
+            const badge = document.createElement('span');
+            badge.className = 'text-[10px] text-gray-500 border border-gray-700 rounded px-1.5 py-1';
+            badge.textContent = '既存候補';
+            bottom.appendChild(badge);
+        } else if (candidate.confidence > 0) {
+            const confidence = document.createElement('span');
+            confidence.className = 'text-[10px] text-gray-500';
+            confidence.textContent = `${Math.round(candidate.confidence)}%`;
+            bottom.appendChild(confidence);
+        }
+
+        row.appendChild(bottom);
+        list.appendChild(row);
+    });
+
+    updateOcrImportButton();
+}
+
+async function handleOcrStart() {
+    clearOcrError();
+    const file = $('ocr-file-input').files && $('ocr-file-input').files[0];
+    if (!file) {
+        setOcrError('写真を選択してください。');
+        return;
+    }
+    if (!navigator.onLine) {
+        setOcrError('オフラインのため読み取れません。オンラインで再試行してください。');
+        return;
+    }
+
+    const startBtn = $('ocr-start-btn');
+    startBtn.disabled = true;
+    startBtn.textContent = '読み取り中…';
+    $('ocr-status').textContent = '写真を読み取り用に調整しています。';
+
+    try {
+        const imageBase64 = await prepareOcrImage(file);
+        $('ocr-status').textContent = '紙の文字を読み取っています。';
+        const result = await requestOcrItems(imageBase64, 'image/jpeg');
+        renderOcrCandidates(result.items || []);
+    } catch (e) {
+        const message = e.name === 'AbortError' ? '読み取りがタイムアウトしました。写真を小さくして再試行してください。' : (e.message || '読み取りに失敗しました。');
+        setOcrError(message);
+        startBtn.disabled = false;
+        startBtn.textContent = '読み取る';
+    }
+}
+
+function handleOcrImport() {
+    const selected = ocrCandidates.filter((candidate) => candidate.checked && candidate.name.trim());
+    if (selected.length === 0) {
+        setOcrError('追加する候補を選択してください。');
+        return;
+    }
+
+    const existing = getCustomItems();
+    const now = Date.now();
+    const imported = selected.map((candidate, index) => ({
+        id: `custom_ocr_${now}_${index}_${Math.random().toString(36).slice(2, 7)}`,
+        name: candidate.name.trim().slice(0, 50),
+        categoryId: candidate.categoryId,
+        categoryName: getCategoryName(candidate.categoryId),
+        applicable_locations: [currentSubtype],
+        quantity: candidate.quantity || 1,
+        isCustom: true,
+        source: 'ocr',
+    }));
+
+    setState('customItems', [...existing, ...imported]);
+    closeOcrModal();
+    renderChecklist();
+    showToast(`${imported.length}件を追加しました`);
 }
 
 // ---------- 条件トグルUI ----------
@@ -1492,6 +1858,13 @@ $('fc-code-input').addEventListener('input', (e) => {
     e.target.value = e.target.value.toUpperCase();
 });
 $('facility-revoke').addEventListener('click', revokeFacilityTemplate);
+
+// OCR取込モーダル
+$('ocr-open-btn').addEventListener('click', openOcrModal);
+$('ocr-modal-cancel').addEventListener('click', closeOcrModal);
+$('ocr-modal').addEventListener('click', (e) => { if (e.target === $('ocr-modal')) closeOcrModal(); });
+$('ocr-start-btn').addEventListener('click', handleOcrStart);
+$('ocr-import-btn').addEventListener('click', handleOcrImport);
 
 $('mode-category').addEventListener('click', () => switchViewMode('category'));
 $('mode-container').addEventListener('click', () => switchViewMode('container'));

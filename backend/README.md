@@ -1,6 +1,6 @@
 # CareReady バックエンド (ステップ B-1)
 
-パーキンソン病患者の施設入所向け持ち物チェッカー PWA「CareReady」(本番: `veai.jp/ready/`)のバックエンド雛形。
+ショートステイ・入院・施設入所などのケア移行に伴う持ち物管理 PWA「CareReady」(本番: `veai.jp/ready/`)のバックエンド雛形。
 
 設計は [`../docs/06_バックエンド設計書.md`](../docs/06_バックエンド設計書.md) を参照。本ディレクトリは **B-1**(DynamoDB + Lambda + API Gateway 雛形、`/templates/redeem` と施設テンプレ CRUD のみ)を実装する。
 
@@ -26,8 +26,10 @@ backend/
 - **Lambda**: Python 3.12 単一関数。外部依存は boto3(Lambda ランタイム同梱)のみなのでバンドル不要
 - **API Gateway (HTTP API)**:
   - `POST /v1/templates/redeem`(公開)
+  - `POST /v1/ocr/items`(公開、写真1枚のOCR候補抽出)
   - `GET/POST /v1/facility/templates`(Cognito JWT)
   - `GET/PUT/DELETE /v1/facility/templates/{tplId}`(Cognito JWT)
+- **OCR**: OpenAI Vision API を既定プロバイダとして紙の持ち物リスト写真から候補を抽出。画像は保存せず、Lambda から同期処理する。`OCR_PROVIDER=textract` で Textract へ切替可能
 - **Cognito**: 施設スタッフ用ユーザープール(メール+パスワード、**セルフサインアップ無効** = 管理者がユーザー作成)
 - **CORS**: `https://veai.jp` と `http://localhost:8000`
 - **スタック名**: `CareReadyBackendStack` / **リージョン**: `ap-northeast-1`
@@ -85,6 +87,8 @@ cdk deploy
 
 セルフサインアップは無効なので、管理者が CLI でユーザーを作成する。`custom:facilityId` を付けると、その値でテンプレがスコープされる(未指定なら Cognito の `sub` が facilityId になる)。
 
+> 注意: このユーザープールは **ログイン入力はメールアドレス**だが、Cognito 内部の `Username` は UUID になることがある。`admin-set-user-password` など管理 CLI は、必要に応じて `list-users` で確認した **内部 Username** を対象に実行すること。
+
 ```bash
 POOL_ID=<UserPoolId の値>
 
@@ -98,9 +102,10 @@ aws cognito-idp admin-create-user \
   --region ap-northeast-1
 
 # 恒久パスワードを設定(仮パスワードのリセット手順を省略する場合)
+# 内部 Username が UUID の場合は、その値を指定する
 aws cognito-idp admin-set-user-password \
   --user-pool-id "$POOL_ID" \
-  --username staff@example-facility.jp \
+  --username <list-users で確認した Username> \
   --password 'ChangeMe!2026' \
   --permanent \
   --region ap-northeast-1
@@ -161,6 +166,7 @@ curl -sS -X POST "$API/v1/templates/redeem" \
 | Method | Path | 認可 | 用途 |
 |---|---|---|---|
 | POST | `/v1/templates/redeem` | なし | `{"code":"..."}` → GSI1 で解決しテンプレ本体を返す(404 あり) |
+| POST | `/v1/ocr/items` | なし | `{"imageBase64":"..."}` → OCR 候補を返す。画像保存なし、最大 4MB、既定 20 回/日/IP |
 | GET | `/v1/facility/templates` | Cognito | 自施設テンプレ一覧 |
 | POST | `/v1/facility/templates` | Cognito | テンプレ作成(6 文字 shareCode 自動生成) |
 | GET | `/v1/facility/templates/{tplId}` | Cognito | テンプレ取得 |
@@ -170,3 +176,23 @@ curl -sS -X POST "$API/v1/templates/redeem" \
 - shareCode は 6 文字の英大数字。紛らわしい `I / O / 0 / 1` は除外
 - バリデーション: `name` 最大 100 字 / `items` 最大 200 件 / 各 item `name` 最大 100 字。違反時は 400 `{"error":"..."}`
 - テンプレは facilityId(`custom:facilityId`、無ければ `sub`)でスコープ
+- OCR は氏名・部屋番号などを写さない運用前提。候補抽出のみ行い、利用者が確認してからカスタム項目に追加する
+
+## OCR 設定
+
+日本語の施設プリントを想定するため、既定は OpenAI Vision API。API キーは Secrets Manager に保存し、リポジトリや Lambda 環境変数へ直接書かない。
+
+```bash
+aws secretsmanager create-secret \
+  --name careready/openai-api-key \
+  --secret-string '{"OPENAI_API_KEY":"<OpenAI API key>"}' \
+  --region ap-northeast-1
+```
+
+主な環境変数:
+
+- `OCR_PROVIDER`: `openai`(既定) または `textract`
+- `OPENAI_OCR_MODEL`: 既定 `gpt-5.6-luna`
+- `OPENAI_API_KEY_SECRET_ID`: 既定 `careready/openai-api-key`
+- `OCR_DAILY_LIMIT`: 既定 `20`
+- `TEXTRACT_REGION`: Textract 使用時のみ。既定 `us-east-1`

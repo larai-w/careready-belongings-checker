@@ -1,8 +1,12 @@
+import base64
 import json
 
 from conftest import make_event
 
 FAC = "fac-123"
+PNG_BYTES = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
+)
 
 
 def _body(resp):
@@ -103,6 +107,132 @@ def test_redeem_not_found_returns_404(dynamodb_table):
     )
     assert resp["statusCode"] == 404
     assert "error" in _body(resp)
+
+
+# --- OCR ---------------------------------------------------------------
+
+def test_ocr_items_extracts_candidates(dynamodb_table, monkeypatch):
+    handler = dynamodb_table
+    monkeypatch.setattr(handler, "OCR_PROVIDER", "textract")
+
+    class FakeTextract:
+        def detect_document_text(self, Document):  # noqa: N802
+            assert Document["Bytes"] == PNG_BYTES
+            return {
+                "DocumentMetadata": {"Pages": 1},
+                "Blocks": [
+                    {"BlockType": "LINE", "Text": "持ち物リスト", "Confidence": 99},
+                    {"BlockType": "LINE", "Text": "・パジャマ 2組", "Confidence": 95.4},
+                    {"BlockType": "LINE", "Text": "氏名 山田太郎", "Confidence": 98},
+                    {"BlockType": "LINE", "Text": "歯ブラシ・コップ", "Confidence": 91.2},
+                ],
+            }
+
+    monkeypatch.setattr(handler, "_textract", FakeTextract())
+    resp = handler.lambda_handler(
+        make_event(
+            "POST",
+            "/v1/ocr/items",
+            body={"imageBase64": base64.b64encode(PNG_BYTES).decode("ascii")},
+        )
+    )
+    assert resp["statusCode"] == 200
+    data = _body(resp)
+    assert data["lineCount"] == 4
+    assert data["items"] == [
+        {"name": "パジャマ 2組", "confidence": 95.4},
+        {"name": "歯ブラシ・コップ", "confidence": 91.2},
+    ]
+
+
+def test_ocr_items_extracts_openai_candidates(dynamodb_table, monkeypatch):
+    handler = dynamodb_table
+    monkeypatch.setattr(handler, "OCR_PROVIDER", "openai")
+    monkeypatch.setattr(handler, "_openai_api_key_cache", "test-key")
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps(
+                {
+                    "output_text": json.dumps(
+                        {
+                            "items": [
+                                {"name": "パジャマ 2組"},
+                                {"name": "氏名 山田太郎"},
+                                {"name": "歯ブラシ・コップ"},
+                            ]
+                        },
+                        ensure_ascii=False,
+                    )
+                },
+                ensure_ascii=False,
+            ).encode("utf-8")
+
+    def fake_urlopen(req, timeout):
+        assert timeout == 18
+        payload = json.loads(req.data.decode("utf-8"))
+        assert payload["model"] == handler.OPENAI_OCR_MODEL
+        image_url = payload["input"][0]["content"][1]["image_url"]
+        assert image_url.startswith("data:image/png;base64,")
+        return FakeResponse()
+
+    monkeypatch.setattr(handler.urllib.request, "urlopen", fake_urlopen)
+
+    resp = handler.lambda_handler(
+        make_event(
+            "POST",
+            "/v1/ocr/items",
+            body={"imageBase64": base64.b64encode(PNG_BYTES).decode("ascii")},
+        )
+    )
+    assert resp["statusCode"] == 200
+    data = _body(resp)
+    assert data["provider"] == "openai"
+    assert data["items"] == [
+        {"name": "パジャマ 2組", "confidence": 0},
+        {"name": "歯ブラシ・コップ", "confidence": 0},
+    ]
+
+
+def test_ocr_items_hides_openai_rate_limit_details(dynamodb_table, monkeypatch):
+    handler = dynamodb_table
+    monkeypatch.setattr(handler, "OCR_PROVIDER", "openai")
+    monkeypatch.setattr(handler, "_openai_api_key_cache", "test-key")
+
+    def fake_urlopen(req, timeout):
+        raise handler.urllib.error.HTTPError(
+            req.full_url,
+            429,
+            "Too Many Requests",
+            {},
+            None,
+        )
+
+    monkeypatch.setattr(handler.urllib.request, "urlopen", fake_urlopen)
+
+    resp = handler.lambda_handler(
+        make_event(
+            "POST",
+            "/v1/ocr/items",
+            body={"imageBase64": base64.b64encode(PNG_BYTES).decode("ascii")},
+        )
+    )
+    assert resp["statusCode"] == 503
+    assert _body(resp) == {"error": "OCR service is temporarily unavailable"}
+
+
+def test_ocr_items_rejects_invalid_base64(dynamodb_table):
+    handler = dynamodb_table
+    resp = handler.lambda_handler(
+        make_event("POST", "/v1/ocr/items", body={"imageBase64": "not base64"})
+    )
+    assert resp["statusCode"] == 400
 
 
 # --- バリデーション ------------------------------------------------------
