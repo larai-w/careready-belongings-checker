@@ -817,6 +817,11 @@ function renderConditionToggles() {
     wrap.textContent = '';
     wrap.classList.remove('hidden');
 
+    const condLabel = document.createElement('span');
+    condLabel.className = 'text-xs text-gray-500 shrink-0';
+    condLabel.textContent = '条件:';
+    wrap.appendChild(condLabel);
+
     const condState = getConditionState();
     appData.conditions.forEach((cond) => {
         const isOn = condState[cond.id] !== undefined ? condState[cond.id] : cond.default;
@@ -893,11 +898,11 @@ function applyTheme(isLight) {
     if (isLight) {
         document.body.classList.add('light');
         document.querySelector('meta[name="theme-color"]').setAttribute('content', '#faf6f0');
-        $('theme-btn').textContent = '☀️ ライト';
+        $('theme-btn').textContent = '☀️';
     } else {
         document.body.classList.remove('light');
         document.querySelector('meta[name="theme-color"]').setAttribute('content', '#121824');
-        $('theme-btn').textContent = '🌙 ダーク';
+        $('theme-btn').textContent = '🌙';
     }
 }
 
@@ -1006,27 +1011,23 @@ function switchReturnMode(enabled) {
     const viewModeToggle = $('view-mode-toggle');
     const progressSection = $('progress-section');
     const progressBarWrap = $('progress-bar-wrap');
+    const progressMsg = $('progress-msg');
+    const readySection = $('ready-section');
     const returnProgressSection = $('return-progress-section');
 
-    if (returnMode) {
-        // 帰宅チェックモードON
-        returnBtn.className =
-            'text-xs bg-green-500 text-slate-900 font-bold rounded-xl px-4 py-1.5 transition-colors shadow';
-        returnBtn.textContent = '🏠 帰宅チェックモード (ON)';
-        viewModeToggle.classList.add('opacity-40', 'pointer-events-none');
-        progressSection.classList.add('hidden');
-        progressBarWrap.classList.add('hidden');
-        returnProgressSection.classList.remove('hidden');
-    } else {
-        // 準備モードに戻る
-        returnBtn.className =
-            'text-xs bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-4 py-1.5 transition-colors font-bold';
-        returnBtn.textContent = '🏠 帰宅チェックモード';
-        viewModeToggle.classList.remove('opacity-40', 'pointer-events-none');
-        progressSection.classList.remove('hidden');
-        progressBarWrap.classList.remove('hidden');
-        returnProgressSection.classList.add('hidden');
-    }
+    // 準備モード専用UIの表示/非表示
+    [progressSection, progressBarWrap, progressMsg, readySection].forEach((el) => {
+        el.classList.toggle('hidden', returnMode);
+    });
+    returnProgressSection.classList.toggle('hidden', !returnMode);
+    // 帰宅チェック中は準備用の表示切替をグレーアウト
+    viewModeToggle.classList.toggle('opacity-40', returnMode);
+    viewModeToggle.classList.toggle('pointer-events-none', returnMode);
+
+    // 帰宅チェックボタン(小)のON/OFF表示。テキストはHTML側(🏠 帰宅チェック)を維持
+    returnBtn.className = returnMode
+        ? 'shrink-0 text-[11px] font-bold leading-tight bg-green-500 text-slate-900 rounded-xl px-3 transition-colors shadow'
+        : 'shrink-0 text-[11px] font-bold leading-tight bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-3 transition-colors';
 
     renderChecklist();
 }
@@ -1036,9 +1037,9 @@ function switchReturnMode(enabled) {
 function switchViewMode(mode) {
     viewMode = mode;
     const active =
-        'flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-teal-500 text-slate-900 shadow';
+        'flex-1 py-2.5 text-sm font-bold rounded-lg transition-all bg-teal-500 text-slate-900 shadow';
     const inactive =
-        'flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200';
+        'flex-1 py-2.5 text-sm font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200';
     $('mode-category').className = mode === 'category' ? active : inactive;
     $('mode-container').className = mode === 'container' ? active : inactive;
     renderChecklist();
@@ -1049,12 +1050,24 @@ function renderTabs() {
     tabsContainer.textContent = '';
     appData.locations.forEach((loc) => {
         const button = document.createElement('button');
-        button.textContent = loc.name;
-        button.className = `px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+        // 行き先は最初に1回選ぶだけ → コンパクトに
+        button.className = `w-full py-1.5 px-2 rounded-lg text-sm font-bold leading-tight transition-all ${
             currentSubtype === loc.id
-                ? 'bg-teal-500 text-slate-900 shadow-lg shadow-teal-500/20'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                ? 'bg-teal-500 text-slate-900 shadow'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'
         }`;
+
+        const nameEl = document.createElement('span');
+        nameEl.textContent = loc.name;
+        button.appendChild(nameEl);
+        // 補足(特養・老健 等)は同じ行に小さく
+        if (loc.sublabel) {
+            const subEl = document.createElement('span');
+            subEl.className = 'text-[10px] font-normal opacity-70 ml-1';
+            subEl.textContent = loc.sublabel;
+            button.appendChild(subEl);
+        }
+
         button.addEventListener('click', () => {
             currentSubtype = loc.id;
             renderTabs();
@@ -1077,7 +1090,6 @@ function renderPrepChecklist() {
     container.textContent = '';
 
     const checked = getState('checked', {});
-    const skipped = getState('skipped', {});
     const containers = getState('containers', {});
     const customItems = getCustomItems();
 
@@ -1128,7 +1140,7 @@ function renderPrepChecklist() {
             itemSpace.className = 'space-y-3';
             filteredItems.forEach((item) => {
                 itemSpace.appendChild(
-                    createItemRow(item, checked, skipped, containers[item.id] || 'none')
+                    createItemRow(item, checked, containers[item.id] || 'none')
                 );
             });
             section.appendChild(itemSpace);
@@ -1156,7 +1168,7 @@ function renderPrepChecklist() {
             itemSpace.className = 'space-y-3';
             facilityOnlyItems.forEach((item) => {
                 itemSpace.appendChild(
-                    createItemRow(item, checked, skipped, containers[item.id] || 'none')
+                    createItemRow(item, checked, containers[item.id] || 'none')
                 );
             });
             section.appendChild(itemSpace);
@@ -1194,18 +1206,18 @@ function renderPrepChecklist() {
             }
         });
 
-        // ===== 「箱に詰める」モード: 使い方ガイド + いま詰めている箱 + タップで割り当て =====
+        // ===== 「箱に詰める」モード: 達成コレクション + 使い方 + いま詰めている箱 + タップ割り当て =====
+        container.appendChild(buildBoxStampBanner());
         const guide = buildPackGuide();
         if (guide) container.appendChild(guide);
         container.appendChild(buildActiveBoxBar());
 
         const activeBox = getActiveBox();
 
-        // カテゴリ順にグルーピング(「不要」は非表示)
+        // カテゴリ順にグルーピング
         const groups = [];
         const groupIndex = {};
         allFilteredItems.forEach((item) => {
-            if (skipped[item.id]) return;
             const key = item.categoryName || 'その他';
             if (groupIndex[key] === undefined) {
                 groupIndex[key] = groups.length;
@@ -1263,7 +1275,7 @@ function setActiveBox(id) {
 }
 
 // アイテムをタップしたとき: アクティブな箱に入れる / 取り出す
-function packTap(itemId) {
+function packTap(itemId, srcEl) {
     const checked = getState('checked', {});
     const containers = getState('containers', {});
     const active = getActiveBox();
@@ -1275,15 +1287,20 @@ function packTap(itemId) {
         // 未割り当て/別の箱 → アクティブな箱へ入れる(チェックも付ける)
         checked[itemId] = true;
         containers[itemId] = active;
+        // 積み上がる演出 + 中身が変わった箱の「詰め終わり」✅は解除
+        floatPlusOne(srcEl);
+        if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) { /* noop */ } }
+        const sealed = getSealedBoxes();
+        if (sealed[active]) { delete sealed[active]; setState('sealedBoxes', sealed); }
     }
     setState('checked', checked);
     setState('containers', containers);
     renderChecklist();
 }
 
-// 「箱に詰める」モードの使い方ガイド(開閉式)。閉じた状態は記憶する
+// 「箱に詰める」モードの使い方ガイド。普段は畳んでおき ❔使い方 で開く
 function buildPackGuide() {
-    if (getState('packGuideDismissed', false)) return null;
+    if (!getState('packGuideOpen', false)) return null;
     const box = document.createElement('div');
     box.className = 'relative bg-teal-500/10 border border-teal-500/30 rounded-2xl p-4 pr-9';
 
@@ -1311,7 +1328,7 @@ function buildPackGuide() {
     close.textContent = '×';
     close.setAttribute('aria-label', '使い方を閉じる');
     close.addEventListener('click', () => {
-        setState('packGuideDismissed', true);
+        setState('packGuideOpen', false);
         renderChecklist();
     });
     box.appendChild(close);
@@ -1336,12 +1353,13 @@ function buildActiveBoxBar() {
         'shrink-0 text-xs font-bold text-teal-400 hover:text-teal-300 border border-teal-500/40 rounded-lg px-2.5 py-1 transition-colors';
     helpBtn.textContent = '❔ 使い方';
     helpBtn.addEventListener('click', () => {
-        setState('packGuideDismissed', false);
+        setState('packGuideOpen', !getState('packGuideOpen', false));
         renderChecklist();
     });
     titleRow.append(title, helpBtn);
     card.appendChild(titleRow);
 
+    const sealed = getSealedBoxes();
     const chips = document.createElement('div');
     chips.className = 'flex flex-wrap gap-2';
     boxes.forEach((box) => {
@@ -1358,6 +1376,12 @@ function buildActiveBoxBar() {
         const label = document.createElement('span');
         label.textContent = getContainerName(box.id);
         chip.append(dot, label);
+        if (sealed[box.id]) {
+            const done = document.createElement('span');
+            done.textContent = '✅';
+            done.title = '詰め終わり';
+            chip.appendChild(done);
+        }
         if (isActive) {
             const mark = document.createElement('span');
             mark.className = 'text-xs font-normal';
@@ -1376,13 +1400,28 @@ function buildActiveBoxBar() {
     chips.appendChild(addChip);
     card.appendChild(chips);
 
-    // アクティブな箱の 名前変更 / 削除(対象を明示した分かりやすいボタン)
     const activeName = getContainerName(activeBox);
+
+    // 👇 タップ誘導
+    const hint = document.createElement('p');
+    hint.className = 'text-sm font-bold text-teal-500 mt-3';
+    hint.textContent = `👇 下の物をタップすると「${activeName}」に入ります`;
+    card.appendChild(hint);
+
+    // C: この箱を詰め終わった(大きく目立つボタン。押すとお祝い + ✅が積み上がる)
+    const sealBtn = document.createElement('button');
+    sealBtn.className =
+        'w-full mt-3 flex items-center justify-center gap-2 text-base font-bold text-white bg-teal-500 hover:bg-teal-600 active:scale-[0.98] rounded-xl px-4 py-3.5 transition-all shadow-lg';
+    sealBtn.textContent = `✅「${activeName}」を詰め終わった！`;
+    sealBtn.addEventListener('click', sealActiveBox);
+    card.appendChild(sealBtn);
+
+    // 小さな副次アクション(名前変更 / 削除)
     const actions = document.createElement('div');
-    actions.className = 'flex flex-wrap gap-2 mt-3';
+    actions.className = 'flex flex-wrap gap-2 mt-2';
     const renameBtn = document.createElement('button');
     renameBtn.className =
-        'inline-flex items-center gap-1.5 text-xs font-bold text-teal-400 bg-teal-500/10 border border-teal-500/30 hover:bg-teal-500/20 rounded-lg px-3 py-2 transition-colors';
+        'inline-flex items-center gap-1.5 text-xs font-bold text-teal-500 bg-teal-500/10 border border-teal-500/30 hover:bg-teal-500/20 rounded-lg px-3 py-2 transition-colors';
     renameBtn.textContent = `✏️「${activeName}」の名前を変更`;
     renameBtn.addEventListener('click', () => renameContainer(activeBox));
     actions.appendChild(renameBtn);
@@ -1396,12 +1435,43 @@ function buildActiveBoxBar() {
     }
     card.appendChild(actions);
 
-    const hint = document.createElement('p');
-    hint.className = 'text-sm text-teal-400 mt-3';
-    hint.textContent = `👇 下のアイテムをタップすると「${getContainerName(activeBox)}」に入ります`;
-    card.appendChild(hint);
-
     return card;
+}
+
+// パックモードの達成コレクション(詰め終わった箱が✅で溜まる)
+function buildBoxStampBanner() {
+    const boxes = getAllContainers().slice(1);
+    const sealed = getSealedBoxes();
+    const doneCount = boxes.filter((b) => sealed[b.id]).length;
+
+    const banner = document.createElement('div');
+    banner.className = 'rounded-2xl p-4 text-white shadow bg-gradient-to-r from-teal-500 to-emerald-500';
+
+    const head = document.createElement('div');
+    head.className = 'flex items-center justify-between mb-2';
+    const t = document.createElement('p');
+    t.className = 'text-sm font-bold';
+    t.textContent = '🎁 詰め終わった箱';
+    const c = document.createElement('p');
+    c.className = 'text-sm font-bold';
+    c.textContent = `${doneCount} / ${boxes.length} 箱`;
+    head.append(t, c);
+    banner.appendChild(head);
+
+    const row = document.createElement('div');
+    row.className = 'flex flex-wrap gap-2';
+    boxes.forEach((b) => {
+        const isSealed = Boolean(sealed[b.id]);
+        const cell = document.createElement('div');
+        cell.className = `min-w-[44px] h-11 px-2 rounded-xl flex items-center justify-center text-lg ${
+            isSealed ? 'bg-white/25' : 'bg-white/10 border-2 border-dashed border-white/40 opacity-80'
+        }`;
+        cell.textContent = isSealed ? '✅' : '📦';
+        cell.title = getContainerName(b.id);
+        row.appendChild(cell);
+    });
+    banner.appendChild(row);
+    return banner;
 }
 
 function createPackItemRow(item, checked, currentBox, activeBox) {
@@ -1410,6 +1480,8 @@ function createPackItemRow(item, checked, currentBox, activeBox) {
     const color = inBox ? getBoxColor(currentBox) : null;
 
     const row = document.createElement('button');
+    // 進捗カウント用マーカー(パック表示は input を使わないため)
+    row.setAttribute('data-pack-item', isChecked ? 'checked' : 'unchecked');
     row.className = `w-full flex items-center gap-3 min-h-[56px] px-3 py-2 rounded-xl border transition-colors text-left ${
         isChecked
             ? 'bg-slate-800/70 border-gray-700'
@@ -1462,7 +1534,7 @@ function createPackItemRow(item, checked, currentBox, activeBox) {
     }
     row.appendChild(status);
 
-    row.addEventListener('click', () => packTap(item.id));
+    row.addEventListener('click', () => packTap(item.id, row));
     return row;
 }
 
@@ -1640,26 +1712,42 @@ function createReturnItemRow(item, returnChecked, currentBox) {
     return itemRow;
 }
 
-function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = false) {
-    const isSkipped = Boolean(skipped[item.id]);
+function createItemRow(item, checked, currentBox, showCategoryBadge = false) {
     const qty = item.quantity && item.quantity > 1 ? item.quantity : null;
+    const isChecked = Boolean(checked[item.id]);
 
+    // チェックで色が付くカード風の行(集めてる感)
     const itemRow = document.createElement('div');
-    itemRow.className =
-        'flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-lg hover:bg-gray-700/10 transition-colors border-b border-gray-800/40 pb-3 sm:pb-2';
+    itemRow.className = `flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-2xl border border-transparent transition-colors ${
+        isChecked ? 'bg-teal-500/15' : 'hover:bg-gray-700/10'
+    }`;
 
-    // 左: チェックボックス + 名前
+    // 左: まる型チェック + 名前
     const left = document.createElement('div');
     left.className = 'flex items-start gap-3 flex-1';
     const label = document.createElement('label');
-    label.className = 'flex items-start gap-3 cursor-pointer flex-1';
+    label.className = 'flex items-center gap-3 cursor-pointer flex-1';
 
+    // 本物のcheckboxは残し(テスト/アクセシビリティ)、見た目は丸チェックに
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
-    checkbox.checked = Boolean(checked[item.id]);
-    checkbox.disabled = isSkipped;
-    checkbox.className = `w-5 h-5 rounded border-gray-600 bg-gray-700 text-teal-500 focus:ring-teal-500 focus:ring-offset-gray-800 mt-0.5 ${isSkipped ? 'opacity-20' : ''}`;
-    checkbox.addEventListener('change', () => setChecked(item.id, checkbox.checked));
+    checkbox.checked = isChecked;
+    checkbox.className = 'peer sr-only';
+
+    const mark = document.createElement('span');
+    mark.className =
+        'shrink-0 w-7 h-7 rounded-full border-2 border-gray-400 text-transparent flex items-center justify-center text-sm font-bold transition-all peer-checked:bg-teal-500 peer-checked:border-teal-500 peer-checked:text-white';
+    mark.textContent = '✓';
+
+    checkbox.addEventListener('change', () => {
+        itemRow.classList.toggle('bg-teal-500/15', checkbox.checked);
+        itemRow.classList.toggle('hover:bg-gray-700/10', !checkbox.checked);
+        if (checkbox.checked) {
+            celebrateCheck(mark);
+            floatPlusOne(mark);
+        }
+        setChecked(item.id, checkbox.checked);
+    });
 
     const textWrap = document.createElement('div');
     textWrap.className = 'flex flex-col';
@@ -1667,7 +1755,7 @@ function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = f
     const nameWrap = document.createElement('div');
     nameWrap.className = 'flex items-center flex-wrap gap-1.5';
     const nameSpan = document.createElement('span');
-    nameSpan.className = `${isSkipped ? 'line-through-text' : 'text-gray-300'} text-sm leading-relaxed`;
+    nameSpan.className = 'text-gray-300 text-sm leading-relaxed';
     nameSpan.textContent = item.name;
     nameWrap.appendChild(nameSpan);
 
@@ -1699,17 +1787,16 @@ function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = f
         textWrap.appendChild(badge);
     }
 
-    label.append(checkbox, textWrap);
+    label.append(checkbox, mark, textWrap);
     left.appendChild(label);
 
-    // 右: 箱セレクト + 不要ボタン + (カスタムなら削除ボタン)
+    // 右: 箱セレクト + (カスタムなら削除ボタン)
     const right = document.createElement('div');
     right.className = 'flex items-center gap-2 self-end sm:self-center';
 
     const select = document.createElement('select');
-    select.disabled = isSkipped;
     select.className =
-        'text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-teal-400 focus:ring-teal-500 focus:border-teal-500 disabled:opacity-20';
+        'text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-teal-400 focus:ring-teal-500 focus:border-teal-500';
     getAllContainers().forEach((b) => {
         const opt = document.createElement('option');
         opt.value = b.id;
@@ -1719,16 +1806,7 @@ function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = f
     });
     select.addEventListener('change', () => setContainer(item.id, select.value));
 
-    const skipBtn = document.createElement('button');
-    skipBtn.className = `text-xs px-2 py-1 rounded border transition-colors shrink-0 ${
-        isSkipped
-            ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-            : 'bg-gray-800 text-gray-500 border-gray-700'
-    }`;
-    skipBtn.textContent = isSkipped ? '使う' : '不要';
-    skipBtn.addEventListener('click', () => toggleSkip(item.id));
-
-    right.append(select, skipBtn);
+    right.append(select);
 
     if (item.isCustom) {
         const delBtn = document.createElement('button');
@@ -1806,30 +1884,13 @@ function setContainer(itemId, boxId) {
     if (viewMode === 'container') renderChecklist();
 }
 
-function toggleSkip(itemId) {
-    const skipped = getState('skipped', {});
-    const checked = getState('checked', {});
-    if (skipped[itemId]) {
-        delete skipped[itemId];
-    } else {
-        skipped[itemId] = true;
-        delete checked[itemId];
-    }
-    setState('skipped', skipped);
-    setState('checked', checked);
-    renderChecklist();
-}
-
 function deleteCustomItem(itemId) {
     setState('customItems', getCustomItems().filter((i) => i.id !== itemId));
     const checked = getState('checked', {});
-    const skipped = getState('skipped', {});
     const containers = getState('containers', {});
     delete checked[itemId];
-    delete skipped[itemId];
     delete containers[itemId];
     setState('checked', checked);
-    setState('skipped', skipped);
     setState('containers', containers);
     renderChecklist();
 }
@@ -1891,10 +1952,16 @@ function renameContainer(containerId) {
 }
 
 function updateProgress() {
-    const activeCheckboxes = document.querySelectorAll('input[type="checkbox"]:not([disabled])');
-    const checkedBoxes = document.querySelectorAll('input[type="checkbox"]:not([disabled]):checked');
-    const total = activeCheckboxes.length;
-    const done = checkedBoxes.length;
+    let total;
+    let done;
+    if (viewMode === 'container' && !returnMode) {
+        // 「箱に詰める」表示はタップ行(input無し)なのでマーカーで数える
+        total = document.querySelectorAll('#checklist-container [data-pack-item]').length;
+        done = document.querySelectorAll('#checklist-container [data-pack-item="checked"]').length;
+    } else {
+        total = document.querySelectorAll('input[type="checkbox"]:not([disabled])').length;
+        done = document.querySelectorAll('input[type="checkbox"]:not([disabled]):checked').length;
+    }
     $('progress-text').textContent = `${done} / ${total} 個`;
     $('progress-bar').style.width = total > 0 ? `${(done / total) * 100}%` : '0%';
 
@@ -1909,6 +1976,108 @@ function updateProgress() {
             msgEl.textContent = `あと${remaining}つで準備完了です 🌸`;
         }
     }
+}
+
+// ---------- ちょっとしたご褒美演出 ----------
+
+// 操作した瞬間の小さなポップ(気持ちよさ + 軽い振動)
+function celebrateCheck(el) {
+    try {
+        el.animate(
+            [{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }],
+            { duration: 260, easing: 'ease-out' }
+        );
+    } catch (e) { /* Web Animations 非対応でも無害 */ }
+    if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) { /* noop */ } }
+}
+
+// 積み上がる感: 操作した要素の位置から「＋1」がふわっと浮いて消える
+function floatPlusOne(el) {
+    if (!el || !el.getBoundingClientRect) return;
+    const r = el.getBoundingClientRect();
+    const tag = document.createElement('div');
+    tag.textContent = '＋1';
+    tag.style.position = 'fixed';
+    tag.style.left = `${r.left + r.width / 2}px`;
+    tag.style.top = `${r.top}px`;
+    tag.style.transform = 'translate(-50%, 0)';
+    tag.style.color = '#0d9488';
+    tag.style.fontWeight = '800';
+    tag.style.fontSize = '14px';
+    tag.style.pointerEvents = 'none';
+    tag.style.zIndex = '60';
+    document.body.appendChild(tag);
+    try {
+        const anim = tag.animate(
+            [
+                { transform: 'translate(-50%, 0)', opacity: 0 },
+                { transform: 'translate(-50%, -14px)', opacity: 1, offset: 0.3 },
+                { transform: 'translate(-50%, -40px)', opacity: 0 },
+            ],
+            { duration: 700, easing: 'ease-out' }
+        );
+        anim.onfinish = () => tag.remove();
+    } catch (e) { tag.remove(); }
+}
+
+// 紙吹雪(count で大きさ調整。準備完了=大, 箱=小)
+function launchConfetti(count = 32) {
+    const colors = ['#2dd4bf', '#f472b6', '#fbbf24', '#ffffff', '#34d399'];
+    const container = document.createElement('div');
+    container.className = 'fixed inset-0 pointer-events-none z-[60] overflow-hidden';
+    document.body.appendChild(container);
+    for (let i = 0; i < count; i++) {
+        const piece = document.createElement('div');
+        const size = 6 + Math.random() * 6;
+        piece.style.position = 'absolute';
+        piece.style.left = `${10 + Math.random() * 80}%`;
+        piece.style.top = '-5%';
+        piece.style.width = `${size}px`;
+        piece.style.height = `${size}px`;
+        piece.style.backgroundColor = colors[i % colors.length];
+        piece.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+        container.appendChild(piece);
+        const dx = (Math.random() - 0.5) * 160;
+        const dy = window.innerHeight * (0.7 + Math.random() * 0.5);
+        const rot = (Math.random() - 0.5) * 720;
+        try {
+            const anim = piece.animate(
+                [
+                    { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+                    { transform: `translate(${dx}px, ${dy}px) rotate(${rot}deg)`, opacity: 1, offset: 0.85 },
+                    { transform: `translate(${dx}px, ${dy + 40}px) rotate(${rot}deg)`, opacity: 0 },
+                ],
+                { duration: 1600 + Math.random() * 800, easing: 'cubic-bezier(.2,.6,.4,1)' }
+            );
+            anim.onfinish = () => piece.remove();
+        } catch (e) { piece.remove(); }
+    }
+    setTimeout(() => container.remove(), 2800);
+}
+
+// 箱を詰め終わったときの状態(✅が積み上がる)
+function getSealedBoxes() {
+    return getState('sealedBoxes', {});
+}
+
+// A: ユーザーが「準備できた!」と宣言したとき
+function celebratePrepDone() {
+    launchConfetti(44);
+    if (navigator.vibrate) { try { navigator.vibrate([20, 40, 20, 40, 60]); } catch (e) { /* noop */ } }
+    showToast('いってらっしゃい 🎈 準備おつかれさまでした', 4000);
+}
+
+// C: 箱を詰め終わったとき(小さなお祝い + ✅を記録)
+function sealActiveBox() {
+    const active = getActiveBox();
+    if (!active) return;
+    const sealed = getSealedBoxes();
+    sealed[active] = true;
+    setState('sealedBoxes', sealed);
+    launchConfetti(16);
+    if (navigator.vibrate) { try { navigator.vibrate([15, 30, 15]); } catch (e) { /* noop */ } }
+    showToast(`${getContainerName(active)} を詰め終わりました 🎉`);
+    renderChecklist();
 }
 
 function updateReturnProgress(returnableItems, returnChecked) {
@@ -1956,7 +2125,7 @@ function resetReturnChecks() {
 
 function resetAll() {
     if (
-        !confirm('チェック・不要設定・箱の割り当て・カスタムアイテムをすべて削除しますか？')
+        !confirm('チェック・箱の割り当て・カスタムアイテムをすべて削除しますか？')
     ) {
         return;
     }
@@ -1968,7 +2137,8 @@ function resetAll() {
         'containerNames',
         'customContainers',
         'activeBox',
-        'packGuideDismissed',
+        'packGuideOpen',
+        'sealedBoxes',
         'returnChecked',
         'facilityTemplate',
         'conditions',
@@ -2215,6 +2385,7 @@ $('ocr-import-btn').addEventListener('click', handleOcrImport);
 $('mode-category').addEventListener('click', () => switchViewMode('category'));
 $('mode-container').addEventListener('click', () => switchViewMode('container'));
 $('mode-return').addEventListener('click', () => switchReturnMode(!returnMode));
+$('ready-btn').addEventListener('click', celebratePrepDone);
 $('reset-checks').addEventListener('click', resetChecks);
 $('reset-return-checks').addEventListener('click', resetReturnChecks);
 $('copy-missing-btn').addEventListener('click', copyMissingItems);
