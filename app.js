@@ -1167,6 +1167,7 @@ function switchReturnMode(enabled) {
     if (returnMode) {
         renderMood();
         renderReturnWelcome();
+        clearDiaryPhoto();
     }
 
     renderChecklist();
@@ -2409,6 +2410,40 @@ function renderReturnWelcome() {
         : 'おつかれさま。忘れ物がないか、いっしょに確認しましょう 🍵';
 }
 
+// ③ 日記の写真(思い出) — ローカルに小さく圧縮して保存
+let pendingDiaryPhoto = '';
+
+async function resizeToDataUrl(file, maxSide, quality) {
+    const img = await loadImageElement(file);
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', quality);
+}
+
+async function handleDiaryPhoto(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+        pendingDiaryPhoto = await resizeToDataUrl(file, 480, 0.7);
+        const prev = $('diary-photo-preview');
+        prev.src = pendingDiaryPhoto;
+        prev.classList.remove('hidden');
+        $('diary-photo-clear').classList.remove('hidden');
+    } catch (err) {
+        showToast('写真を読み込めませんでした');
+    }
+}
+
+function clearDiaryPhoto() {
+    pendingDiaryPhoto = '';
+    $('diary-photo-input').value = '';
+    $('diary-photo-preview').classList.add('hidden');
+    $('diary-photo-clear').classList.add('hidden');
+}
+
 function handleTadaima() {
     // ① 日記エントリを記録
     const dest = (getAllLocations().find((l) => l.id === currentSubtype) || {}).name || 'おでかけ';
@@ -2419,8 +2454,10 @@ function handleTadaima() {
         dest,
         mood: getState('lastMood', -1),
         note,
+        photo: pendingDiaryPhoto || '',
     }]);
     if (noteEl) noteEl.value = '';
+    clearDiaryPhoto();
 
     const count = getState('outingCount', 0) + 1;
     setState('outingCount', count);
@@ -2514,6 +2551,13 @@ function buildDiaryRow(e) {
         body.appendChild(note);
     }
     row.append(face, body);
+    if (e.photo) {
+        const img = document.createElement('img');
+        img.src = e.photo;
+        img.className = 'w-12 h-12 rounded-lg object-cover shrink-0';
+        img.alt = '';
+        row.appendChild(img);
+    }
     return row;
 }
 
@@ -2812,6 +2856,9 @@ $('ready-btn').addEventListener('click', celebratePrepDone);
 $('person-btn').addEventListener('click', handlePersonName);
 $('memo-input').addEventListener('input', saveMemo);
 $('tadaima-btn').addEventListener('click', handleTadaima);
+$('diary-photo-btn').addEventListener('click', () => $('diary-photo-input').click());
+$('diary-photo-input').addEventListener('change', handleDiaryPhoto);
+$('diary-photo-clear').addEventListener('click', clearDiaryPhoto);
 $('return-check-toggle').addEventListener('click', () => {
     returnCheckOpen = !returnCheckOpen;
     applyReturnCheckVisibility();
