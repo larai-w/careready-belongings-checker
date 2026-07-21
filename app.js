@@ -1094,10 +1094,13 @@ function switchReturnMode(enabled) {
 function applyReturnCheckVisibility() {
     const details = $('return-check-details');
     const container = $('checklist-container');
+    const doneSection = $('return-done-section');
     const toggle = $('return-check-toggle');
-    if (details) details.classList.toggle('hidden', !(returnMode && returnCheckOpen));
-    // 帰宅後はまず一息。リスト本体は開いた時だけ表示
+    const open = returnMode && returnCheckOpen;
+    if (details) details.classList.toggle('hidden', !open);
+    // 帰宅後はまず一息。リスト本体と「確認できた!」は開いた時だけ表示
     if (container) container.classList.toggle('hidden', returnMode && !returnCheckOpen);
+    if (doneSection) doneSection.classList.toggle('hidden', !open);
     if (toggle) toggle.textContent = returnCheckOpen
         ? '🔼 忘れ物チェックを閉じる'
         : '🔎 施設に忘れ物がないか確認する（任意）';
@@ -1675,88 +1678,58 @@ function renderReturnChecklist() {
         }
     });
 
-    if (allItems.length === 0) {
+    // 数えない。「大事なもの」を上に、その他は畳む(消耗品は表示しない)
+    const returnables = allItems.filter((item) => !item.consumable);
+
+    if (returnables.length === 0) {
         const empty = document.createElement('div');
-        empty.className =
-            'text-center py-10 text-gray-500 bg-gray-800/30 border border-gray-700/40 rounded-xl';
-        const emptyMsg = document.createElement('p');
-        emptyMsg.className = 'text-sm';
-        emptyMsg.textContent = '準備モードでチェックしたアイテムがありません。';
-        const hint = document.createElement('p');
-        hint.className = 'text-xs mt-1 text-gray-600';
-        hint.textContent = '先に準備モードでアイテムにチェックを入れてください。';
-        empty.append(emptyMsg, hint);
+        empty.className = 'text-center py-8 text-gray-500 text-sm';
+        empty.textContent = '確認する持ち物がありません（準備でチェックした物が対象です）。';
         container.appendChild(empty);
-        updateReturnProgress([], []);
         return;
     }
 
-    // 消耗品と返却品に分類
-    const returnableItems = allItems.filter((item) => !item.consumable);
-    const consumableItems = allItems.filter((item) => item.consumable);
+    const important = returnables.filter((item) => item.important);
+    const others = returnables.filter((item) => !item.important);
 
-    // カテゴリ別にグループ化(返却品)
-    if (returnableItems.length > 0) {
-        const byCategory = {};
-        returnableItems.forEach((item) => {
-            const key = item.categoryId || item.categoryName || 'その他';
-            if (!byCategory[key]) byCategory[key] = { name: item.categoryName || key, items: [] };
-            byCategory[key].items.push(item);
-        });
-
-        Object.values(byCategory).forEach((group) => {
-            const section = document.createElement('div');
-            section.className = 'bg-gray-800/50 border border-gray-700/60 rounded-xl p-4';
-
-            const titleRow = document.createElement('div');
-            titleRow.className = 'flex items-center mb-3 border-b border-gray-700 pb-1';
-            const title = document.createElement('h2');
-            title.className = 'text-md font-bold text-green-300';
-            title.textContent = group.name;
-            titleRow.appendChild(title);
-            section.appendChild(titleRow);
-
-            const itemSpace = document.createElement('div');
-            itemSpace.className = 'space-y-3';
-            group.items.forEach((item) => {
-                itemSpace.appendChild(
-                    createReturnItemRow(item, returnChecked, containers[item.id] || 'none')
-                );
-            });
-            section.appendChild(itemSpace);
-            container.appendChild(section);
-        });
+    if (important.length > 0) {
+        container.appendChild(
+            buildReturnSection('🌟 わすれたら困るもの', important, returnChecked, containers, 'text-amber-700', 'bg-amber-50 border-amber-200')
+        );
     }
 
-    // 消耗品セクション(グレー表示)
-    if (consumableItems.length > 0) {
-        const consSection = document.createElement('div');
-        consSection.className = 'bg-gray-800/20 border border-gray-700/30 rounded-xl p-4 opacity-60';
-
-        const consTitleRow = document.createElement('div');
-        consTitleRow.className = 'flex items-center mb-3 border-b border-gray-700/50 pb-1';
-        const consTitle = document.createElement('h2');
-        consTitle.className = 'text-md font-bold text-gray-500';
-        consTitle.textContent = '🗑️ 消耗品(返却不要)';
-        consTitleRow.appendChild(consTitle);
-        consSection.appendChild(consTitleRow);
-
-        const consItemSpace = document.createElement('div');
-        consItemSpace.className = 'space-y-2';
-        consumableItems.forEach((item) => {
-            const row = document.createElement('div');
-            row.className = 'flex items-center gap-3 p-2';
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'text-sm text-gray-600';
-            nameSpan.textContent = item.name;
-            row.appendChild(nameSpan);
-            consItemSpace.appendChild(row);
+    if (others.length > 0) {
+        const wrap = document.createElement('div');
+        wrap.className = 'space-y-2';
+        const open = getState('returnOthersOpen', false);
+        const toggle = document.createElement('button');
+        toggle.className = 'w-full text-sm font-bold text-gray-500 bg-white border border-gray-200 rounded-2xl px-4 py-2.5 hover:bg-gray-50 transition-colors';
+        toggle.textContent = open ? '🔼 その他を閉じる' : `👜 その他（${others.length}）も見る`;
+        toggle.addEventListener('click', () => {
+            setState('returnOthersOpen', !getState('returnOthersOpen', false));
+            renderChecklist();
         });
-        consSection.appendChild(consItemSpace);
-        container.appendChild(consSection);
+        wrap.appendChild(toggle);
+        // 中身は常に描画し、閉じている時は隠すだけ(項目は残す)
+        const section = buildReturnSection('その他', others, returnChecked, containers, 'text-gray-600', 'bg-white border-gray-200');
+        if (!open) section.classList.add('hidden');
+        wrap.appendChild(section);
+        container.appendChild(wrap);
     }
+}
 
-    updateReturnProgress(returnableItems, returnChecked);
+function buildReturnSection(titleText, items, returnChecked, containers, titleColor, cardClass) {
+    const section = document.createElement('div');
+    section.className = `${cardClass} border rounded-3xl p-4 shadow-sm`;
+    const title = document.createElement('h2');
+    title.className = `text-md font-bold ${titleColor} mb-3`;
+    title.textContent = titleText;
+    section.appendChild(title);
+    const list = document.createElement('div');
+    list.className = 'space-y-2';
+    items.forEach((item) => list.appendChild(createReturnItemRow(item, returnChecked, containers[item.id] || 'none')));
+    section.appendChild(list);
+    return section;
 }
 
 function createReturnItemRow(item, returnChecked, currentBox) {
@@ -1946,47 +1919,35 @@ function setChecked(itemId, isChecked) {
     updateProgress();
 }
 
+function getImportantReturnables() {
+    const checked = getState('checked', {});
+    const hideSet = getFacilityHideSet();
+    const res = [];
+    appData.categories.forEach((cat) => (cat.items || []).forEach((item) => {
+        if (
+            item.important && !item.consumable &&
+            (item.applicable_locations || []).includes(currentSubtype) &&
+            checked[item.id] && !hideSet.has(item.id) && isItemVisible(item)
+        ) res.push(item);
+    }));
+    return res;
+}
+
 function setReturnChecked(itemId, isChecked) {
     const returnChecked = getState('returnChecked', {});
     if (isChecked) returnChecked[itemId] = true;
     else delete returnChecked[itemId];
     setState('returnChecked', returnChecked);
 
-    // チェック状態に応じてアイテム行のテキストスタイルを即座に更新
-    const checked = getState('checked', {});
-    const allReturnableItems = getReturnableCheckedItems();
-    updateReturnProgress(allReturnableItems, returnChecked);
-}
-
-function getReturnableCheckedItems() {
-    const checked = getState('checked', {});
-    const customItems = getCustomItems();
-    const hideSet = getFacilityHideSet();
-    const items = [];
-    appData.categories.forEach((cat) => {
-        (cat.items || []).forEach((item) => {
-            if (
-                (item.applicable_locations || []).includes(currentSubtype) &&
-                checked[item.id] &&
-                !item.consumable &&
-                !hideSet.has(item.id) &&
-                isItemVisible(item)
-            ) {
-                items.push(item);
-            }
-        });
-    });
-    customItems.forEach((item) => {
-        if (
-            (item.applicable_locations || []).includes(currentSubtype) &&
-            checked[item.id] &&
-            !item.consumable &&
-            isItemVisible(item)
-        ) {
-            items.push(item);
+    // 大事なものが全部そろったら小さくお祝い(数えない・でも安心)
+    if (isChecked) {
+        const imp = getImportantReturnables();
+        const justImportant = imp.some((it) => it.id === itemId);
+        if (justImportant && imp.length > 0 && imp.every((it) => returnChecked[it.id])) {
+            launchConfetti(14);
+            showToast('大事なものはOK！🎉');
         }
-    });
-    return items;
+    }
 }
 
 function setContainer(itemId, boxId) {
@@ -2376,12 +2337,6 @@ function sealActiveBox() {
     renderChecklist();
 }
 
-function updateReturnProgress(returnableItems, returnChecked) {
-    const total = returnableItems.length;
-    const done = returnableItems.filter((item) => returnChecked[item.id]).length;
-    $('return-progress-text').textContent = `${done} / ${total} 個`;
-    $('return-progress-bar').style.width = total > 0 ? `${(done / total) * 100}%` : '0%';
-}
 
 function resetChecks() {
     const prev = getState('checked', {});
@@ -2440,6 +2395,7 @@ function resetAll() {
         'outingCount',
         'lastMood',
         'diary',
+        'returnOthersOpen',
         'viewMode',
         'returnChecked',
         'facilityTemplate',
@@ -2471,68 +2427,6 @@ function resetAll() {
     });
 }
 
-// ---------- 未返却リストをコピー ----------
-
-async function copyMissingItems() {
-    const checked = getState('checked', {});
-    const returnChecked = getState('returnChecked', {});
-    const containers = getState('containers', {});
-    const customItems = getCustomItems();
-
-    const hideSet = getFacilityHideSet();
-    const missingItems = [];
-
-    appData.categories.forEach((cat) => {
-        (cat.items || []).forEach((item) => {
-            if (
-                (item.applicable_locations || []).includes(currentSubtype) &&
-                checked[item.id] &&
-                !item.consumable &&
-                !returnChecked[item.id] &&
-                !hideSet.has(item.id) &&
-                isItemVisible(item)
-            ) {
-                missingItems.push(item);
-            }
-        });
-    });
-    customItems.forEach((item) => {
-        if (
-            (item.applicable_locations || []).includes(currentSubtype) &&
-            checked[item.id] &&
-            !item.consumable &&
-            !returnChecked[item.id] &&
-            isItemVisible(item)
-        ) {
-            missingItems.push(item);
-        }
-    });
-
-    if (missingItems.length === 0) {
-        showToast('未返却のアイテムはありません ✅');
-        return;
-    }
-
-    const locationName = (appData.locations.find((l) => l.id === currentSubtype) || {}).name || currentSubtype;
-    const lines = missingItems.map((item) => {
-        const boxId = containers[item.id];
-        if (boxId && boxId !== 'none') {
-            return `・${item.name}(${getContainerName(boxId)})`;
-        }
-        return `・${item.name}`;
-    });
-
-    const text =
-        `お世話になっております。以下の持ち物が見当たらないため、ご確認をお願いできますでしょうか。\n` +
-        lines.join('\n');
-
-    try {
-        await navigator.clipboard.writeText(text);
-        showToast(`未返却リスト(${missingItems.length}点)をコピーしました 📋`);
-    } catch {
-        showToast('コピーに失敗しました。', 3000);
-    }
-}
 
 // ---------- 印刷 ----------
 
@@ -2700,7 +2594,12 @@ $('diary-close').addEventListener('click', closeDiary);
 $('diary-modal').addEventListener('click', (e) => { if (e.target === $('diary-modal')) closeDiary(); });
 $('reset-checks').addEventListener('click', resetChecks);
 $('reset-return-checks').addEventListener('click', resetReturnChecks);
-$('copy-missing-btn').addEventListener('click', copyMissingItems);
+$('return-done-btn').addEventListener('click', () => {
+    const name = getPersonName();
+    showCelebrationOverlay('✅', '確認できたね！', `${name ? name + 'さん、' : ''}おつかれさま。ゆっくり休んでね 🍵`, 'text-green-600');
+    returnCheckOpen = false;
+    applyReturnCheckVisibility();
+});
 $('reset-all').addEventListener('click', resetAll);
 $('share-btn').addEventListener('click', handleShare);
 $('line-share-btn').addEventListener('click', handleLineShare);

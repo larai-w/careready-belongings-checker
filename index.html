@@ -346,25 +346,22 @@
                 🔎 施設に忘れ物がないか確認する（任意）
             </button>
             <div id="return-check-details" class="hidden">
-                <div class="flex items-center justify-between mb-4 mt-3">
-                    <div class="text-sm text-green-600 font-bold">おかえりの確認 (<span id="return-progress-text">0/0</span>)</div>
-                    <div class="flex gap-2">
-                        <button id="copy-missing-btn" class="text-xs text-amber-400 hover:text-amber-300 transition-colors bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
-                            📋 未返却リストをコピー
-                        </button>
-                        <button id="reset-return-checks" class="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
-                            おかえりチェックをリセット
-                        </button>
-                    </div>
-                </div>
-                <div class="bg-gray-800 rounded-full h-2.5 mb-6 overflow-hidden">
-                    <div id="return-progress-bar" class="bg-green-500 h-2.5 w-0 transition-all duration-300"></div>
-                </div>
+                <p class="text-sm text-gray-600 mb-3 mt-2 text-center">ぜんぶ揃えなくて大丈夫。<br>気になるものだけ確認してね 🍵</p>
             </div>
         </div>
 
         <!-- チェックリスト本体 -->
         <div id="checklist-container" class="space-y-6"></div>
+
+        <!-- おかえりの確認おわり(全部チェック不要でも押せる) -->
+        <div id="return-done-section" class="hidden mt-4 mb-2">
+            <button id="return-done-btn" class="w-full flex items-center justify-center gap-2 text-base font-bold text-white bg-green-500 hover:bg-green-600 active:scale-[0.98] rounded-2xl px-5 py-3.5 shadow-lg transition-all">
+                ✅ 確認できた！
+            </button>
+            <div class="text-center mt-2">
+                <button id="reset-return-checks" class="text-xs text-gray-400 hover:text-red-400 underline transition-colors">確認をリセット</button>
+            </div>
+        </div>
 
         <!-- A: 準備完了はユーザーが宣言する(押すとお祝い) -->
         <div id="ready-section" class="mt-6 mb-2">
