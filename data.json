@@ -1,6 +1,9 @@
 {
   "conditions": [
-    { "id": "diaper", "name": "おむつを使用する", "default": true }
+    { "id": "diaper", "name": "おむつを使用する", "default": true },
+    { "id": "denture", "name": "入れ歯を使用する", "default": true },
+    { "id": "hearingaid", "name": "補聴器を使用する", "default": true },
+    { "id": "thickener", "name": "とろみ剤を使用する", "default": true }
   ],
   "locations": [
     { "id": "shortstay", "name": "ショートステイ", "sublabel": "特養・老健" },
@@ -30,7 +33,7 @@
         { "id": "hyg_diaper", "name": "紙おむつ・パッド(日数分+予備)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"], "consumable": true, "condition": "diaper" },
         { "id": "hyg_wipes", "name": "おしりふき・清拭シート", "applicable_locations": ["shortstay", "facility", "roken", "hospital"], "consumable": true, "condition": "diaper" },
         { "id": "hyg_toothbrush", "name": "歯ブラシ・コップ", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
-        { "id": "hyg_denture", "name": "入れ歯ケース・洗浄剤", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
+        { "id": "hyg_denture", "name": "入れ歯ケース・洗浄剤", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true, "condition": "denture" },
         { "id": "hyg_towel", "name": "フェイスタオル(日数分)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "hyg_bathtowel", "name": "バスタオル(2〜3枚)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "hyg_shampoo", "name": "石けん・シャンプー(施設指定を確認)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
@@ -45,9 +48,9 @@
         { "id": "med_medicine", "name": "常用薬(日数分・一包化推奨)", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"], "consumable": true , "important": true },
         { "id": "med_notebook", "name": "お薬手帳", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
         { "id": "med_glasses", "name": "眼鏡・眼鏡ケース ※名前記入", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] , "important": true },
-        { "id": "med_hearingaid", "name": "補聴器・予備電池 ※名前記入", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] , "important": true },
-        { "id": "med_ointment", "name": "湿布・軟膏・目薬(処方されている物)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
-        { "id": "med_thickener", "name": "とろみ剤(使用している場合)", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] }
+        { "id": "med_hearingaid", "name": "補聴器・予備電池 ※名前記入", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] , "important": true, "condition": "hearingaid" },
+        { "id": "med_ointment", "name": "湿布・軟膏・目薬(処方されている物)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
+        { "id": "med_thickener", "name": "とろみ剤", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"], "condition": "thickener" }
       ]
     },
     {
@@ -58,7 +61,8 @@
         { "id": "doc_hoken", "name": "健康保険証(マイナ保険証)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
         { "id": "doc_shinsatsu", "name": "診察券", "applicable_locations": ["hospital"] , "important": true },
         { "id": "doc_gendogaku", "name": "限度額適用認定証(入院時)", "applicable_locations": ["hospital"] },
-        { "id": "doc_contact", "name": "緊急連絡先メモ", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] , "important": true }
+        { "id": "doc_futangendo", "name": "介護保険負担限度額認定証(お持ちの方)", "applicable_locations": ["shortstay", "facility", "roken"] },
+        { "id": "doc_contact", "name": "緊急連絡先メモ", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] }
       ]
     },
     {
@@ -70,7 +74,7 @@
         { "id": "oth_bag", "name": "連絡帳・利用者カード", "applicable_locations": ["dayservice"] },
         { "id": "oth_entertainment", "name": "暇つぶしの物(本・ラジオ等)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "oth_charger", "name": "携帯電話・充電器", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
-        { "id": "oth_smallmoney", "name": "小銭(売店用・施設の規定を確認)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true }
+        { "id": "oth_smallmoney", "name": "小銭(売店用・施設の規定を確認)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] }
       ]
     }
   ]
