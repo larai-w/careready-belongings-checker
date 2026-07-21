@@ -1099,7 +1099,7 @@ function renderPrepChecklist() {
 
     if (viewMode === 'category') {
         // 通常カテゴリを処理
-        appData.categories.forEach((cat) => {
+        appData.categories.forEach((cat, catIdx) => {
             const officialItems = (cat.items || []).filter((item) =>
                 (item.applicable_locations || []).includes(currentSubtype) &&
                 !hideSet.has(item.id) &&
@@ -1119,18 +1119,20 @@ function renderPrepChecklist() {
             const filteredItems = [...officialItems, ...facItems, ...myCustomItems];
             if (filteredItems.length === 0) return;
 
+            // カテゴリーごとに淡いキャンディ色(シール帳っぽい楽しさ)
+            const candy = CANDY_PALETTE[catIdx % CANDY_PALETTE.length];
             const section = document.createElement('div');
-            section.className = 'bg-gray-800/50 border border-gray-700/60 rounded-xl p-4';
+            section.className = `${candy.bg} border ${candy.border} rounded-3xl p-4 shadow-sm`;
 
             // タイトル行 + 追加ボタン
             const titleRow = document.createElement('div');
-            titleRow.className = 'flex items-center justify-between mb-3 border-b border-gray-700 pb-1';
+            titleRow.className = 'flex items-center justify-between mb-3 border-b border-black/5 pb-1.5';
             const title = document.createElement('h2');
-            title.className = 'text-md font-bold text-teal-300';
+            title.className = `text-md font-bold ${candy.title}`;
             title.textContent = cat.name;
             const addBtn = document.createElement('button');
             addBtn.className =
-                'text-[11px] text-teal-500 hover:text-teal-300 bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/20 px-2 py-0.5 rounded transition-colors';
+                'text-[11px] font-bold text-gray-500 bg-white/70 hover:bg-white border border-black/10 px-2 py-0.5 rounded-full transition-colors';
             addBtn.textContent = '+ 追加';
             addBtn.addEventListener('click', () => openModal(cat.id));
             titleRow.append(title, addBtn);
@@ -1246,14 +1248,24 @@ function renderPrepChecklist() {
     updateProgress();
 }
 
-// 箱ごとの色(実物の箱に同色シールを貼れば対応が直感的)
+// カテゴリー用の淡いキャンディ色(ライト背景で映え、文字は濃色で読みやすい)
+const CANDY_PALETTE = [
+    { bg: 'bg-pink-50', border: 'border-pink-200', title: 'text-pink-500' },
+    { bg: 'bg-sky-50', border: 'border-sky-200', title: 'text-sky-600' },
+    { bg: 'bg-amber-50', border: 'border-amber-200', title: 'text-amber-600' },
+    { bg: 'bg-violet-50', border: 'border-violet-200', title: 'text-violet-500' },
+    { bg: 'bg-emerald-50', border: 'border-emerald-200', title: 'text-emerald-600' },
+    { bg: 'bg-rose-50', border: 'border-rose-200', title: 'text-rose-500' },
+];
+
+// 箱ごとの色(実物の箱に同色シールを貼れば対応が直感的)。pale=非選択時のキャンディ色
 const BOX_PALETTE = [
-    { dot: 'bg-teal-500',    badge: 'bg-teal-600',    chipBg: 'bg-teal-600',    chipBorder: 'border-teal-700' },
-    { dot: 'bg-sky-500',     badge: 'bg-sky-600',     chipBg: 'bg-sky-600',     chipBorder: 'border-sky-700' },
-    { dot: 'bg-amber-500',   badge: 'bg-amber-600',   chipBg: 'bg-amber-600',   chipBorder: 'border-amber-700' },
-    { dot: 'bg-rose-500',    badge: 'bg-rose-600',    chipBg: 'bg-rose-600',    chipBorder: 'border-rose-700' },
-    { dot: 'bg-violet-500',  badge: 'bg-violet-600',  chipBg: 'bg-violet-600',  chipBorder: 'border-violet-700' },
-    { dot: 'bg-emerald-500', badge: 'bg-emerald-600', chipBg: 'bg-emerald-600', chipBorder: 'border-emerald-700' },
+    { dot: 'bg-teal-500',    badge: 'bg-teal-600',    chipBg: 'bg-teal-600',    chipBorder: 'border-teal-700',    pale: 'bg-teal-100 text-teal-700 border-teal-300' },
+    { dot: 'bg-sky-500',     badge: 'bg-sky-600',     chipBg: 'bg-sky-600',     chipBorder: 'border-sky-700',     pale: 'bg-sky-100 text-sky-700 border-sky-300' },
+    { dot: 'bg-amber-500',   badge: 'bg-amber-600',   chipBg: 'bg-amber-600',   chipBorder: 'border-amber-700',   pale: 'bg-amber-100 text-amber-700 border-amber-300' },
+    { dot: 'bg-rose-500',    badge: 'bg-rose-600',    chipBg: 'bg-rose-600',    chipBorder: 'border-rose-700',    pale: 'bg-rose-100 text-rose-700 border-rose-300' },
+    { dot: 'bg-violet-500',  badge: 'bg-violet-600',  chipBg: 'bg-violet-600',  chipBorder: 'border-violet-700',  pale: 'bg-violet-100 text-violet-700 border-violet-300' },
+    { dot: 'bg-emerald-500', badge: 'bg-emerald-600', chipBg: 'bg-emerald-600', chipBorder: 'border-emerald-700', pale: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
 ];
 
 function getBoxColor(id) {
@@ -1366,10 +1378,10 @@ function buildActiveBoxBar() {
         const isActive = box.id === activeBox;
         const color = getBoxColor(box.id);
         const chip = document.createElement('button');
-        chip.className = `flex items-center gap-2 min-h-[48px] px-4 rounded-xl font-bold border-2 transition-colors ${
+        chip.className = `flex items-center gap-2 min-h-[48px] px-4 rounded-full font-bold border-2 transition-all ${
             isActive
-                ? `${color.chipBg} text-white ${color.chipBorder} shadow`
-                : 'bg-gray-800 text-gray-300 border-gray-700 hover:border-gray-500'
+                ? `${color.chipBg} text-white ${color.chipBorder} shadow-md scale-105`
+                : `${color.pale} hover:brightness-95`
         }`;
         const dot = document.createElement('span');
         dot.className = `w-3 h-3 rounded-full ${isActive ? 'bg-white' : color.dot}`;
@@ -1394,7 +1406,7 @@ function buildActiveBoxBar() {
 
     const addChip = document.createElement('button');
     addChip.className =
-        'flex items-center gap-1 min-h-[48px] px-4 rounded-xl font-bold text-teal-400 bg-teal-500/10 border-2 border-dashed border-teal-500/50 hover:bg-teal-500/20 transition-colors';
+        'flex items-center gap-1 min-h-[48px] px-4 rounded-full font-bold text-teal-500 bg-white border-2 border-dashed border-teal-400 hover:bg-teal-50 transition-colors';
     addChip.textContent = '＋ 箱を追加';
     addChip.addEventListener('click', addContainer);
     chips.appendChild(addChip);
@@ -1962,18 +1974,18 @@ function updateProgress() {
         total = document.querySelectorAll('input[type="checkbox"]:not([disabled])').length;
         done = document.querySelectorAll('input[type="checkbox"]:not([disabled]):checked').length;
     }
-    $('progress-text').textContent = `${done} / ${total} 個`;
+    // 完了はユーザーが「準備できた!」で宣言する → 分母(ゴール)は出さず「貯まった数」を見せる
+    $('progress-text').textContent = done > 0 ? `${done}コ そろえた 🎒` : 'これから準備 🎒';
     $('progress-bar').style.width = total > 0 ? `${(done / total) * 100}%` : '0%';
 
     const msgEl = document.getElementById('progress-msg');
     if (msgEl) {
-        const remaining = total - done;
-        if (total === 0 || remaining > 3) {
+        if (done === 0) {
             msgEl.textContent = '';
-        } else if (remaining === 0) {
-            msgEl.textContent = 'すべて準備できました。おつかれさまでした 🌸';
+        } else if (done % 5 === 0) {
+            msgEl.textContent = `🎉 ${done}コ！その調子！`;
         } else {
-            msgEl.textContent = `あと${remaining}つで準備完了です 🌸`;
+            msgEl.textContent = 'いい調子です 🎈';
         }
     }
 }
