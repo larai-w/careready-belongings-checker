@@ -30,7 +30,7 @@
         { "id": "hyg_diaper", "name": "紙おむつ・パッド(日数分+予備)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"], "consumable": true, "condition": "diaper" },
         { "id": "hyg_wipes", "name": "おしりふき・清拭シート", "applicable_locations": ["shortstay", "facility", "roken", "hospital"], "consumable": true, "condition": "diaper" },
         { "id": "hyg_toothbrush", "name": "歯ブラシ・コップ", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
-        { "id": "hyg_denture", "name": "入れ歯ケース・洗浄剤", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
+        { "id": "hyg_denture", "name": "入れ歯ケース・洗浄剤", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
         { "id": "hyg_towel", "name": "フェイスタオル(日数分)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "hyg_bathtowel", "name": "バスタオル(2〜3枚)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "hyg_shampoo", "name": "石けん・シャンプー(施設指定を確認)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
@@ -42,11 +42,11 @@
       "id": "medical",
       "name": "💊 薬・医療",
       "items": [
-        { "id": "med_medicine", "name": "常用薬(日数分・一包化推奨)", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"], "consumable": true },
-        { "id": "med_notebook", "name": "お薬手帳", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
-        { "id": "med_glasses", "name": "眼鏡・眼鏡ケース ※名前記入", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] },
-        { "id": "med_hearingaid", "name": "補聴器・予備電池 ※名前記入", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] },
-        { "id": "med_ointment", "name": "湿布・軟膏・目薬(処方されている物)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
+        { "id": "med_medicine", "name": "常用薬(日数分・一包化推奨)", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"], "consumable": true , "important": true },
+        { "id": "med_notebook", "name": "お薬手帳", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
+        { "id": "med_glasses", "name": "眼鏡・眼鏡ケース ※名前記入", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] , "important": true },
+        { "id": "med_hearingaid", "name": "補聴器・予備電池 ※名前記入", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] , "important": true },
+        { "id": "med_ointment", "name": "湿布・軟膏・目薬(処方されている物)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
         { "id": "med_thickener", "name": "とろみ剤(使用している場合)", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] }
       ]
     },
@@ -54,12 +54,11 @@
       "id": "documents",
       "name": "📄 書類・貴重品",
       "items": [
-        { "id": "doc_kaigo", "name": "介護保険証", "applicable_locations": ["shortstay", "facility", "roken"] },
-        { "id": "doc_hoken", "name": "健康保険証(マイナ保険証)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
-        { "id": "doc_shinsatsu", "name": "診察券", "applicable_locations": ["hospital"] },
+        { "id": "doc_kaigo", "name": "介護保険証", "applicable_locations": ["shortstay", "facility", "roken"] , "important": true },
+        { "id": "doc_hoken", "name": "健康保険証(マイナ保険証)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
+        { "id": "doc_shinsatsu", "name": "診察券", "applicable_locations": ["hospital"] , "important": true },
         { "id": "doc_gendogaku", "name": "限度額適用認定証(入院時)", "applicable_locations": ["hospital"] },
-        { "id": "doc_contact", "name": "緊急連絡先メモ", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] },
-        { "id": "doc_hanko", "name": "印鑑(入院手続き用)", "applicable_locations": ["hospital"] }
+        { "id": "doc_contact", "name": "緊急連絡先メモ", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] , "important": true }
       ]
     },
     {
@@ -70,8 +69,8 @@
         { "id": "oth_drink", "name": "飲み物・水筒 ※名前記入", "applicable_locations": ["dayservice"] },
         { "id": "oth_bag", "name": "連絡帳・利用者カード", "applicable_locations": ["dayservice"] },
         { "id": "oth_entertainment", "name": "暇つぶしの物(本・ラジオ等)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
-        { "id": "oth_charger", "name": "携帯電話・充電器", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
-        { "id": "oth_smallmoney", "name": "小銭(売店用・施設の規定を確認)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] }
+        { "id": "oth_charger", "name": "携帯電話・充電器", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
+        { "id": "oth_smallmoney", "name": "小銭(売店用・施設の規定を確認)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true }
       ]
     }
   ]
