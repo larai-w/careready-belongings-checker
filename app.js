@@ -1071,9 +1071,8 @@ function switchReturnMode(enabled) {
         el.classList.toggle('hidden', returnMode);
     });
     returnProgressSection.classList.toggle('hidden', !returnMode);
-    // 帰宅チェック中は準備用の表示切替をグレーアウト
-    viewModeToggle.classList.toggle('opacity-40', returnMode);
-    viewModeToggle.classList.toggle('pointer-events-none', returnMode);
+    // おかえり中でも「箱に詰める/持ち物リスト」を押せば おでかけ準備に戻れる(戻り方を分かりやすく)
+    viewModeToggle.classList.remove('opacity-40', 'pointer-events-none');
 
     // 帰宅チェックボタン(小)のON/OFF表示。テキストはHTML側(🏠 帰宅チェック)を維持
     returnBtn.className = returnMode
@@ -1093,6 +1092,8 @@ function switchReturnMode(enabled) {
 function switchViewMode(mode) {
     viewMode = mode;
     setState('viewMode', mode);   // 次回はこのビューで開く
+    // おかえり中に表示を押したら、おでかけ準備に戻す(1タップで戻れる)
+    if (returnMode) switchReturnMode(false);
     const active =
         'flex-1 py-2.5 text-sm font-bold rounded-lg transition-all bg-teal-500 text-slate-900 shadow';
     const inactive =
@@ -1747,21 +1748,33 @@ function createReturnItemRow(item, returnChecked, currentBox) {
     const qty = item.quantity && item.quantity > 1 ? item.quantity : null;
     const boxId = currentBox !== 'none' ? currentBox : null;
 
+    // 戻ってきたら緑に色づく丸チェックのカード
     const itemRow = document.createElement('div');
-    itemRow.className =
-        'flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-lg hover:bg-gray-700/10 transition-colors border-b border-gray-800/40 pb-3 sm:pb-2';
+    itemRow.className = `flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-2xl border-2 border-transparent transition-colors ${
+        isReturned ? 'bg-green-500/15' : 'hover:bg-gray-700/10'
+    }`;
 
     const left = document.createElement('div');
     left.className = 'flex items-start gap-3 flex-1';
     const label = document.createElement('label');
-    label.className = 'flex items-start gap-3 cursor-pointer flex-1';
+    label.className = 'flex items-center gap-3 cursor-pointer flex-1';
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.checked = isReturned;
-    checkbox.className =
-        'w-5 h-5 rounded border-gray-600 bg-gray-700 text-green-500 focus:ring-green-500 focus:ring-offset-gray-800 mt-0.5 accent-green-500';
-    checkbox.addEventListener('change', () => setReturnChecked(item.id, checkbox.checked));
+    checkbox.className = 'peer sr-only';
+
+    const mark = document.createElement('span');
+    mark.className =
+        'w-7 h-7 rounded-full border-2 border-gray-400 text-transparent flex items-center justify-center text-sm font-bold transition-all peer-checked:bg-green-500 peer-checked:border-green-500 peer-checked:text-white shrink-0';
+    mark.textContent = '✓';
+
+    checkbox.addEventListener('change', () => {
+        itemRow.classList.toggle('bg-green-500/15', checkbox.checked);
+        itemRow.classList.toggle('hover:bg-gray-700/10', !checkbox.checked);
+        if (checkbox.checked) celebrateCheck(mark);
+        setReturnChecked(item.id, checkbox.checked);
+    });
 
     const textWrap = document.createElement('div');
     textWrap.className = 'flex flex-col';
@@ -1769,7 +1782,7 @@ function createReturnItemRow(item, returnChecked, currentBox) {
     const nameWrap = document.createElement('div');
     nameWrap.className = 'flex items-center flex-wrap gap-1.5';
     const nameSpan = document.createElement('span');
-    nameSpan.className = `${isReturned ? 'line-through-text' : 'text-gray-300'} text-sm leading-relaxed`;
+    nameSpan.className = 'text-gray-300 text-sm leading-relaxed';
     nameSpan.textContent = item.name;
     nameWrap.appendChild(nameSpan);
 
@@ -1789,7 +1802,7 @@ function createReturnItemRow(item, returnChecked, currentBox) {
         textWrap.appendChild(boxBadge);
     }
 
-    label.append(checkbox, textWrap);
+    label.append(checkbox, mark, textWrap);
     left.appendChild(label);
     itemRow.appendChild(left);
 
