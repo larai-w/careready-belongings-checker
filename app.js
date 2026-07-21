@@ -896,9 +896,45 @@ async function handleShare() {
 
 // ---------- LINE Share ----------
 
+// 共有用の読めるテキスト(持ち物 + メモ)
+function buildListShareText() {
+    const locName = (getAllLocations().find((l) => l.id === currentSubtype) || {}).name || '持ち物';
+    const customItems = getCustomItems();
+    const hideSet = getFacilityHideSet();
+    const lines = [`${locName}の持ち物リスト`, ''];
+    appData.categories.forEach((cat) => {
+        const items = [];
+        (cat.items || []).forEach((item) => {
+            if ((item.applicable_locations || []).includes(currentSubtype) && !hideSet.has(item.id) && isItemVisible(item)) {
+                items.push(item.name);
+            }
+        });
+        customItems.forEach((item) => {
+            if (item.categoryId === cat.id && (item.applicable_locations || []).includes(currentSubtype) && isItemVisible(item)) {
+                items.push(item.name);
+            }
+        });
+        if (items.length) {
+            lines.push(cat.name);
+            items.forEach((n) => lines.push(`・${n}`));
+            lines.push('');
+        }
+    });
+    const memo = (getState('memos', {})[currentSubtype] || '').trim();
+    if (memo) lines.push('【メモ】', memo, '');
+    return lines.join('\n');
+}
+
 function handleLineShare() {
     const url = generateShareURL();
-    const text = url + '\nCareReadyで持ち物リストを共有します';
+    let body = buildListShareText();
+    // LINE共有はURL長に上限があるため、長すぎる時はメモ+リンクに省略
+    if ((body + url).length > 900) {
+        const locName = (getAllLocations().find((l) => l.id === currentSubtype) || {}).name || '持ち物';
+        const memo = (getState('memos', {})[currentSubtype] || '').trim();
+        body = `${locName}の持ち物リスト\n` + (memo ? `【メモ】${memo}\n` : '');
+    }
+    const text = `${body}\n${url}`;
     window.open('https://line.me/R/share?text=' + encodeURIComponent(text), '_blank', 'noopener');
 }
 
@@ -1342,7 +1378,8 @@ function renderPrepChecklist() {
             // カテゴリーごとに淡いキャンディ色(シール帳っぽい楽しさ)
             const candy = CANDY_PALETTE[catIdx % CANDY_PALETTE.length];
             const section = document.createElement('div');
-            section.className = `${candy.bg} border ${candy.border} rounded-3xl p-4 shadow-sm`;
+            // ホバーでふわっと浮いて輝く(荷物集めのモチベ)
+            section.className = `${candy.bg} border ${candy.border} rounded-3xl p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:ring-2 ${candy.ring}`;
 
             // タイトル行 + 追加ボタン
             const titleRow = document.createElement('div');
@@ -1470,12 +1507,12 @@ function renderPrepChecklist() {
 
 // カテゴリー用の淡いキャンディ色(ライト背景で映え、文字は濃色で読みやすい)
 const CANDY_PALETTE = [
-    { bg: 'bg-pink-50', border: 'border-pink-200', title: 'text-pink-500' },
-    { bg: 'bg-sky-50', border: 'border-sky-200', title: 'text-sky-600' },
-    { bg: 'bg-amber-50', border: 'border-amber-200', title: 'text-amber-600' },
-    { bg: 'bg-violet-50', border: 'border-violet-200', title: 'text-violet-500' },
-    { bg: 'bg-emerald-50', border: 'border-emerald-200', title: 'text-emerald-600' },
-    { bg: 'bg-rose-50', border: 'border-rose-200', title: 'text-rose-500' },
+    { bg: 'bg-pink-50', border: 'border-pink-200', title: 'text-pink-500', ring: 'hover:ring-pink-300' },
+    { bg: 'bg-sky-50', border: 'border-sky-200', title: 'text-sky-600', ring: 'hover:ring-sky-300' },
+    { bg: 'bg-amber-50', border: 'border-amber-200', title: 'text-amber-600', ring: 'hover:ring-amber-300' },
+    { bg: 'bg-violet-50', border: 'border-violet-200', title: 'text-violet-500', ring: 'hover:ring-violet-300' },
+    { bg: 'bg-emerald-50', border: 'border-emerald-200', title: 'text-emerald-600', ring: 'hover:ring-emerald-300' },
+    { bg: 'bg-rose-50', border: 'border-rose-200', title: 'text-rose-500', ring: 'hover:ring-rose-300' },
 ];
 
 // 箱ごとの色(実物の箱に同色シールを貼れば対応が直感的)。pale=非選択時のキャンディ色
