@@ -1,6 +1,7 @@
 import os
 
 from aws_cdk import (
+    BundlingOptions,
     CfnOutput,
     Duration,
     RemovalPolicy,
@@ -11,14 +12,17 @@ from aws_cdk import aws_apigatewayv2_authorizers as apigwv2_auth
 from aws_cdk import aws_apigatewayv2_integrations as apigwv2_int
 from aws_cdk import aws_cognito as cognito
 from aws_cdk import aws_dynamodb as dynamodb
+from aws_cdk import aws_events as events
+from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_secretsmanager as secretsmanager
 from aws_cdk import aws_sns as sns
 from constructs import Construct
 
-# Lambda ソース(backend/src)への相対パス
+# Lambda ソースへの相対パス
 _SRC_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "src")
+_PUSH_SENDER_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "push_sender")
 
 
 class CareReadyBackendStack(Stack):
@@ -131,6 +135,45 @@ class CareReadyBackendStack(Stack):
         fn.add_environment("FEEDBACK_TOPIC_ARN", feedback_topic.topic_arn)
         CfnOutput(self, "FeedbackTopicArn", value=feedback_topic.topic_arn)
 
+        # --- 予定リマインドの送信(毎日・Web Push) ---
+        vapid_secret = secretsmanager.Secret.from_secret_name_v2(
+            self, "VapidPrivateKey", "careready/vapid-private-key"
+        )
+        push_sender = lambda_.Function(
+            self,
+            "PushSender",
+            function_name="careready-push-sender",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="sender.handler",
+            code=lambda_.Code.from_asset(
+                _PUSH_SENDER_DIR,
+                bundling=BundlingOptions(
+                    image=lambda_.Runtime.PYTHON_3_12.bundling_image,
+                    command=[
+                        "bash",
+                        "-c",
+                        "pip install -r requirements.txt -t /asset-output && cp -au . /asset-output",
+                    ],
+                ),
+            ),
+            timeout=Duration.seconds(120),
+            memory_size=256,
+            environment={
+                "TABLE_NAME": table.table_name,
+                "VAPID_SECRET_NAME": "careready/vapid-private-key",
+                "VAPID_SUBJECT": "mailto:info@veai.jp",
+            },
+        )
+        table.grant_read_write_data(push_sender)
+        vapid_secret.grant_read(push_sender)
+        # 毎日 JST 09:00 (UTC 00:00) に確認プッシュを送る
+        events.Rule(
+            self,
+            "PushDailyRule",
+            schedule=events.Schedule.cron(hour="0", minute="0"),
+            targets=[targets.LambdaFunction(push_sender)],
+        )
+
         # --- API Gateway (HTTP API) ---
         cors = apigwv2.CorsPreflightOptions(
             allow_origins=["https://veai.jp", "http://localhost:8000"],
@@ -168,6 +211,17 @@ class CareReadyBackendStack(Stack):
         # 公開ルート(フィードバック): アプリ内フォームからのご意見を保存。
         http_api.add_routes(
             path="/v1/feedback",
+            methods=[apigwv2.HttpMethod.POST],
+            integration=integration,
+        )
+        # 公開ルート(プッシュ購読): 予定リマインドの購読/解除。
+        http_api.add_routes(
+            path="/v1/push/subscribe",
+            methods=[apigwv2.HttpMethod.POST],
+            integration=integration,
+        )
+        http_api.add_routes(
+            path="/v1/push/unsubscribe",
             methods=[apigwv2.HttpMethod.POST],
             integration=integration,
         )

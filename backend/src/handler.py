@@ -660,6 +660,36 @@ def submit_feedback(event):
     return _response(201, {"ok": True})
 
 
+# --- Web Push 購読 --------------------------------------------------------
+
+def push_subscribe(event):
+    """プッシュ購読を保存(予定日は保存しない=端末内で判定)。"""
+    body = _parse_body(event)
+    sub = body.get("subscription")
+    if not isinstance(sub, dict) or not sub.get("endpoint"):
+        raise _BadRequest("subscription is required")
+    sub_id = hashlib.sha256(sub["endpoint"].encode()).hexdigest()[:32]
+    item = {
+        "PK": "PUSHSUB",
+        "SK": f"SUB#{sub_id}",
+        "subscription": json.dumps(sub),
+        "product": "careready",
+        "updatedAt": int(time.time()),
+    }
+    _table().put_item(Item=item)
+    return _response(201, {"ok": True})
+
+
+def push_unsubscribe(event):
+    body = _parse_body(event)
+    endpoint = body.get("endpoint") or ""
+    if not endpoint:
+        raise _BadRequest("endpoint is required")
+    sub_id = hashlib.sha256(endpoint.encode()).hexdigest()[:32]
+    _table().delete_item(Key={"PK": "PUSHSUB", "SK": f"SUB#{sub_id}"})
+    return _response(200, {"ok": True})
+
+
 # --- ルーター -------------------------------------------------------------
 
 def _resolve_route(event):
@@ -696,6 +726,10 @@ def lambda_handler(event, context=None):
 
         if rk == "POST /v1/feedback":
             return submit_feedback(event)
+        if rk == "POST /v1/push/subscribe":
+            return push_subscribe(event)
+        if rk == "POST /v1/push/unsubscribe":
+            return push_unsubscribe(event)
         if rk == "POST /v1/templates/redeem":
             return redeem(event)
         if rk == "POST /v1/ocr/items":
