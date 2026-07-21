@@ -55,7 +55,7 @@ jobs:
             exit 1
           fi
 
-          for LABEL in "帰宅チェック" "行き先をえらぶ" "箱に詰める" "準備するもの"; do
+          for LABEL in "おかえり" "どこへ" "箱に詰める" "おでかけの準備"; do
             if ! grep -q "$LABEL" dom.html; then
               echo "::error::UI要素が見つかりません: $LABEL"
               exit 1

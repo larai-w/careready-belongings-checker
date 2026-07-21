@@ -262,7 +262,7 @@
 
         <!-- ① 行き先をえらぶ (主役) -->
         <div class="mb-4">
-            <p class="text-xs font-bold text-gray-500 mb-2">① 行き先をえらぶ</p>
+            <p class="text-xs font-bold text-gray-500 mb-2">① きょうは どこへ おでかけ？</p>
             <div id="location-tabs" class="grid grid-cols-2 gap-2">
                 <p class="text-gray-500 text-sm col-span-2 text-center py-2">データを読み込み中...</p>
             </div>
@@ -281,14 +281,14 @@
                 </button>
             </div>
             <button id="mode-return" class="shrink-0 text-[11px] font-bold leading-tight bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-3 transition-colors">
-                🏠 帰宅<br>チェック
+                🏠 おかえり<br>チェック
             </button>
         </div>
 
         <!-- ③ 準備するもの: 見出し + 進捗 + リセット -->
         <div id="progress-section">
             <div class="flex items-end justify-between mb-2">
-                <h2 class="text-lg font-bold text-gray-200">準備するもの</h2>
+                <h2 class="text-lg font-bold text-gray-200">おでかけの準備</h2>
                 <div class="flex items-center gap-3 shrink-0">
                     <span class="text-sm text-gray-400"><span id="progress-text">0/0</span></span>
                     <button id="reset-checks" class="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/20">
@@ -305,13 +305,13 @@
         <!-- 帰宅チェック進捗バー -->
         <div id="return-progress-section" class="hidden">
             <div class="flex items-center justify-between mb-4">
-                <div class="text-sm text-green-400">帰宅確認の進捗 (<span id="return-progress-text">0/0</span>)</div>
+                <div class="text-sm text-green-400">おかえりの確認 (<span id="return-progress-text">0/0</span>)</div>
                 <div class="flex gap-2">
                     <button id="copy-missing-btn" class="text-xs text-amber-400 hover:text-amber-300 transition-colors bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
                         📋 未返却リストをコピー
                     </button>
                     <button id="reset-return-checks" class="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
-                        帰宅チェックをリセット
+                        おかえりチェックをリセット
                     </button>
                 </div>
             </div>
