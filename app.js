@@ -1918,7 +1918,7 @@ function renderReturnChecklist() {
 
     if (important.length > 0) {
         container.appendChild(
-            buildReturnSection('🌟 わすれたら困るもの', important, returnChecked, containers, 'text-amber-700', 'bg-amber-50 border-amber-200')
+            buildReturnSection('🌟 わすれたら困るもの', important, returnChecked, containers, 'text-amber-700', 'bg-amber-50 border-amber-200', 'hover:ring-amber-300')
         );
     }
 
@@ -1942,9 +1942,10 @@ function renderReturnChecklist() {
     }
 }
 
-function buildReturnSection(titleText, items, returnChecked, containers, titleColor, cardClass) {
+function buildReturnSection(titleText, items, returnChecked, containers, titleColor, cardClass, ringClass = 'hover:ring-gray-300') {
     const section = document.createElement('div');
-    section.className = `${cardClass} border rounded-3xl p-4 shadow-sm`;
+    // ホバーで浮いて輝く(準備リストと同じ気持ちよさ)
+    section.className = `${cardClass} border rounded-3xl p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:ring-2 ${ringClass}`;
     const title = document.createElement('h2');
     title.className = `text-md font-bold ${titleColor} mb-3`;
     title.textContent = titleText;
@@ -2847,7 +2848,7 @@ $('reset-checks').addEventListener('click', resetChecks);
 $('reset-return-checks').addEventListener('click', resetReturnChecks);
 $('return-done-btn').addEventListener('click', () => {
     const name = getPersonName();
-    showCelebrationOverlay('✅', '確認できたね！', `${name ? name + 'さん、' : ''}おつかれさま。ゆっくり休んでね 🍵`, 'text-green-600');
+    showCelebrationOverlay('✅', '確認できました！', `${name ? name + 'さん、' : ''}おつかれさまでした 🍵`, 'text-green-600');
     returnCheckOpen = false;
     applyReturnCheckVisibility();
 });
