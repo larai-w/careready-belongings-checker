@@ -156,6 +156,12 @@ class CareReadyBackendStack(Stack):
             methods=[apigwv2.HttpMethod.POST],
             integration=integration,
         )
+        # 公開ルート(フィードバック): アプリ内フォームからのご意見を保存。
+        http_api.add_routes(
+            path="/v1/feedback",
+            methods=[apigwv2.HttpMethod.POST],
+            integration=integration,
+        )
         # 施設テンプレ CRUD(Cognito JWT オーソライザー)
         http_api.add_routes(
             path="/v1/facility/templates",

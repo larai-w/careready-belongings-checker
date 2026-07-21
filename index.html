@@ -396,13 +396,13 @@
             </div>
         </div>
 
-        <!-- ご意見・ご要望 (公式LINEへ) -->
+        <!-- ご意見・ご要望 (CareReadyへ直接) -->
         <div class="text-center mt-6 mb-2">
             <p class="text-xs text-gray-500 mb-2">お気づきの点・ご要望があれば教えてください</p>
-            <a href="https://line.me/R/ti/p/@775deusn" target="_blank" rel="noopener"
+            <button id="feedback-btn"
                class="inline-flex items-center gap-2 text-sm font-bold text-teal-400 bg-teal-500/10 border border-teal-500/30 hover:bg-teal-500/20 hover:border-teal-500/60 rounded-xl px-5 py-2.5 transition-colors">
                 📝 ご意見・ご要望を送る
-            </a>
+            </button>
         </div>
 
         <!-- 区切り: 破壊的操作を物理的に分離 -->
@@ -466,6 +466,29 @@
             <div class="flex gap-2 pt-2">
                 <button id="fc-modal-cancel" class="flex-1 py-2.5 rounded-xl text-sm text-gray-400 bg-gray-800 hover:bg-gray-700 transition-colors">キャンセル</button>
                 <button id="fc-modal-submit" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 transition-colors">受け取る</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ご意見フォーム -->
+    <div id="feedback-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm space-y-4">
+            <h3 class="text-lg font-bold text-teal-700">📝 ご意見・ご要望</h3>
+            <p class="text-xs text-gray-500">CareReady開発チームに直接届きます。よかった点・困った点・ほしい機能など、気軽にどうぞ。</p>
+            <div>
+                <label class="text-xs text-gray-500 block mb-1">メッセージ <span class="text-red-400">*</span></label>
+                <textarea id="feedback-message" rows="4" maxlength="2000" placeholder="例: 箱に詰めるのが楽しいです。◯◯があると助かります。"
+                    class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-teal-500 placeholder-gray-400 resize-none"></textarea>
+            </div>
+            <div>
+                <label class="text-xs text-gray-500 block mb-1">連絡先（任意・返信がほしい場合）</label>
+                <input id="feedback-contact" type="text" maxlength="200" placeholder="メール や LINE ID など"
+                    class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-teal-500 placeholder-gray-400">
+            </div>
+            <p id="feedback-error" class="hidden text-xs text-red-500"></p>
+            <div class="flex gap-2 pt-1">
+                <button id="feedback-cancel" class="flex-1 py-2.5 rounded-xl text-sm text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">キャンセル</button>
+                <button id="feedback-send" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-teal-500 hover:bg-teal-600 transition-colors">送信</button>
             </div>
         </div>
     </div>

@@ -610,6 +610,31 @@ def delete_template(event, tpl_id):
     return _response(204, {})
 
 
+# --- フィードバック -------------------------------------------------------
+
+def submit_feedback(event):
+    """アプリ内フォームからのご意見を保存(製品タグ=careready)。"""
+    body = _parse_body(event)
+    message = (body.get("message") or "").strip()
+    if not message:
+        raise _BadRequest("message is required")
+    message = message[:2000]
+    contact = (body.get("contact") or "").strip()[:200]
+    now = int(time.time())
+    fb_id = uuid.uuid4().hex
+    item = {
+        "PK": "FEEDBACK",
+        "SK": f"FB#{now}#{fb_id}",
+        "product": "careready",
+        "message": message,
+        "contact": contact,
+        "sourceIp": _source_ip(event),
+        "createdAt": now,
+    }
+    _table().put_item(Item=item)
+    return _response(201, {"ok": True})
+
+
 # --- ルーター -------------------------------------------------------------
 
 def _resolve_route(event):
@@ -644,6 +669,8 @@ def lambda_handler(event, context=None):
     try:
         rk, tpl_id = _resolve_route(event)
 
+        if rk == "POST /v1/feedback":
+            return submit_feedback(event)
         if rk == "POST /v1/templates/redeem":
             return redeem(event)
         if rk == "POST /v1/ocr/items":

@@ -469,3 +469,26 @@ def test_facility_id_falls_back_to_sub(dynamodb_table):
     )
     assert resp["statusCode"] == 200
     assert len(_body(resp)["templates"]) == 1
+
+
+# --- フィードバック -------------------------------------------------------
+
+def test_submit_feedback(dynamodb_table):
+    handler = dynamodb_table
+    resp = handler.lambda_handler(
+        make_event(
+            "POST",
+            "/v1/feedback",
+            body={"message": "使いやすいです", "contact": "test@example.com"},
+        )
+    )
+    assert resp["statusCode"] == 201
+    assert _body(resp)["ok"] is True
+
+
+def test_submit_feedback_requires_message(dynamodb_table):
+    handler = dynamodb_table
+    resp = handler.lambda_handler(
+        make_event("POST", "/v1/feedback", body={"message": "   "})
+    )
+    assert resp["statusCode"] == 400
