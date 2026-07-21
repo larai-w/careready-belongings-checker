@@ -2,7 +2,7 @@
 // 方針: アプリシェルはインストール時にプリキャッシュ。
 // 以降のGETリクエストは「キャッシュ優先 + 裏でネットワーク更新」(stale-while-revalidate)。
 
-const CACHE_NAME = 'careready-v29';
+const CACHE_NAME = 'careready-v30';
 
 const PRECACHE_URLS = [
     './',
@@ -29,6 +29,72 @@ self.addEventListener('activate', (event) => {
         caches.keys().then((keys) =>
             Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
         ).then(() => self.clients.claim())
+    );
+});
+
+// ---------- Web Push(予定リマインド) ----------
+// 予定日はサーバに送らない。サーバは「確認プッシュ」を送るだけで、
+// 通知するかどうかは この SW が端末内の specialOutings を見て判断する。
+
+function _idbGet(key) {
+    return new Promise((resolve) => {
+        try {
+            const req = indexedDB.open('careready');
+            req.onsuccess = () => {
+                try {
+                    const tx = req.result.transaction('kv', 'readonly');
+                    const g = tx.objectStore('kv').get(key);
+                    g.onsuccess = () => resolve(g.result);
+                    g.onerror = () => resolve(undefined);
+                } catch (e) {
+                    resolve(undefined);
+                }
+            };
+            req.onerror = () => resolve(undefined);
+        } catch (e) {
+            resolve(undefined);
+        }
+    });
+}
+
+async function _maybeNotifyOuting() {
+    const outings = await _idbGet('specialOutings');
+    if (!Array.isArray(outings)) return;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let best = null;
+    for (const o of outings) {
+        if (!o || !o.date) continue;
+        const d = new Date(`${o.date}T00:00:00`);
+        if (isNaN(d)) continue;
+        const days = Math.round((d - today) / 86400000);
+        if (days >= 0 && days <= 2 && (!best || days < best.days)) {
+            best = { name: o.name, days };
+        }
+    }
+    if (!best) return;
+    const when = best.days === 0 ? 'きょう' : best.days === 1 ? 'あした' : `あと${best.days}日`;
+    await self.registration.showNotification('CareReady', {
+        body: `${best.name} まで ${when}。準備をはじめませんか？`,
+        icon: './icons/icon-192.png',
+        badge: './icons/icon-192.png',
+        tag: 'careready-outing',
+    });
+}
+
+self.addEventListener('push', (event) => {
+    event.waitUntil(_maybeNotifyOuting());
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window' }).then((cs) => {
+            for (const c of cs) {
+                if ('focus' in c) return c.focus();
+            }
+            if (self.clients.openWindow) return self.clients.openWindow('./');
+        })
     );
 });
 

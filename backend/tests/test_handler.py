@@ -492,3 +492,37 @@ def test_submit_feedback_requires_message(dynamodb_table):
         make_event("POST", "/v1/feedback", body={"message": "   "})
     )
     assert resp["statusCode"] == 400
+
+
+# --- Web Push 購読 --------------------------------------------------------
+
+def test_push_subscribe(dynamodb_table):
+    handler = dynamodb_table
+    resp = handler.lambda_handler(
+        make_event(
+            "POST",
+            "/v1/push/subscribe",
+            body={"subscription": {"endpoint": "https://example.com/ep", "keys": {"p256dh": "x", "auth": "y"}}},
+        )
+    )
+    assert resp["statusCode"] == 201
+    assert _body(resp)["ok"] is True
+
+
+def test_push_subscribe_requires_endpoint(dynamodb_table):
+    handler = dynamodb_table
+    resp = handler.lambda_handler(
+        make_event("POST", "/v1/push/subscribe", body={"subscription": {}})
+    )
+    assert resp["statusCode"] == 400
+
+
+def test_push_unsubscribe(dynamodb_table):
+    handler = dynamodb_table
+    handler.lambda_handler(
+        make_event("POST", "/v1/push/subscribe", body={"subscription": {"endpoint": "https://example.com/ep2"}})
+    )
+    resp = handler.lambda_handler(
+        make_event("POST", "/v1/push/unsubscribe", body={"endpoint": "https://example.com/ep2"})
+    )
+    assert resp["statusCode"] == 200

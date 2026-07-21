@@ -7,6 +7,8 @@ const API_URL = '';
 
 // バックエンドAPIベースURL (B-3 施設テンプレ)
 const API_BASE = 'https://6r6n0fjn4d.execute-api.ap-northeast-1.amazonaws.com';
+// Web Push の公開鍵(公開してよい)。秘密鍵は AWS Secrets Manager のみ。
+const VAPID_PUBLIC_KEY = 'BLTVm2Q6Ps4Doy4Z1hqoYDOBTY6jm26mjrv2kUrZJZkH3qBPxIeynFvH4EnIGLkciHsoiQdJzYBBH53EFaxMVDc';
 
 const FETCH_TIMEOUT_MS = 8000;
 const OCR_TIMEOUT_MS = 30000;
@@ -214,6 +216,7 @@ async function startApp() {
         renderPersonName();
         renderMemo();
         renderReminder();
+        renderPushToggle();
         // ⑤ 開いたときの寄り添う挨拶(名前があれば呼びかける)
         setTimeout(() => {
             const n = getPersonName();
@@ -952,6 +955,79 @@ function openFeedback() {
 function closeFeedback() {
     $('feedback-modal').classList.add('hidden');
     $('feedback-modal').classList.remove('flex');
+}
+
+// ---------- 予定のお知らせ(Web Push・任意) ----------
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    const arr = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i += 1) arr[i] = raw.charCodeAt(i);
+    return arr;
+}
+
+function isPushSupported() {
+    return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+
+function renderPushToggle() {
+    const sec = $('push-section');
+    if (!sec) return;
+    if (!isPushSupported()) { sec.classList.add('hidden'); return; }
+    sec.classList.remove('hidden');
+    const on = getState('pushEnabled', false);
+    const btn = $('push-toggle');
+    btn.textContent = on ? '🔔 予定のお知らせ ON（タップで停止）' : '🔔 予定のお知らせを受け取る';
+    btn.className = on
+        ? 'w-full flex items-center justify-center gap-2 text-sm font-bold text-white bg-pink-500 hover:bg-pink-600 rounded-xl px-5 py-2.5 transition-colors'
+        : 'w-full flex items-center justify-center gap-2 text-sm font-bold text-pink-600 bg-pink-500/10 border border-pink-300 hover:bg-pink-500/20 rounded-xl px-5 py-2.5 transition-colors';
+}
+
+async function enablePush() {
+    try {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') { showToast('通知が許可されませんでした'); return; }
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+        const res = await fetch(`${API_BASE}/v1/push/subscribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscription: sub.toJSON() }),
+        });
+        if (!res.ok) throw new Error('failed');
+        setState('pushEnabled', true);
+        showToast('予定のお知らせをONにしました 🔔');
+    } catch (e) {
+        showToast('お知らせをONにできませんでした');
+    }
+}
+
+async function disablePush() {
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+            await fetch(`${API_BASE}/v1/push/unsubscribe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: sub.endpoint }),
+            }).catch(() => {});
+            await sub.unsubscribe().catch(() => {});
+        }
+    } catch (e) { /* noop */ }
+    setState('pushEnabled', false);
+    showToast('予定のお知らせをOFFにしました');
+}
+
+async function handlePushToggle() {
+    if (getState('pushEnabled', false)) await disablePush();
+    else await enablePush();
+    renderPushToggle();
 }
 
 async function sendFeedback() {
@@ -2667,6 +2743,7 @@ function resetAll() {
         'returnOthersOpen',
         'specialOutings',
         'reminderDismissed',
+        'pushEnabled',
         'viewMode',
         'returnChecked',
         'facilityTemplate',
@@ -2880,6 +2957,7 @@ $('reminder-dismiss').addEventListener('click', () => {
     $('reminder-banner').classList.add('hidden');
     $('reminder-banner').classList.remove('flex');
 });
+$('push-toggle').addEventListener('click', handlePushToggle);
 $('feedback-btn').addEventListener('click', openFeedback);
 $('feedback-cancel').addEventListener('click', closeFeedback);
 $('feedback-send').addEventListener('click', sendFeedback);
