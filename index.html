@@ -20,6 +20,10 @@
             background-color: #edf6f1;
             color: #22303a;
         }
+        /* 帰宅(おかえり)モードは、おうちのあたたかい色に切り替え */
+        body.light.return-mode {
+            background-color: #fff3e2;
+        }
         body.light .line-through-text {
             color: #9ca3af;
         }
@@ -277,6 +281,13 @@
             <div id="condition-toggles" class="hidden flex flex-wrap items-center gap-2 mt-2"></div>
         </div>
 
+        <!-- 📝 伝えたいこと・メモ (行き先ごと・ローカル保存) -->
+        <div id="memo-section" class="mb-4">
+            <label for="memo-input" class="text-xs font-bold text-gray-500 block mb-1">📝 伝えたいこと・メモ（この行き先用）</label>
+            <textarea id="memo-input" rows="2" maxlength="500" placeholder="施設に伝えたいこと・忘れないことをメモ（例: 看護師さんに薬のことを伝える）"
+                class="w-full bg-white border border-gray-300 rounded-2xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-teal-500 placeholder-gray-400 resize-none"></textarea>
+        </div>
+
         <!-- ② 作業のしかた: 箱に詰める(主・左) / 持ち物リスト + 帰宅チェック(小・事後) -->
         <div class="flex items-stretch gap-2 mb-5">
             <div id="view-mode-toggle" class="flex-1 flex bg-gray-800 rounded-xl p-1 border border-gray-700">
@@ -311,8 +322,22 @@
 
         <!-- 帰宅チェック進捗バー -->
         <div id="return-progress-section" class="hidden">
+            <!-- おうちの安心感 -->
+            <div class="bg-gradient-to-r from-amber-100 to-orange-100 border border-amber-200 rounded-3xl p-5 mb-4 text-center shadow-sm">
+                <p class="text-2xl font-bold text-amber-700">🏠 おかえりなさい</p>
+                <p id="return-welcome-msg" class="text-sm text-amber-700 mt-1">おつかれさま。忘れ物がないか、いっしょに確認しましょう 🍵</p>
+            </div>
+
+            <!-- きょうの調子 + ただいま記録(また行きたくなる循環) -->
+            <div class="bg-white border border-amber-200 rounded-3xl p-4 mb-4 shadow-sm">
+                <p class="text-sm font-bold text-gray-600 mb-2 text-center">きょうの調子は？</p>
+                <div id="mood-row" class="flex justify-center gap-2 mb-3"></div>
+                <button id="tadaima-btn" class="w-full flex items-center justify-center gap-2 text-base font-bold text-white bg-amber-500 hover:bg-amber-600 active:scale-[0.98] rounded-2xl px-4 py-3 shadow-lg transition-all">
+                    🏠 ただいま！（きょうを記録）
+                </button>
+            </div>
             <div class="flex items-center justify-between mb-4">
-                <div class="text-sm text-green-400">おかえりの確認 (<span id="return-progress-text">0/0</span>)</div>
+                <div class="text-sm text-green-600 font-bold">おかえりの確認 (<span id="return-progress-text">0/0</span>)</div>
                 <div class="flex gap-2">
                     <button id="copy-missing-btn" class="text-xs text-amber-400 hover:text-amber-300 transition-colors bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
                         📋 未返却リストをコピー
