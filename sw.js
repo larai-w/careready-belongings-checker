@@ -2,7 +2,7 @@
 // 方針: アプリシェルはインストール時にプリキャッシュ。
 // 以降のGETリクエストは「キャッシュ優先 + 裏でネットワーク更新」(stale-while-revalidate)。
 
-const CACHE_NAME = 'careready-v12';
+const CACHE_NAME = 'careready-v13';
 
 const PRECACHE_URLS = [
     './',
@@ -11,6 +11,7 @@ const PRECACHE_URLS = [
     './storage.js',
     './data.json',
     './manifest.webmanifest',
+    './icons/careready-logo.svg',
     './icons/icon-192.png',
     './icons/icon-512.png',
     './icons/apple-touch-icon.png',
