@@ -461,6 +461,27 @@
         </div>
     </div>
 
+    <!-- 特別なおでかけ追加モーダル -->
+    <div id="special-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm space-y-4">
+            <h3 class="text-lg font-bold text-pink-600">🎉 特別なおでかけ</h3>
+            <div>
+                <label class="text-xs text-gray-500 block mb-1">おでかけの名前 <span class="text-red-400">*</span></label>
+                <input id="special-name-input" type="text" maxlength="30" placeholder="例: お花見、家族旅行、お墓参り"
+                    class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-pink-500 placeholder-gray-400">
+            </div>
+            <div>
+                <label class="text-xs text-gray-500 block mb-1">予定日（任意・カウントダウンに使います）</label>
+                <input id="special-date-input" type="date"
+                    class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-pink-500">
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button id="special-cancel" class="flex-1 py-2.5 rounded-xl text-sm text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">キャンセル</button>
+                <button id="special-save" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-pink-500 hover:bg-pink-600 transition-colors">作る</button>
+            </div>
+        </div>
+    </div>
+
     <!-- アイテム追加モーダル -->
     <div id="add-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
         <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm space-y-4" id="add-modal-inner">

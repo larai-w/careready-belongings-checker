@@ -986,20 +986,21 @@ function openModal(categoryId) {
         catSelect.appendChild(opt);
     });
 
-    // 行き先チェックボックスを生成 (デフォルト全選択)
+    // 行き先チェックボックスを生成。特別なおでかけ中は その行き先のみ既定でON
     const locWrap = $('modal-locations');
     locWrap.textContent = '';
-    appData.locations.forEach((loc) => {
+    const special = isSpecialOuting(currentSubtype);
+    getAllLocations().forEach((loc) => {
         const label = document.createElement('label');
         label.className =
             'flex items-center gap-1.5 text-sm text-gray-300 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 cursor-pointer hover:border-teal-500 transition-colors';
         const cb = document.createElement('input');
         cb.type = 'checkbox';
         cb.value = loc.id;
-        cb.checked = true;
+        cb.checked = special ? loc.id === currentSubtype : true;
         cb.className = 'accent-teal-500';
         const span = document.createElement('span');
-        span.textContent = loc.name;
+        span.textContent = loc.special ? `🎉 ${loc.name}` : loc.name;
         label.append(cb, span);
         locWrap.appendChild(label);
     });
@@ -1122,26 +1123,67 @@ function switchViewMode(mode) {
     renderChecklist();
 }
 
+// ---------- 特別なおでかけ(自由な行き先) ----------
+
+function getSpecialOutings() {
+    const s = getState('specialOutings', []);
+    return Array.isArray(s) ? s : [];
+}
+
+function isSpecialOuting(id) {
+    return typeof id === 'string' && id.startsWith('so_');
+}
+
+// プリセット + 特別なおでかけ
+function getAllLocations() {
+    const presets = appData ? appData.locations : [];
+    const special = getSpecialOutings().map((o) => ({ id: o.id, name: o.name, special: true, date: o.date }));
+    return [...presets, ...special];
+}
+
+// 予定日まであと何日か(null=日付なし)
+function daysUntil(dateStr) {
+    if (!dateStr) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const d = new Date(`${dateStr}T00:00:00`);
+    if (isNaN(d)) return null;
+    return Math.round((d - today) / 86400000);
+}
+
+function countdownLabel(dateStr) {
+    const n = daysUntil(dateStr);
+    if (n === null) return '';
+    if (n > 1) return `あと${n}日`;
+    if (n === 1) return 'あした！';
+    if (n === 0) return 'きょう！';
+    return '';
+}
+
 function renderTabs() {
     const tabsContainer = $('location-tabs');
     tabsContainer.textContent = '';
-    appData.locations.forEach((loc) => {
+    getAllLocations().forEach((loc) => {
+        const isActive = currentSubtype === loc.id;
         const button = document.createElement('button');
-        // 行き先は最初に1回選ぶだけ → コンパクトに
+        // 行き先は最初に1回選ぶだけ → コンパクトに。特別なおでかけはピンク系で区別
         button.className = `w-full py-1.5 px-2 rounded-lg text-sm font-bold leading-tight transition-all ${
-            currentSubtype === loc.id
-                ? 'bg-teal-500 text-slate-900 shadow'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'
+            isActive
+                ? (loc.special ? 'bg-pink-500 text-white shadow' : 'bg-teal-500 text-slate-900 shadow')
+                : (loc.special
+                    ? 'bg-pink-50 text-pink-700 border border-pink-200 hover:bg-pink-100'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700')
         }`;
 
         const nameEl = document.createElement('span');
-        nameEl.textContent = loc.name;
+        nameEl.textContent = loc.special ? `🎉 ${loc.name}` : loc.name;
         button.appendChild(nameEl);
-        // 補足(特養・老健 等)は同じ行に小さく
-        if (loc.sublabel) {
+
+        const sub = loc.special ? countdownLabel(loc.date) : loc.sublabel;
+        if (sub) {
             const subEl = document.createElement('span');
-            subEl.className = 'text-[10px] font-normal opacity-70 ml-1';
-            subEl.textContent = loc.sublabel;
+            subEl.className = 'text-[10px] font-normal opacity-80 ml-1';
+            subEl.textContent = sub;
             button.appendChild(subEl);
         }
 
@@ -1153,6 +1195,67 @@ function renderTabs() {
         });
         tabsContainer.appendChild(button);
     });
+
+    // ＋ 特別なおでかけを追加
+    const addBtn = document.createElement('button');
+    addBtn.className = 'w-full py-1.5 px-2 rounded-lg text-sm font-bold text-pink-600 bg-pink-50 border border-dashed border-pink-300 hover:bg-pink-100 transition-colors';
+    addBtn.textContent = '🎉 ＋ 特別なおでかけ';
+    addBtn.addEventListener('click', openSpecialModal);
+    tabsContainer.appendChild(addBtn);
+
+    // 選択中が特別なおでかけなら削除リンク(2列ぶち抜き)
+    if (isSpecialOuting(currentSubtype)) {
+        const del = document.createElement('button');
+        del.className = 'col-span-2 text-[11px] text-gray-400 hover:text-red-400 underline transition-colors';
+        del.textContent = '🗑️ この特別なおでかけを削除';
+        del.addEventListener('click', () => deleteSpecialOuting(currentSubtype));
+        tabsContainer.appendChild(del);
+    }
+}
+
+function openSpecialModal() {
+    $('special-name-input').value = '';
+    $('special-date-input').value = '';
+    $('special-modal').classList.remove('hidden');
+    $('special-modal').classList.add('flex');
+    setTimeout(() => $('special-name-input').focus(), 50);
+}
+
+function closeSpecialModal() {
+    $('special-modal').classList.add('hidden');
+    $('special-modal').classList.remove('flex');
+}
+
+function saveSpecialOuting() {
+    const name = $('special-name-input').value.trim().slice(0, 30);
+    if (!name) { $('special-name-input').focus(); return; }
+    const date = $('special-date-input').value || '';
+    const id = `so_${Date.now()}`;
+    setState('specialOutings', [...getSpecialOutings(), { id, name, date }]);
+    currentSubtype = id;
+    closeSpecialModal();
+    renderTabs();
+    renderChecklist();
+    renderMemo();
+    showToast(`「${name}」を作りました 🎉`);
+}
+
+function deleteSpecialOuting(id) {
+    const o = getSpecialOutings().find((s) => s.id === id);
+    if (!o) return;
+    if (!confirm(`「${o.name}」を削除しますか？\n（この特別なおでかけの持ち物メモも消えます）`)) return;
+    setState('specialOutings', getSpecialOutings().filter((s) => s.id !== id));
+    // この行き先だけのカスタムアイテムを削除
+    const remaining = getCustomItems().filter((it) => {
+        const locs = it.applicable_locations || [];
+        return !(locs.length === 1 && locs[0] === id);
+    });
+    setState('customItems', remaining);
+    if (currentSubtype === id) currentSubtype = appData.locations[0].id;
+    renderTabs();
+    renderChecklist();
+    renderMemo();
+    showToast(`「${o.name}」を削除しました`);
 }
 
 function renderChecklist() {
@@ -1176,6 +1279,16 @@ function renderPrepChecklist() {
     const facilityItemsByCategory = getFacilityItemsByCategory();
 
     if (viewMode === 'category') {
+        // 特別なおでかけは自由に持ち物を追加(プリセット無し)
+        if (isSpecialOuting(currentSubtype)) {
+            const addWrap = document.createElement('div');
+            const addBtn = document.createElement('button');
+            addBtn.className = 'w-full flex items-center justify-center gap-2 text-sm font-bold text-pink-600 bg-pink-50 border border-dashed border-pink-300 hover:bg-pink-100 rounded-2xl px-5 py-3 transition-colors';
+            addBtn.textContent = '＋ 持ち物を追加';
+            addBtn.addEventListener('click', () => openModal('others'));
+            addWrap.appendChild(addBtn);
+            container.appendChild(addWrap);
+        }
         // 通常カテゴリを処理
         appData.categories.forEach((cat, catIdx) => {
             const officialItems = (cat.items || []).filter((item) =>
@@ -2186,7 +2299,7 @@ function renderReturnWelcome() {
 
 function handleTadaima() {
     // ① 日記エントリを記録
-    const dest = (appData.locations.find((l) => l.id === currentSubtype) || {}).name || 'おでかけ';
+    const dest = (getAllLocations().find((l) => l.id === currentSubtype) || {}).name || 'おでかけ';
     const noteEl = $('diary-note-input');
     const note = noteEl ? noteEl.value.trim().slice(0, 100) : '';
     setState('diary', [...getDiary(), {
@@ -2396,6 +2509,7 @@ function resetAll() {
         'lastMood',
         'diary',
         'returnOthersOpen',
+        'specialOutings',
         'viewMode',
         'returnChecked',
         'facilityTemplate',
@@ -2589,6 +2703,10 @@ $('return-check-toggle').addEventListener('click', () => {
     returnCheckOpen = !returnCheckOpen;
     applyReturnCheckVisibility();
 });
+$('special-save').addEventListener('click', saveSpecialOuting);
+$('special-cancel').addEventListener('click', closeSpecialModal);
+$('special-modal').addEventListener('click', (e) => { if (e.target === $('special-modal')) closeSpecialModal(); });
+$('special-name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveSpecialOuting(); });
 $('diary-btn').addEventListener('click', openDiary);
 $('diary-close').addEventListener('click', closeDiary);
 $('diary-modal').addEventListener('click', (e) => { if (e.target === $('diary-modal')) closeDiary(); });
