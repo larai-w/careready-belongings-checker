@@ -11,7 +11,9 @@ from aws_cdk import aws_apigatewayv2_authorizers as apigwv2_auth
 from aws_cdk import aws_apigatewayv2_integrations as apigwv2_int
 from aws_cdk import aws_cognito as cognito
 from aws_cdk import aws_dynamodb as dynamodb
+from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
+from aws_cdk import aws_secretsmanager as secretsmanager
 from constructs import Construct
 
 # Lambda ソース(backend/src)への相対パス
@@ -79,6 +81,16 @@ class CareReadyBackendStack(Stack):
             refresh_token_validity=Duration.days(30),
         )
 
+        ocr_provider = os.environ.get("OCR_PROVIDER", "openai").lower()
+        openai_secret_name = os.environ.get(
+            "OPENAI_API_KEY_SECRET_NAME", "careready/openai-api-key"
+        )
+        openai_secret = secretsmanager.Secret.from_secret_name_v2(
+            self,
+            "OpenAiApiKeySecret",
+            openai_secret_name,
+        )
+
         # --- Lambda(単一関数+内部ルーター、boto3のみ=バンドル不要)---
         fn = lambda_.Function(
             self,
@@ -87,14 +99,28 @@ class CareReadyBackendStack(Stack):
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="handler.lambda_handler",
             code=lambda_.Code.from_asset(_SRC_DIR),
-            timeout=Duration.seconds(10),
+            timeout=Duration.seconds(20),
             memory_size=256,
             environment={
                 "TABLE_NAME": table.table_name,
                 "GSI1_NAME": "GSI1",
+                "OCR_PROVIDER": ocr_provider,
+                "OCR_MAX_BYTES": str(4 * 1024 * 1024),
+                "OCR_DAILY_LIMIT": os.environ.get("OCR_DAILY_LIMIT", "20"),
+                "OPENAI_OCR_MODEL": os.environ.get("OPENAI_OCR_MODEL", "gpt-5.6-luna"),
+                "OPENAI_API_KEY_SECRET_ID": openai_secret_name,
+                "TEXTRACT_REGION": os.environ.get("TEXTRACT_REGION", "us-east-1"),
             },
         )
         table.grant_read_write_data(fn)
+        openai_secret.grant_read(fn)
+        if ocr_provider == "textract":
+            fn.add_to_role_policy(
+                iam.PolicyStatement(
+                    actions=["textract:DetectDocumentText"],
+                    resources=["*"],
+                )
+            )
 
         # --- API Gateway (HTTP API) ---
         cors = apigwv2.CorsPreflightOptions(
@@ -121,6 +147,12 @@ class CareReadyBackendStack(Stack):
         # 公開ルート(redeem)
         http_api.add_routes(
             path="/v1/templates/redeem",
+            methods=[apigwv2.HttpMethod.POST],
+            integration=integration,
+        )
+        # 公開ルート(OCR): 画像は保存せず、候補抽出だけを返す。
+        http_api.add_routes(
+            path="/v1/ocr/items",
             methods=[apigwv2.HttpMethod.POST],
             integration=integration,
         )

@@ -9,6 +9,10 @@ const API_URL = '';
 const API_BASE = 'https://6r6n0fjn4d.execute-api.ap-northeast-1.amazonaws.com';
 
 const FETCH_TIMEOUT_MS = 8000;
+const OCR_TIMEOUT_MS = 30000;
+const OCR_MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+const OCR_MAX_IMAGE_SIDE = 1800;
+const OCR_JPEG_QUALITY = 0.85;
 
 const CONTAINERS = [
     { id: 'none', name: '未指定 📦' },
@@ -27,6 +31,7 @@ let modalQty = 1;
 let pendingCategoryId = null;
 let pendingImportData = null;
 let toastTimer = null;
+let ocrCandidates = [];
 
 // 施設コードモーダル状態
 let fcRedeemState = null;   // null | { name, items, overrides, facilityName, code }
@@ -39,9 +44,23 @@ function getCustomItems() {
     return getState('customItems', []);
 }
 
+function getCustomContainers() {
+    const list = getState('customContainers', []);
+    return Array.isArray(list) ? list : [];
+}
+
+// 固定コンテナ + ユーザー追加コンテナ をまとめて返す
+function getAllContainers() {
+    return [...CONTAINERS, ...getCustomContainers()];
+}
+
+function isCustomContainer(id) {
+    return typeof id === 'string' && id.startsWith('cc_');
+}
+
 function getContainerName(id) {
     const names = getState('containerNames', {});
-    const def = CONTAINERS.find((c) => c.id === id);
+    const def = getAllContainers().find((c) => c.id === id);
     return names[id] || (def ? def.name : id);
 }
 
@@ -200,7 +219,7 @@ async function startApp() {
         msg.className = 'text-red-400 text-sm';
         msg.textContent = 'データの読み込みに失敗しました。';
         const retry = document.createElement('button');
-        retry.className = 'ml-2 text-cyan-400 underline text-sm';
+        retry.className = 'ml-2 text-teal-400 underline text-sm';
         retry.textContent = '再試行';
         retry.addEventListener('click', () => {
             tabs.textContent = '読み込み中...';
@@ -251,6 +270,12 @@ function handleImportOk() {
     if (pendingImportData.containerNames) {
         const names = getState('containerNames', {});
         setState('containerNames', { ...names, ...pendingImportData.containerNames });
+    }
+    if (Array.isArray(pendingImportData.customContainers) && pendingImportData.customContainers.length > 0) {
+        const existing = getCustomContainers();
+        const existingIds = new Set(existing.map((c) => c.id));
+        const toAdd = pendingImportData.customContainers.filter((c) => c && c.id && !existingIds.has(c.id));
+        if (toAdd.length > 0) setState('customContainers', [...existing, ...toAdd]);
     }
 
     pendingImportData = null;
@@ -319,7 +344,8 @@ function checkFacilityCodeParam() {
         renderChecklist();
         showToast(`🏥 施設テンプレ「${tpl.name}」を取り込みました`);
     }).catch((e) => {
-        showToast('施設コードの取り込みに失敗しました: ' + e.message, 4000);
+        const msg = e.name === 'AbortError' ? 'タイムアウトしました。再試行してください。' : '施設コードの取り込みに失敗しました。コードをお確かめの上、再試行してください。';
+        showToast(msg, 4000);
     });
 }
 
@@ -419,6 +445,367 @@ function revokeFacilityTemplate() {
     showToast('施設テンプレを解除しました');
 }
 
+// ---------- OCR取込 ----------
+
+const OCR_CATEGORY_HINTS = {
+    clothing: ['着替', '衣類', '服', '肌着', '下着', '靴下', 'パジャマ', '寝間着', '上着', '羽織', 'カーディガン', '室内履き', 'スリッパ'],
+    hygiene: ['タオル', '歯ブラシ', 'コップ', '入れ歯', '洗浄', 'おむつ', 'パッド', 'おしりふき', '清拭', 'シャンプー', '石けん', 'ティッシュ', '袋'],
+    medical: ['薬', 'お薬', '服薬', '処方', '目薬', '軟膏', '湿布', 'とろみ', '眼鏡', '補聴器', '電池'],
+    documents: ['保険証', '診察券', '認定証', '印鑑', '連絡先', '書類', '同意書', '利用票', '介護保険'],
+    others: ['マスク', '水筒', '飲み物', '連絡帳', 'カード', '本', 'ラジオ', '携帯', '充電器', '小銭', '財布'],
+};
+
+function normalizeOcrText(text) {
+    return (text || '')
+        .normalize('NFKC')
+        .toLowerCase()
+        .replace(/[\s・、。,.／/()（）[\]【】「」『』:：\-ー〜~]+/g, '');
+}
+
+function getCategoryName(categoryId) {
+    const cat = appData && appData.categories.find((c) => c.id === categoryId);
+    return cat ? cat.name : '🎒 その他';
+}
+
+function inferOcrCategory(name) {
+    const normalized = normalizeOcrText(name);
+    if (!appData) return 'others';
+
+    for (const cat of appData.categories) {
+        for (const item of cat.items || []) {
+            const itemKey = normalizeOcrText(item.name);
+            if (itemKey && normalized.length >= 3 && (itemKey.includes(normalized) || normalized.includes(itemKey))) {
+                return cat.id;
+            }
+        }
+    }
+
+    for (const [categoryId, hints] of Object.entries(OCR_CATEGORY_HINTS)) {
+        if (hints.some((hint) => normalized.includes(normalizeOcrText(hint)))) {
+            return categoryId;
+        }
+    }
+    return 'others';
+}
+
+function getKnownItemNames() {
+    const names = [];
+    if (appData) {
+        appData.categories.forEach((cat) => {
+            (cat.items || []).forEach((item) => names.push(item.name));
+        });
+    }
+    const facilityTemplate = getFacilityTemplate();
+    if (facilityTemplate && Array.isArray(facilityTemplate.items)) {
+        facilityTemplate.items.forEach((item) => names.push(item.name));
+    }
+    getCustomItems().forEach((item) => names.push(item.name));
+    return names;
+}
+
+function isKnownOcrItem(name) {
+    const candidateKey = normalizeOcrText(name);
+    if (candidateKey.length < 2) return false;
+    return getKnownItemNames().some((knownName) => {
+        const knownKey = normalizeOcrText(knownName);
+        return knownKey.length >= 2 && (
+            knownKey.includes(candidateKey) ||
+            (candidateKey.length >= 4 && candidateKey.includes(knownKey))
+        );
+    });
+}
+
+function guessQuantity(name) {
+    const normalized = (name || '').normalize('NFKC');
+    const match = normalized.match(/(\d{1,2})\s*(枚|個|本|組|足|箱|日分|セット)/);
+    if (!match) return 1;
+    const qty = Number(match[1]);
+    return Number.isFinite(qty) && qty > 0 ? Math.min(qty, 99) : 1;
+}
+
+function setOcrError(message) {
+    const errorEl = $('ocr-error-msg');
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+}
+
+function clearOcrError() {
+    const errorEl = $('ocr-error-msg');
+    errorEl.textContent = '';
+    errorEl.classList.add('hidden');
+}
+
+function updateOcrImportButton() {
+    const selected = ocrCandidates.filter((candidate) => candidate.checked && candidate.name.trim());
+    const importBtn = $('ocr-import-btn');
+    importBtn.disabled = selected.length === 0;
+    importBtn.textContent = selected.length > 0 ? `${selected.length}件を追加する` : '追加する';
+}
+
+function resetOcrModal() {
+    ocrCandidates = [];
+    $('ocr-file-input').value = '';
+    $('ocr-status').textContent = '';
+    $('ocr-candidate-list').textContent = '';
+    $('ocr-results').classList.add('hidden');
+    $('ocr-start-btn').classList.remove('hidden');
+    $('ocr-start-btn').disabled = false;
+    $('ocr-start-btn').textContent = '読み取る';
+    $('ocr-import-btn').classList.add('hidden');
+    $('ocr-import-btn').disabled = true;
+    clearOcrError();
+}
+
+function openOcrModal() {
+    resetOcrModal();
+    $('ocr-modal').classList.remove('hidden');
+    $('ocr-modal').classList.add('flex');
+}
+
+function closeOcrModal() {
+    $('ocr-modal').classList.add('hidden');
+    $('ocr-modal').classList.remove('flex');
+}
+
+function loadImageElement(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(img);
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('写真を読み込めませんでした。JPEGまたはPNGで試してください。'));
+        };
+        img.src = url;
+    });
+}
+
+function canvasToJpegBlob(canvas, quality) {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (!blob) reject(new Error('写真の変換に失敗しました。'));
+            else resolve(blob);
+        }, 'image/jpeg', quality);
+    });
+}
+
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = String(reader.result || '');
+            resolve(result.slice(result.indexOf(',') + 1));
+        };
+        reader.onerror = () => reject(new Error('写真を読み込めませんでした。'));
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function prepareOcrImage(file) {
+    if (!file || !file.type.startsWith('image/')) {
+        throw new Error('写真ファイルを選択してください。');
+    }
+
+    const img = await loadImageElement(file);
+    const scale = Math.min(1, OCR_MAX_IMAGE_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    let blob = await canvasToJpegBlob(canvas, OCR_JPEG_QUALITY);
+    if (blob.size > OCR_MAX_UPLOAD_BYTES) {
+        blob = await canvasToJpegBlob(canvas, 0.68);
+    }
+    if (blob.size > OCR_MAX_UPLOAD_BYTES) {
+        throw new Error('写真が大きすぎます。少し離れて1枚に収めるか、余白を切り取ってください。');
+    }
+    return blobToBase64(blob);
+}
+
+async function requestOcrItems(imageBase64, mimeType) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), OCR_TIMEOUT_MS);
+    try {
+        const res = await fetch(`${API_BASE}/v1/ocr/items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64, mimeType }),
+            signal: controller.signal,
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            if (res.status === 429) {
+                throw new Error('今日の読み取り回数の上限に達しました。明日もう一度試すか、手入力で追加してください。');
+            }
+            if (res.status === 502 || res.status === 503) {
+                throw new Error('読み取り機能を一時的に利用できません。写真の内容は保存されていません。時間を置いて再試行してください。');
+            }
+            throw new Error(json.error || `HTTP ${res.status}`);
+        }
+        return json;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+function renderOcrCandidates(items) {
+    const list = $('ocr-candidate-list');
+    list.textContent = '';
+
+    ocrCandidates = (items || []).map((item, index) => {
+        const name = String(item.name || '').trim().slice(0, 50);
+        const duplicate = isKnownOcrItem(name);
+        const categoryId = inferOcrCategory(name);
+        return {
+            id: `ocr_${Date.now()}_${index}`,
+            name,
+            confidence: item.confidence,
+            categoryId,
+            quantity: guessQuantity(name),
+            checked: !duplicate,
+            duplicate,
+        };
+    }).filter((candidate) => candidate.name);
+
+    $('ocr-count').textContent = `${ocrCandidates.length}件`;
+    $('ocr-results').classList.toggle('hidden', ocrCandidates.length === 0);
+    $('ocr-start-btn').classList.add('hidden');
+    $('ocr-import-btn').classList.remove('hidden');
+
+    if (ocrCandidates.length === 0) {
+        $('ocr-status').textContent = '追加候補を見つけられませんでした。明るい場所で、紙全体が写るように撮り直してください。';
+        updateOcrImportButton();
+        return;
+    }
+
+    $('ocr-status').textContent = '必要なものだけ選んで、名前やカテゴリーを確認してください。';
+
+    ocrCandidates.forEach((candidate) => {
+        const row = document.createElement('div');
+        row.className = 'bg-gray-800/70 border border-gray-700 rounded-xl p-3 space-y-2';
+
+        const top = document.createElement('div');
+        top.className = 'flex items-center gap-2';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = candidate.checked;
+        cb.className = 'w-5 h-5 accent-amber-500';
+        cb.addEventListener('change', () => {
+            candidate.checked = cb.checked;
+            updateOcrImportButton();
+        });
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = candidate.name;
+        nameInput.maxLength = 50;
+        nameInput.className = 'flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500';
+        nameInput.addEventListener('input', () => {
+            candidate.name = nameInput.value.trim();
+            updateOcrImportButton();
+        });
+
+        top.append(cb, nameInput);
+        row.appendChild(top);
+
+        const bottom = document.createElement('div');
+        bottom.className = 'flex items-center gap-2';
+
+        const select = document.createElement('select');
+        select.className = 'flex-1 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-amber-500';
+        appData.categories.forEach((cat) => {
+            const opt = document.createElement('option');
+            opt.value = cat.id;
+            opt.textContent = cat.name;
+            opt.selected = cat.id === candidate.categoryId;
+            select.appendChild(opt);
+        });
+        select.addEventListener('change', () => {
+            candidate.categoryId = select.value;
+        });
+        bottom.appendChild(select);
+
+        if (candidate.duplicate) {
+            const badge = document.createElement('span');
+            badge.className = 'text-[10px] text-gray-500 border border-gray-700 rounded px-1.5 py-1';
+            badge.textContent = '既存候補';
+            bottom.appendChild(badge);
+        } else if (candidate.confidence > 0) {
+            const confidence = document.createElement('span');
+            confidence.className = 'text-[10px] text-gray-500';
+            confidence.textContent = `${Math.round(candidate.confidence)}%`;
+            bottom.appendChild(confidence);
+        }
+
+        row.appendChild(bottom);
+        list.appendChild(row);
+    });
+
+    updateOcrImportButton();
+}
+
+async function handleOcrStart() {
+    clearOcrError();
+    const file = $('ocr-file-input').files && $('ocr-file-input').files[0];
+    if (!file) {
+        setOcrError('写真を選択してください。');
+        return;
+    }
+    if (!navigator.onLine) {
+        setOcrError('オフラインのため読み取れません。オンラインで再試行してください。');
+        return;
+    }
+
+    const startBtn = $('ocr-start-btn');
+    startBtn.disabled = true;
+    startBtn.textContent = '読み取り中…';
+    $('ocr-status').textContent = '写真を読み取り用に調整しています。';
+
+    try {
+        const imageBase64 = await prepareOcrImage(file);
+        $('ocr-status').textContent = '紙の文字を読み取っています。';
+        const result = await requestOcrItems(imageBase64, 'image/jpeg');
+        renderOcrCandidates(result.items || []);
+    } catch (e) {
+        const message = e.name === 'AbortError' ? '読み取りがタイムアウトしました。写真を小さくして再試行してください。' : (e.message || '読み取りに失敗しました。');
+        setOcrError(message);
+        startBtn.disabled = false;
+        startBtn.textContent = '読み取る';
+    }
+}
+
+function handleOcrImport() {
+    const selected = ocrCandidates.filter((candidate) => candidate.checked && candidate.name.trim());
+    if (selected.length === 0) {
+        setOcrError('追加する候補を選択してください。');
+        return;
+    }
+
+    const existing = getCustomItems();
+    const now = Date.now();
+    const imported = selected.map((candidate, index) => ({
+        id: `custom_ocr_${now}_${index}_${Math.random().toString(36).slice(2, 7)}`,
+        name: candidate.name.trim().slice(0, 50),
+        categoryId: candidate.categoryId,
+        categoryName: getCategoryName(candidate.categoryId),
+        applicable_locations: [currentSubtype],
+        quantity: candidate.quantity || 1,
+        isCustom: true,
+        source: 'ocr',
+    }));
+
+    setState('customItems', [...existing, ...imported]);
+    closeOcrModal();
+    renderChecklist();
+    showToast(`${imported.length}件を追加しました`);
+}
+
 // ---------- 条件トグルUI ----------
 
 function renderConditionToggles() {
@@ -430,18 +817,23 @@ function renderConditionToggles() {
     wrap.textContent = '';
     wrap.classList.remove('hidden');
 
+    const condLabel = document.createElement('span');
+    condLabel.className = 'text-xs text-gray-500 shrink-0';
+    condLabel.textContent = '条件:';
+    wrap.appendChild(condLabel);
+
     const condState = getConditionState();
     appData.conditions.forEach((cond) => {
         const isOn = condState[cond.id] !== undefined ? condState[cond.id] : cond.default;
 
         const btn = document.createElement('button');
         btn.className = isOn
-            ? 'flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-colors bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+            ? 'flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-colors bg-teal-500/20 text-teal-300 border-teal-500/40'
             : 'flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-colors bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-600';
 
         const indicator = document.createElement('span');
         indicator.textContent = isOn ? '●' : '○';
-        indicator.className = isOn ? 'text-cyan-400' : 'text-gray-600';
+        indicator.className = isOn ? 'text-teal-400' : 'text-gray-600';
 
         const label = document.createElement('span');
         label.textContent = cond.name;
@@ -467,6 +859,7 @@ function generateShareURL() {
     const data = {
         customItems: getCustomItems(),
         containerNames: getState('containerNames', {}),
+        customContainers: getCustomContainers(),
     };
     const encoded = encodeShareData(data);
     const base = window.location.origin + window.location.pathname;
@@ -504,7 +897,7 @@ function handleLineShare() {
 function applyTheme(isLight) {
     if (isLight) {
         document.body.classList.add('light');
-        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f5f7fa');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#faf6f0');
         $('theme-btn').textContent = '☀️';
     } else {
         document.body.classList.remove('light');
@@ -514,14 +907,14 @@ function applyTheme(isLight) {
 }
 
 function handleThemeToggle() {
-    const current = getState('theme', 'dark');
+    const current = getState('theme', 'light');
     const next = current === 'dark' ? 'light' : 'dark';
     setState('theme', next);
     applyTheme(next === 'light');
 }
 
 function restoreTheme() {
-    const saved = getState('theme', 'dark');
+    const saved = getState('theme', 'light');
     applyTheme(saved === 'light');
 }
 
@@ -550,12 +943,12 @@ function openModal(categoryId) {
     appData.locations.forEach((loc) => {
         const label = document.createElement('label');
         label.className =
-            'flex items-center gap-1.5 text-sm text-gray-300 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 cursor-pointer hover:border-cyan-500 transition-colors';
+            'flex items-center gap-1.5 text-sm text-gray-300 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 cursor-pointer hover:border-teal-500 transition-colors';
         const cb = document.createElement('input');
         cb.type = 'checkbox';
         cb.value = loc.id;
         cb.checked = true;
-        cb.className = 'accent-cyan-500';
+        cb.className = 'accent-teal-500';
         const span = document.createElement('span');
         span.textContent = loc.name;
         label.append(cb, span);
@@ -618,27 +1011,23 @@ function switchReturnMode(enabled) {
     const viewModeToggle = $('view-mode-toggle');
     const progressSection = $('progress-section');
     const progressBarWrap = $('progress-bar-wrap');
+    const progressMsg = $('progress-msg');
+    const readySection = $('ready-section');
     const returnProgressSection = $('return-progress-section');
 
-    if (returnMode) {
-        // 帰宅チェックモードON
-        returnBtn.className =
-            'text-xs bg-green-500 text-slate-900 font-bold rounded-xl px-4 py-1.5 transition-colors shadow';
-        returnBtn.textContent = '🏠 帰宅チェックモード (ON)';
-        viewModeToggle.classList.add('opacity-40', 'pointer-events-none');
-        progressSection.classList.add('hidden');
-        progressBarWrap.classList.add('hidden');
-        returnProgressSection.classList.remove('hidden');
-    } else {
-        // 準備モードに戻る
-        returnBtn.className =
-            'text-xs bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-4 py-1.5 transition-colors font-bold';
-        returnBtn.textContent = '🏠 帰宅チェックモード';
-        viewModeToggle.classList.remove('opacity-40', 'pointer-events-none');
-        progressSection.classList.remove('hidden');
-        progressBarWrap.classList.remove('hidden');
-        returnProgressSection.classList.add('hidden');
-    }
+    // 準備モード専用UIの表示/非表示
+    [progressSection, progressBarWrap, progressMsg, readySection].forEach((el) => {
+        el.classList.toggle('hidden', returnMode);
+    });
+    returnProgressSection.classList.toggle('hidden', !returnMode);
+    // 帰宅チェック中は準備用の表示切替をグレーアウト
+    viewModeToggle.classList.toggle('opacity-40', returnMode);
+    viewModeToggle.classList.toggle('pointer-events-none', returnMode);
+
+    // 帰宅チェックボタン(小)のON/OFF表示。テキストはHTML側(🏠 帰宅チェック)を維持
+    returnBtn.className = returnMode
+        ? 'shrink-0 text-[11px] font-bold leading-tight bg-green-500 text-slate-900 rounded-xl px-3 transition-colors shadow'
+        : 'shrink-0 text-[11px] font-bold leading-tight bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-3 transition-colors';
 
     renderChecklist();
 }
@@ -648,9 +1037,9 @@ function switchReturnMode(enabled) {
 function switchViewMode(mode) {
     viewMode = mode;
     const active =
-        'flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-slate-900 shadow';
+        'flex-1 py-2.5 text-sm font-bold rounded-lg transition-all bg-teal-500 text-slate-900 shadow';
     const inactive =
-        'flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200';
+        'flex-1 py-2.5 text-sm font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200';
     $('mode-category').className = mode === 'category' ? active : inactive;
     $('mode-container').className = mode === 'container' ? active : inactive;
     renderChecklist();
@@ -661,12 +1050,24 @@ function renderTabs() {
     tabsContainer.textContent = '';
     appData.locations.forEach((loc) => {
         const button = document.createElement('button');
-        button.textContent = loc.name;
-        button.className = `px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+        // 行き先は最初に1回選ぶだけ → コンパクトに
+        button.className = `w-full py-1.5 px-2 rounded-lg text-sm font-bold leading-tight transition-all ${
             currentSubtype === loc.id
-                ? 'bg-cyan-500 text-slate-900 shadow-lg shadow-cyan-500/20'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                ? 'bg-teal-500 text-slate-900 shadow'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'
         }`;
+
+        const nameEl = document.createElement('span');
+        nameEl.textContent = loc.name;
+        button.appendChild(nameEl);
+        // 補足(特養・老健 等)は同じ行に小さく
+        if (loc.sublabel) {
+            const subEl = document.createElement('span');
+            subEl.className = 'text-[10px] font-normal opacity-70 ml-1';
+            subEl.textContent = loc.sublabel;
+            button.appendChild(subEl);
+        }
+
         button.addEventListener('click', () => {
             currentSubtype = loc.id;
             renderTabs();
@@ -689,7 +1090,6 @@ function renderPrepChecklist() {
     container.textContent = '';
 
     const checked = getState('checked', {});
-    const skipped = getState('skipped', {});
     const containers = getState('containers', {});
     const customItems = getCustomItems();
 
@@ -699,7 +1099,7 @@ function renderPrepChecklist() {
 
     if (viewMode === 'category') {
         // 通常カテゴリを処理
-        appData.categories.forEach((cat) => {
+        appData.categories.forEach((cat, catIdx) => {
             const officialItems = (cat.items || []).filter((item) =>
                 (item.applicable_locations || []).includes(currentSubtype) &&
                 !hideSet.has(item.id) &&
@@ -719,18 +1119,20 @@ function renderPrepChecklist() {
             const filteredItems = [...officialItems, ...facItems, ...myCustomItems];
             if (filteredItems.length === 0) return;
 
+            // カテゴリーごとに淡いキャンディ色(シール帳っぽい楽しさ)
+            const candy = CANDY_PALETTE[catIdx % CANDY_PALETTE.length];
             const section = document.createElement('div');
-            section.className = 'bg-gray-800/50 border border-gray-700/60 rounded-xl p-4';
+            section.className = `${candy.bg} border ${candy.border} rounded-3xl p-4 shadow-sm`;
 
             // タイトル行 + 追加ボタン
             const titleRow = document.createElement('div');
-            titleRow.className = 'flex items-center justify-between mb-3 border-b border-gray-700 pb-1';
+            titleRow.className = 'flex items-center justify-between mb-3 border-b border-black/5 pb-1.5';
             const title = document.createElement('h2');
-            title.className = 'text-md font-bold text-cyan-300';
+            title.className = `text-md font-bold ${candy.title}`;
             title.textContent = cat.name;
             const addBtn = document.createElement('button');
             addBtn.className =
-                'text-[11px] text-cyan-500 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 px-2 py-0.5 rounded transition-colors';
+                'text-[11px] font-bold text-gray-500 bg-white/70 hover:bg-white border border-black/10 px-2 py-0.5 rounded-full transition-colors';
             addBtn.textContent = '+ 追加';
             addBtn.addEventListener('click', () => openModal(cat.id));
             titleRow.append(title, addBtn);
@@ -740,7 +1142,7 @@ function renderPrepChecklist() {
             itemSpace.className = 'space-y-3';
             filteredItems.forEach((item) => {
                 itemSpace.appendChild(
-                    createItemRow(item, checked, skipped, containers[item.id] || 'none')
+                    createItemRow(item, checked, containers[item.id] || 'none')
                 );
             });
             section.appendChild(itemSpace);
@@ -768,7 +1170,7 @@ function renderPrepChecklist() {
             itemSpace.className = 'space-y-3';
             facilityOnlyItems.forEach((item) => {
                 itemSpace.appendChild(
-                    createItemRow(item, checked, skipped, containers[item.id] || 'none')
+                    createItemRow(item, checked, containers[item.id] || 'none')
                 );
             });
             section.appendChild(itemSpace);
@@ -806,22 +1208,346 @@ function renderPrepChecklist() {
             }
         });
 
-        // 未割り当ては常に表示(詰め忘れ防止)
-        const unassigned = allFilteredItems.filter(
-            (item) => !containers[item.id] || containers[item.id] === 'none'
-        );
-        if (unassigned.length > 0) {
-            container.appendChild(buildContainerSection('none', unassigned, checked, skipped, containers));
-        }
+        // ===== 「箱に詰める」モード: 達成コレクション + 使い方 + いま詰めている箱 + タップ割り当て =====
+        container.appendChild(buildBoxStampBanner());
+        const guide = buildPackGuide();
+        if (guide) container.appendChild(guide);
+        container.appendChild(buildActiveBoxBar());
 
-        CONTAINERS.slice(1).forEach((box) => {
-            const boxItems = allFilteredItems.filter((item) => containers[item.id] === box.id);
-            if (boxItems.length === 0) return;
-            container.appendChild(buildContainerSection(box.id, boxItems, checked, skipped, containers));
+        const activeBox = getActiveBox();
+
+        // カテゴリ順にグルーピング
+        const groups = [];
+        const groupIndex = {};
+        allFilteredItems.forEach((item) => {
+            const key = item.categoryName || 'その他';
+            if (groupIndex[key] === undefined) {
+                groupIndex[key] = groups.length;
+                groups.push({ name: key, items: [] });
+            }
+            groups[groupIndex[key]].items.push(item);
+        });
+
+        groups.forEach((group) => {
+            const section = document.createElement('div');
+            section.className = 'bg-slate-800/60 border border-gray-700/60 rounded-xl p-3';
+            const title = document.createElement('p');
+            title.className = 'text-xs font-bold text-gray-400 px-1 pb-2';
+            title.textContent = group.name;
+            section.appendChild(title);
+            const list = document.createElement('div');
+            list.className = 'space-y-1';
+            group.items.forEach((item) => {
+                list.appendChild(createPackItemRow(item, checked, containers[item.id], activeBox));
+            });
+            section.appendChild(list);
+            container.appendChild(section);
         });
     }
 
     updateProgress();
+}
+
+// カテゴリー用の淡いキャンディ色(ライト背景で映え、文字は濃色で読みやすい)
+const CANDY_PALETTE = [
+    { bg: 'bg-pink-50', border: 'border-pink-200', title: 'text-pink-500' },
+    { bg: 'bg-sky-50', border: 'border-sky-200', title: 'text-sky-600' },
+    { bg: 'bg-amber-50', border: 'border-amber-200', title: 'text-amber-600' },
+    { bg: 'bg-violet-50', border: 'border-violet-200', title: 'text-violet-500' },
+    { bg: 'bg-emerald-50', border: 'border-emerald-200', title: 'text-emerald-600' },
+    { bg: 'bg-rose-50', border: 'border-rose-200', title: 'text-rose-500' },
+];
+
+// 箱ごとの色(実物の箱に同色シールを貼れば対応が直感的)。pale=非選択時のキャンディ色
+const BOX_PALETTE = [
+    { dot: 'bg-teal-500',    badge: 'bg-teal-600',    chipBg: 'bg-teal-600',    chipBorder: 'border-teal-700',    pale: 'bg-teal-100 text-teal-700 border-teal-300' },
+    { dot: 'bg-sky-500',     badge: 'bg-sky-600',     chipBg: 'bg-sky-600',     chipBorder: 'border-sky-700',     pale: 'bg-sky-100 text-sky-700 border-sky-300' },
+    { dot: 'bg-amber-500',   badge: 'bg-amber-600',   chipBg: 'bg-amber-600',   chipBorder: 'border-amber-700',   pale: 'bg-amber-100 text-amber-700 border-amber-300' },
+    { dot: 'bg-rose-500',    badge: 'bg-rose-600',    chipBg: 'bg-rose-600',    chipBorder: 'border-rose-700',    pale: 'bg-rose-100 text-rose-700 border-rose-300' },
+    { dot: 'bg-violet-500',  badge: 'bg-violet-600',  chipBg: 'bg-violet-600',  chipBorder: 'border-violet-700',  pale: 'bg-violet-100 text-violet-700 border-violet-300' },
+    { dot: 'bg-emerald-500', badge: 'bg-emerald-600', chipBg: 'bg-emerald-600', chipBorder: 'border-emerald-700', pale: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+];
+
+function getBoxColor(id) {
+    const boxes = getAllContainers().slice(1);
+    const idx = boxes.findIndex((b) => b.id === id);
+    return BOX_PALETTE[(idx >= 0 ? idx : 0) % BOX_PALETTE.length];
+}
+
+function getActiveBox() {
+    const boxes = getAllContainers().slice(1);
+    const saved = getState('activeBox', null);
+    if (saved && boxes.some((b) => b.id === saved)) return saved;
+    return boxes.length ? boxes[0].id : null;
+}
+
+function setActiveBox(id) {
+    setState('activeBox', id);
+    renderChecklist();
+}
+
+// アイテムをタップしたとき: アクティブな箱に入れる / 取り出す
+function packTap(itemId, srcEl) {
+    const checked = getState('checked', {});
+    const containers = getState('containers', {});
+    const active = getActiveBox();
+    if (checked[itemId] && containers[itemId] === active) {
+        // すでにアクティブな箱に入っている → 取り出す
+        delete checked[itemId];
+        delete containers[itemId];
+    } else {
+        // 未割り当て/別の箱 → アクティブな箱へ入れる(チェックも付ける)
+        checked[itemId] = true;
+        containers[itemId] = active;
+        // 積み上がる演出 + 中身が変わった箱の「詰め終わり」✅は解除
+        floatPlusOne(srcEl);
+        if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) { /* noop */ } }
+        const sealed = getSealedBoxes();
+        if (sealed[active]) { delete sealed[active]; setState('sealedBoxes', sealed); }
+    }
+    setState('checked', checked);
+    setState('containers', containers);
+    renderChecklist();
+}
+
+// 「箱に詰める」モードの使い方ガイド。普段は畳んでおき ❔使い方 で開く
+function buildPackGuide() {
+    if (!getState('packGuideOpen', false)) return null;
+    const box = document.createElement('div');
+    box.className = 'relative bg-teal-500/10 border border-teal-500/30 rounded-2xl p-4 pr-9';
+
+    const title = document.createElement('p');
+    title.className = 'text-sm font-bold text-teal-300 mb-1';
+    title.textContent = '💡 箱に詰めるモードの使い方';
+    box.appendChild(title);
+
+    const steps = document.createElement('div');
+    steps.className = 'text-sm text-gray-300 space-y-0.5';
+    [
+        '① 上で「いま詰めている箱」を選ぶ',
+        '② 入れる物をタップすると、その箱に入ります',
+        '③ もう一度タップすると取り出せます',
+        '④ 箱は名前の変更・追加ができます',
+    ].forEach((t) => {
+        const p = document.createElement('p');
+        p.textContent = t;
+        steps.appendChild(p);
+    });
+    box.appendChild(steps);
+
+    const close = document.createElement('button');
+    close.className = 'absolute top-2.5 right-2.5 w-7 h-7 rounded-lg text-gray-400 hover:text-gray-200 text-xl leading-none flex items-center justify-center';
+    close.textContent = '×';
+    close.setAttribute('aria-label', '使い方を閉じる');
+    close.addEventListener('click', () => {
+        setState('packGuideOpen', false);
+        renderChecklist();
+    });
+    box.appendChild(close);
+
+    return box;
+}
+
+function buildActiveBoxBar() {
+    const activeBox = getActiveBox();
+    const boxes = getAllContainers().slice(1);
+
+    const card = document.createElement('div');
+    card.className = 'bg-slate-800/80 border border-gray-700/60 rounded-2xl p-4';
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'flex items-center justify-between mb-2';
+    const title = document.createElement('p');
+    title.className = 'text-sm font-bold text-gray-300';
+    title.textContent = 'いま詰めている箱';
+    const helpBtn = document.createElement('button');
+    helpBtn.className =
+        'shrink-0 text-xs font-bold text-teal-400 hover:text-teal-300 border border-teal-500/40 rounded-lg px-2.5 py-1 transition-colors';
+    helpBtn.textContent = '❔ 使い方';
+    helpBtn.addEventListener('click', () => {
+        setState('packGuideOpen', !getState('packGuideOpen', false));
+        renderChecklist();
+    });
+    titleRow.append(title, helpBtn);
+    card.appendChild(titleRow);
+
+    const sealed = getSealedBoxes();
+    const chips = document.createElement('div');
+    chips.className = 'flex flex-wrap gap-2';
+    boxes.forEach((box) => {
+        const isActive = box.id === activeBox;
+        const color = getBoxColor(box.id);
+        const chip = document.createElement('button');
+        chip.className = `flex items-center gap-2 min-h-[48px] px-4 rounded-full font-bold border-2 transition-all ${
+            isActive
+                ? `${color.chipBg} text-white ${color.chipBorder} shadow-md scale-105`
+                : `${color.pale} hover:brightness-95`
+        }`;
+        const dot = document.createElement('span');
+        dot.className = `w-3 h-3 rounded-full ${isActive ? 'bg-white' : color.dot}`;
+        const label = document.createElement('span');
+        label.textContent = getContainerName(box.id);
+        chip.append(dot, label);
+        if (sealed[box.id]) {
+            const done = document.createElement('span');
+            done.textContent = '✅';
+            done.title = '詰め終わり';
+            chip.appendChild(done);
+        }
+        if (isActive) {
+            const mark = document.createElement('span');
+            mark.className = 'text-xs font-normal';
+            mark.textContent = '✓ 選択中';
+            chip.appendChild(mark);
+        }
+        chip.addEventListener('click', () => setActiveBox(box.id));
+        chips.appendChild(chip);
+    });
+
+    const addChip = document.createElement('button');
+    addChip.className =
+        'flex items-center gap-1 min-h-[48px] px-4 rounded-full font-bold text-teal-500 bg-white border-2 border-dashed border-teal-400 hover:bg-teal-50 transition-colors';
+    addChip.textContent = '＋ 箱を追加';
+    addChip.addEventListener('click', addContainer);
+    chips.appendChild(addChip);
+    card.appendChild(chips);
+
+    const activeName = getContainerName(activeBox);
+
+    // 👇 タップ誘導
+    const hint = document.createElement('p');
+    hint.className = 'text-sm font-bold text-teal-500 mt-3';
+    hint.textContent = `👇 下の物をタップすると「${activeName}」に入ります`;
+    card.appendChild(hint);
+
+    // C: この箱を詰め終わった(大きく目立つボタン。押すとお祝い + ✅が積み上がる)
+    const sealBtn = document.createElement('button');
+    sealBtn.className =
+        'w-full mt-3 flex items-center justify-center gap-2 text-base font-bold text-white bg-teal-500 hover:bg-teal-600 active:scale-[0.98] rounded-xl px-4 py-3.5 transition-all shadow-lg';
+    sealBtn.textContent = `✅「${activeName}」を詰め終わった！`;
+    sealBtn.addEventListener('click', sealActiveBox);
+    card.appendChild(sealBtn);
+
+    // 小さな副次アクション(名前変更 / 削除)
+    const actions = document.createElement('div');
+    actions.className = 'flex flex-wrap gap-2 mt-2';
+    const renameBtn = document.createElement('button');
+    renameBtn.className =
+        'inline-flex items-center gap-1.5 text-xs font-bold text-teal-500 bg-teal-500/10 border border-teal-500/30 hover:bg-teal-500/20 rounded-lg px-3 py-2 transition-colors';
+    renameBtn.textContent = `✏️「${activeName}」の名前を変更`;
+    renameBtn.addEventListener('click', () => renameContainer(activeBox));
+    actions.appendChild(renameBtn);
+    if (isCustomContainer(activeBox)) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className =
+            'inline-flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 rounded-lg px-3 py-2 transition-colors';
+        deleteBtn.textContent = '🗑️ この箱を削除';
+        deleteBtn.addEventListener('click', () => deleteContainer(activeBox));
+        actions.appendChild(deleteBtn);
+    }
+    card.appendChild(actions);
+
+    return card;
+}
+
+// パックモードの達成コレクション(詰め終わった箱が✅で溜まる)
+function buildBoxStampBanner() {
+    const boxes = getAllContainers().slice(1);
+    const sealed = getSealedBoxes();
+    const doneCount = boxes.filter((b) => sealed[b.id]).length;
+
+    const banner = document.createElement('div');
+    banner.className = 'rounded-2xl p-4 text-white shadow bg-gradient-to-r from-teal-500 to-emerald-500';
+
+    const head = document.createElement('div');
+    head.className = 'flex items-center justify-between mb-2';
+    const t = document.createElement('p');
+    t.className = 'text-sm font-bold';
+    t.textContent = '🎁 詰め終わった箱';
+    const c = document.createElement('p');
+    c.className = 'text-sm font-bold';
+    c.textContent = `${doneCount} / ${boxes.length} 箱`;
+    head.append(t, c);
+    banner.appendChild(head);
+
+    const row = document.createElement('div');
+    row.className = 'flex flex-wrap gap-2';
+    boxes.forEach((b) => {
+        const isSealed = Boolean(sealed[b.id]);
+        const cell = document.createElement('div');
+        cell.className = `min-w-[44px] h-11 px-2 rounded-xl flex items-center justify-center text-lg ${
+            isSealed ? 'bg-white/25' : 'bg-white/10 border-2 border-dashed border-white/40 opacity-80'
+        }`;
+        cell.textContent = isSealed ? '✅' : '📦';
+        cell.title = getContainerName(b.id);
+        row.appendChild(cell);
+    });
+    banner.appendChild(row);
+    return banner;
+}
+
+function createPackItemRow(item, checked, currentBox, activeBox) {
+    const isChecked = Boolean(checked[item.id]);
+    const inBox = Boolean(currentBox) && currentBox !== 'none';
+    const color = inBox ? getBoxColor(currentBox) : null;
+
+    const row = document.createElement('button');
+    // 進捗カウント用マーカー(パック表示は input を使わないため)
+    row.setAttribute('data-pack-item', isChecked ? 'checked' : 'unchecked');
+    row.className = `w-full flex items-center gap-3 min-h-[56px] px-3 py-2 rounded-xl border transition-colors text-left ${
+        isChecked
+            ? 'bg-slate-800/70 border-gray-700'
+            : 'bg-slate-800/30 border-gray-800/60 hover:bg-slate-800/50'
+    }`;
+
+    const mark = document.createElement('span');
+    mark.className =
+        'w-7 h-7 rounded-lg flex items-center justify-center font-bold shrink-0 ' +
+        (isChecked ? `${color ? color.badge : 'bg-teal-600'} text-white` : 'border-2 border-gray-600');
+    mark.textContent = isChecked ? '✓' : '';
+    row.appendChild(mark);
+
+    const nameWrap = document.createElement('span');
+    nameWrap.className =
+        'flex-1 flex items-center flex-wrap gap-1.5 ' + (isChecked ? 'text-gray-200' : 'text-gray-400');
+    const name = document.createElement('span');
+    name.textContent = item.name;
+    nameWrap.appendChild(name);
+
+    const qty = item.quantity && item.quantity > 1 ? item.quantity : null;
+    if (qty) {
+        const qtyBadge = document.createElement('span');
+        qtyBadge.className =
+            'text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded';
+        qtyBadge.textContent = `×${qty}`;
+        nameWrap.appendChild(qtyBadge);
+    }
+    if (item.isCustom) {
+        const b = document.createElement('span');
+        b.className = 'text-[9px] text-teal-600 border border-teal-700/40 px-1 py-0.5 rounded';
+        b.textContent = 'カスタム';
+        nameWrap.appendChild(b);
+    }
+    if (item.isFacility) {
+        const b = document.createElement('span');
+        b.className = 'text-[9px] text-blue-400 border border-blue-500/40 px-1 py-0.5 rounded';
+        b.textContent = '🏥施設';
+        nameWrap.appendChild(b);
+    }
+    row.appendChild(nameWrap);
+
+    const status = document.createElement('span');
+    if (inBox) {
+        status.className = `shrink-0 text-xs font-bold text-white px-2.5 py-1 rounded-full ${color.badge}`;
+        status.textContent = getContainerName(currentBox);
+    } else {
+        status.className = 'shrink-0 text-xs text-gray-500';
+        status.textContent = `タップで${getContainerName(activeBox)}へ`;
+    }
+    row.appendChild(status);
+
+    row.addEventListener('click', () => packTap(item.id, row));
+    return row;
 }
 
 function renderReturnChecklist() {
@@ -998,69 +1724,42 @@ function createReturnItemRow(item, returnChecked, currentBox) {
     return itemRow;
 }
 
-function buildContainerSection(boxId, items, checked, skipped, containers) {
-    const isUnassigned = boxId === 'none';
-    const section = document.createElement('div');
-    section.className = isUnassigned
-        ? 'bg-slate-800/60 border border-gray-700/60 rounded-xl p-4'
-        : 'bg-slate-800/80 border border-dashed border-cyan-500/30 rounded-xl p-4';
-
-    const titleRow = document.createElement('div');
-    titleRow.className = 'flex items-center justify-between mb-3 border-b border-gray-700 pb-1';
-
-    const nameSpan = document.createElement('span');
-    nameSpan.className = `text-md font-bold ${isUnassigned ? 'text-gray-400' : 'text-amber-400'}`;
-    nameSpan.textContent = isUnassigned ? '📦 未割り当て' : `📦 ${getContainerName(boxId)}`;
-
-    const rightWrap = document.createElement('div');
-    rightWrap.className = 'flex items-center gap-2';
-    const countSpan = document.createElement('span');
-    countSpan.className = 'text-xs text-gray-500';
-    countSpan.textContent = `計 ${items.length} 点`;
-    rightWrap.appendChild(countSpan);
-
-    if (!isUnassigned) {
-        const renameBtn = document.createElement('button');
-        renameBtn.className = 'text-[11px] text-gray-500 hover:text-cyan-400 transition-colors px-1';
-        renameBtn.textContent = '✏️ 名前変更';
-        renameBtn.addEventListener('click', () => renameContainer(boxId));
-        rightWrap.appendChild(renameBtn);
-    }
-
-    titleRow.append(nameSpan, rightWrap);
-    section.appendChild(titleRow);
-
-    const itemSpace = document.createElement('div');
-    itemSpace.className = 'space-y-3';
-    items.forEach((item) => {
-        itemSpace.appendChild(
-            createItemRow(item, checked, skipped, containers[item.id] || 'none', true)
-        );
-    });
-    section.appendChild(itemSpace);
-    return section;
-}
-
-function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = false) {
-    const isSkipped = Boolean(skipped[item.id]);
+function createItemRow(item, checked, currentBox, showCategoryBadge = false) {
     const qty = item.quantity && item.quantity > 1 ? item.quantity : null;
+    const isChecked = Boolean(checked[item.id]);
 
+    // チェックで色が付くカード風の行(集めてる感)
     const itemRow = document.createElement('div');
-    itemRow.className =
-        'flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-lg hover:bg-gray-700/10 transition-colors border-b border-gray-800/40 pb-3 sm:pb-2';
+    itemRow.className = `flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-2xl border border-transparent transition-colors ${
+        isChecked ? 'bg-teal-500/15' : 'hover:bg-gray-700/10'
+    }`;
 
-    // 左: チェックボックス + 名前
+    // 左: まる型チェック + 名前
     const left = document.createElement('div');
     left.className = 'flex items-start gap-3 flex-1';
     const label = document.createElement('label');
-    label.className = 'flex items-start gap-3 cursor-pointer flex-1';
+    label.className = 'flex items-center gap-3 cursor-pointer flex-1';
 
+    // 本物のcheckboxは残し(テスト/アクセシビリティ)、見た目は丸チェックに
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
-    checkbox.checked = Boolean(checked[item.id]);
-    checkbox.disabled = isSkipped;
-    checkbox.className = `w-5 h-5 rounded border-gray-600 bg-gray-700 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-800 mt-0.5 ${isSkipped ? 'opacity-20' : ''}`;
-    checkbox.addEventListener('change', () => setChecked(item.id, checkbox.checked));
+    checkbox.checked = isChecked;
+    checkbox.className = 'peer sr-only';
+
+    const mark = document.createElement('span');
+    mark.className =
+        'shrink-0 w-7 h-7 rounded-full border-2 border-gray-400 text-transparent flex items-center justify-center text-sm font-bold transition-all peer-checked:bg-teal-500 peer-checked:border-teal-500 peer-checked:text-white';
+    mark.textContent = '✓';
+
+    checkbox.addEventListener('change', () => {
+        itemRow.classList.toggle('bg-teal-500/15', checkbox.checked);
+        itemRow.classList.toggle('hover:bg-gray-700/10', !checkbox.checked);
+        if (checkbox.checked) {
+            celebrateCheck(mark);
+            floatPlusOne(mark);
+        }
+        setChecked(item.id, checkbox.checked);
+    });
 
     const textWrap = document.createElement('div');
     textWrap.className = 'flex flex-col';
@@ -1068,7 +1767,7 @@ function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = f
     const nameWrap = document.createElement('div');
     nameWrap.className = 'flex items-center flex-wrap gap-1.5';
     const nameSpan = document.createElement('span');
-    nameSpan.className = `${isSkipped ? 'line-through-text' : 'text-gray-300'} text-sm leading-relaxed`;
+    nameSpan.className = 'text-gray-300 text-sm leading-relaxed';
     nameSpan.textContent = item.name;
     nameWrap.appendChild(nameSpan);
 
@@ -1081,7 +1780,7 @@ function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = f
     }
     if (item.isCustom) {
         const customBadge = document.createElement('span');
-        customBadge.className = 'text-[9px] text-cyan-600 border border-cyan-700/40 px-1 py-0.5 rounded';
+        customBadge.className = 'text-[9px] text-teal-600 border border-teal-700/40 px-1 py-0.5 rounded';
         customBadge.textContent = 'カスタム';
         nameWrap.appendChild(customBadge);
     }
@@ -1100,18 +1799,17 @@ function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = f
         textWrap.appendChild(badge);
     }
 
-    label.append(checkbox, textWrap);
+    label.append(checkbox, mark, textWrap);
     left.appendChild(label);
 
-    // 右: 箱セレクト + 不要ボタン + (カスタムなら削除ボタン)
+    // 右: 箱セレクト + (カスタムなら削除ボタン)
     const right = document.createElement('div');
     right.className = 'flex items-center gap-2 self-end sm:self-center';
 
     const select = document.createElement('select');
-    select.disabled = isSkipped;
     select.className =
-        'text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-cyan-400 focus:ring-cyan-500 focus:border-cyan-500 disabled:opacity-20';
-    CONTAINERS.forEach((b) => {
+        'text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-teal-400 focus:ring-teal-500 focus:border-teal-500';
+    getAllContainers().forEach((b) => {
         const opt = document.createElement('option');
         opt.value = b.id;
         opt.textContent = getContainerName(b.id);
@@ -1120,16 +1818,7 @@ function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = f
     });
     select.addEventListener('change', () => setContainer(item.id, select.value));
 
-    const skipBtn = document.createElement('button');
-    skipBtn.className = `text-xs px-2 py-1 rounded border transition-colors shrink-0 ${
-        isSkipped
-            ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-            : 'bg-gray-800 text-gray-500 border-gray-700'
-    }`;
-    skipBtn.textContent = isSkipped ? '使う' : '不要';
-    skipBtn.addEventListener('click', () => toggleSkip(item.id));
-
-    right.append(select, skipBtn);
+    right.append(select);
 
     if (item.isCustom) {
         const delBtn = document.createElement('button');
@@ -1207,32 +1896,55 @@ function setContainer(itemId, boxId) {
     if (viewMode === 'container') renderChecklist();
 }
 
-function toggleSkip(itemId) {
-    const skipped = getState('skipped', {});
-    const checked = getState('checked', {});
-    if (skipped[itemId]) {
-        delete skipped[itemId];
-    } else {
-        skipped[itemId] = true;
-        delete checked[itemId];
-    }
-    setState('skipped', skipped);
-    setState('checked', checked);
-    renderChecklist();
-}
-
 function deleteCustomItem(itemId) {
     setState('customItems', getCustomItems().filter((i) => i.id !== itemId));
     const checked = getState('checked', {});
-    const skipped = getState('skipped', {});
     const containers = getState('containers', {});
     delete checked[itemId];
-    delete skipped[itemId];
     delete containers[itemId];
     setState('checked', checked);
-    setState('skipped', skipped);
     setState('containers', containers);
     renderChecklist();
+}
+
+function addContainer() {
+    const list = getCustomContainers();
+    if (list.length >= 20) {
+        showToast('コンテナは最大20個までです');
+        return;
+    }
+    const input = prompt('新しいコンテナの名前:', `箱 ${CONTAINERS.length + list.length}`);
+    if (input === null) return;
+    const name = input.trim().slice(0, 20) || `箱 ${CONTAINERS.length + list.length}`;
+    const id = `cc_${Date.now()}`;
+    setState('customContainers', [...list, { id, name }]);
+    setState('activeBox', id);
+    renderChecklist();
+    showToast(`「${name}」を追加しました`);
+}
+
+function deleteContainer(containerId) {
+    if (!isCustomContainer(containerId)) return;
+    const name = getContainerName(containerId);
+    if (!confirm(`コンテナ「${name}」を削除しますか？\n中のアイテムは「未割り当て」に戻ります。`)) return;
+
+    // このコンテナに割り当てられたアイテムを未割り当てに戻す
+    const containers = getState('containers', {});
+    Object.keys(containers).forEach((itemId) => {
+        if (containers[itemId] === containerId) delete containers[itemId];
+    });
+    setState('containers', containers);
+
+    // コンテナ本体と名前の上書きを削除
+    setState('customContainers', getCustomContainers().filter((c) => c.id !== containerId));
+    const names = getState('containerNames', {});
+    if (names[containerId] !== undefined) {
+        delete names[containerId];
+        setState('containerNames', names);
+    }
+
+    renderChecklist();
+    showToast(`「${name}」を削除しました`);
 }
 
 function renameContainer(containerId) {
@@ -1241,7 +1953,7 @@ function renameContainer(containerId) {
     if (newName === null) return;
     const names = getState('containerNames', {});
     const trimmed = newName.trim().slice(0, 20);
-    const def = CONTAINERS.find((c) => c.id === containerId);
+    const def = getAllContainers().find((c) => c.id === containerId);
     if (!trimmed || trimmed === (def ? def.name : containerId)) {
         delete names[containerId];
     } else {
@@ -1252,12 +1964,132 @@ function renameContainer(containerId) {
 }
 
 function updateProgress() {
-    const activeCheckboxes = document.querySelectorAll('input[type="checkbox"]:not([disabled])');
-    const checkedBoxes = document.querySelectorAll('input[type="checkbox"]:not([disabled]):checked');
-    const total = activeCheckboxes.length;
-    const done = checkedBoxes.length;
-    $('progress-text').textContent = `${done} / ${total} 個`;
+    let total;
+    let done;
+    if (viewMode === 'container' && !returnMode) {
+        // 「箱に詰める」表示はタップ行(input無し)なのでマーカーで数える
+        total = document.querySelectorAll('#checklist-container [data-pack-item]').length;
+        done = document.querySelectorAll('#checklist-container [data-pack-item="checked"]').length;
+    } else {
+        total = document.querySelectorAll('input[type="checkbox"]:not([disabled])').length;
+        done = document.querySelectorAll('input[type="checkbox"]:not([disabled]):checked').length;
+    }
+    // 完了はユーザーが「準備できた!」で宣言する → 分母(ゴール)は出さず「貯まった数」を見せる
+    $('progress-text').textContent = done > 0 ? `${done}コ そろえた 🎒` : 'これから準備 🎒';
     $('progress-bar').style.width = total > 0 ? `${(done / total) * 100}%` : '0%';
+
+    const msgEl = document.getElementById('progress-msg');
+    if (msgEl) {
+        if (done === 0) {
+            msgEl.textContent = '';
+        } else if (done % 5 === 0) {
+            msgEl.textContent = `🎉 ${done}コ！その調子！`;
+        } else {
+            msgEl.textContent = 'いい調子です 🎈';
+        }
+    }
+}
+
+// ---------- ちょっとしたご褒美演出 ----------
+
+// 操作した瞬間の小さなポップ(気持ちよさ + 軽い振動)
+function celebrateCheck(el) {
+    try {
+        el.animate(
+            [{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }],
+            { duration: 260, easing: 'ease-out' }
+        );
+    } catch (e) { /* Web Animations 非対応でも無害 */ }
+    if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) { /* noop */ } }
+}
+
+// 積み上がる感: 操作した要素の位置から「＋1」がふわっと浮いて消える
+function floatPlusOne(el) {
+    if (!el || !el.getBoundingClientRect) return;
+    const r = el.getBoundingClientRect();
+    const tag = document.createElement('div');
+    tag.textContent = '＋1';
+    tag.style.position = 'fixed';
+    tag.style.left = `${r.left + r.width / 2}px`;
+    tag.style.top = `${r.top}px`;
+    tag.style.transform = 'translate(-50%, 0)';
+    tag.style.color = '#0d9488';
+    tag.style.fontWeight = '800';
+    tag.style.fontSize = '14px';
+    tag.style.pointerEvents = 'none';
+    tag.style.zIndex = '60';
+    document.body.appendChild(tag);
+    try {
+        const anim = tag.animate(
+            [
+                { transform: 'translate(-50%, 0)', opacity: 0 },
+                { transform: 'translate(-50%, -14px)', opacity: 1, offset: 0.3 },
+                { transform: 'translate(-50%, -40px)', opacity: 0 },
+            ],
+            { duration: 700, easing: 'ease-out' }
+        );
+        anim.onfinish = () => tag.remove();
+    } catch (e) { tag.remove(); }
+}
+
+// 紙吹雪(count で大きさ調整。準備完了=大, 箱=小)
+function launchConfetti(count = 32) {
+    const colors = ['#2dd4bf', '#f472b6', '#fbbf24', '#ffffff', '#34d399'];
+    const container = document.createElement('div');
+    container.className = 'fixed inset-0 pointer-events-none z-[60] overflow-hidden';
+    document.body.appendChild(container);
+    for (let i = 0; i < count; i++) {
+        const piece = document.createElement('div');
+        const size = 6 + Math.random() * 6;
+        piece.style.position = 'absolute';
+        piece.style.left = `${10 + Math.random() * 80}%`;
+        piece.style.top = '-5%';
+        piece.style.width = `${size}px`;
+        piece.style.height = `${size}px`;
+        piece.style.backgroundColor = colors[i % colors.length];
+        piece.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+        container.appendChild(piece);
+        const dx = (Math.random() - 0.5) * 160;
+        const dy = window.innerHeight * (0.7 + Math.random() * 0.5);
+        const rot = (Math.random() - 0.5) * 720;
+        try {
+            const anim = piece.animate(
+                [
+                    { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+                    { transform: `translate(${dx}px, ${dy}px) rotate(${rot}deg)`, opacity: 1, offset: 0.85 },
+                    { transform: `translate(${dx}px, ${dy + 40}px) rotate(${rot}deg)`, opacity: 0 },
+                ],
+                { duration: 1600 + Math.random() * 800, easing: 'cubic-bezier(.2,.6,.4,1)' }
+            );
+            anim.onfinish = () => piece.remove();
+        } catch (e) { piece.remove(); }
+    }
+    setTimeout(() => container.remove(), 2800);
+}
+
+// 箱を詰め終わったときの状態(✅が積み上がる)
+function getSealedBoxes() {
+    return getState('sealedBoxes', {});
+}
+
+// A: ユーザーが「準備できた!」と宣言したとき
+function celebratePrepDone() {
+    launchConfetti(44);
+    if (navigator.vibrate) { try { navigator.vibrate([20, 40, 20, 40, 60]); } catch (e) { /* noop */ } }
+    showToast('いってらっしゃい 🎈 準備おつかれさまでした', 4000);
+}
+
+// C: 箱を詰め終わったとき(小さなお祝い + ✅を記録)
+function sealActiveBox() {
+    const active = getActiveBox();
+    if (!active) return;
+    const sealed = getSealedBoxes();
+    sealed[active] = true;
+    setState('sealedBoxes', sealed);
+    launchConfetti(16);
+    if (navigator.vibrate) { try { navigator.vibrate([15, 30, 15]); } catch (e) { /* noop */ } }
+    showToast(`${getContainerName(active)} を詰め終わりました 🎉`);
+    renderChecklist();
 }
 
 function updateReturnProgress(returnableItems, returnChecked) {
@@ -1268,37 +2100,85 @@ function updateReturnProgress(returnableItems, returnChecked) {
 }
 
 function resetChecks() {
-    if (confirm('チェックをリセットしますか？\n(箱の割り当てと「不要」の設定は保持されます)')) {
-        setState('checked', {});
-        renderChecklist();
+    const prev = getState('checked', {});
+    if (Object.keys(prev).length === 0) {
+        showToast('チェックはまだありません');
+        return;
     }
+    setState('checked', {});
+    renderChecklist();
+    showToast('チェックをリセットしました', 6000, {
+        label: '元に戻す',
+        onClick: () => {
+            setState('checked', prev);
+            renderChecklist();
+            showToast('元に戻しました ✅');
+        },
+    });
 }
 
 function resetReturnChecks() {
-    if (confirm('帰宅チェックをリセットしますか？')) {
-        removeState('returnChecked');
-        renderChecklist();
+    const prev = getState('returnChecked', {});
+    if (Object.keys(prev).length === 0) {
+        showToast('帰宅チェックはまだありません');
+        return;
     }
+    removeState('returnChecked');
+    renderChecklist();
+    showToast('帰宅チェックをリセットしました', 6000, {
+        label: '元に戻す',
+        onClick: () => {
+            setState('returnChecked', prev);
+            renderChecklist();
+            showToast('元に戻しました ✅');
+        },
+    });
 }
 
 function resetAll() {
     if (
-        confirm(
-            'チェック・不要設定・箱の割り当て・カスタムアイテムをすべて削除しますか？\nこの操作は元に戻せません。'
-        )
+        !confirm('チェック・箱の割り当て・カスタムアイテムをすべて削除しますか？')
     ) {
-        removeState('checked');
-        removeState('skipped');
-        removeState('containers');
-        removeState('customItems');
-        removeState('containerNames');
-        removeState('returnChecked');
-        removeState('facilityTemplate');
-        removeState('conditions');
-        updateFacilityBanner();
-        renderConditionToggles();
-        renderChecklist();
+        return;
     }
+    const keys = [
+        'checked',
+        'skipped',
+        'containers',
+        'customItems',
+        'containerNames',
+        'customContainers',
+        'activeBox',
+        'packGuideOpen',
+        'sealedBoxes',
+        'returnChecked',
+        'facilityTemplate',
+        'conditions',
+    ];
+    const snapshot = {};
+    keys.forEach((k) => {
+        snapshot[k] = getState(k, null);
+        removeState(k);
+    });
+    updateFacilityBanner();
+    renderConditionToggles();
+    renderChecklist();
+    showToast('すべて削除しました', 8000, {
+        label: '元に戻す',
+        onClick: () => {
+            keys.forEach((k) => {
+                if (snapshot[k] === null) {
+                    removeState(k);
+                } else {
+                    setState(k, snapshot[k]);
+                }
+            });
+            updateFacilityBanner();
+            renderConditionToggles();
+            renderChecklist();
+            showToast('元に戻しました ✅');
+        },
+    });
 }
 
 // ---------- 未返却リストをコピー ----------
@@ -1460,16 +2340,30 @@ function handlePrint() {
 
 // ---------- Toast ----------
 
-function showToast(message, duration = 2500) {
+function showToast(message, duration = 2500, action = null) {
     let toast = document.getElementById('toast');
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'toast';
-        toast.className =
-            'fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-700 border border-gray-600 text-gray-200 text-sm px-4 py-2.5 rounded-xl shadow-xl z-50 max-w-xs text-center transition-opacity duration-300';
         document.body.appendChild(toast);
     }
-    toast.textContent = message;
+    toast.className =
+        'fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-700 border border-gray-600 text-gray-200 text-sm px-4 py-2.5 rounded-xl shadow-xl z-50 max-w-xs transition-opacity duration-300 flex items-center justify-center gap-3';
+    toast.replaceChildren();
+    const span = document.createElement('span');
+    span.textContent = message;
+    toast.appendChild(span);
+    if (action && action.label && typeof action.onClick === 'function') {
+        const btn = document.createElement('button');
+        btn.textContent = action.label;
+        btn.className = 'shrink-0 font-bold text-teal-300 hover:text-teal-200 underline underline-offset-2';
+        btn.addEventListener('click', () => {
+            clearTimeout(toastTimer);
+            toast.style.opacity = '0';
+            action.onClick();
+        });
+        toast.appendChild(btn);
+    }
     toast.style.opacity = '1';
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
@@ -1493,9 +2387,17 @@ $('fc-code-input').addEventListener('input', (e) => {
 });
 $('facility-revoke').addEventListener('click', revokeFacilityTemplate);
 
+// OCR取込モーダル
+$('ocr-open-btn').addEventListener('click', openOcrModal);
+$('ocr-modal-cancel').addEventListener('click', closeOcrModal);
+$('ocr-modal').addEventListener('click', (e) => { if (e.target === $('ocr-modal')) closeOcrModal(); });
+$('ocr-start-btn').addEventListener('click', handleOcrStart);
+$('ocr-import-btn').addEventListener('click', handleOcrImport);
+
 $('mode-category').addEventListener('click', () => switchViewMode('category'));
 $('mode-container').addEventListener('click', () => switchViewMode('container'));
 $('mode-return').addEventListener('click', () => switchReturnMode(!returnMode));
+$('ready-btn').addEventListener('click', celebratePrepDone);
 $('reset-checks').addEventListener('click', resetChecks);
 $('reset-return-checks').addEventListener('click', resetReturnChecks);
 $('copy-missing-btn').addEventListener('click', copyMissingItems);

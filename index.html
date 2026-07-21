@@ -6,6 +6,7 @@
     <title>CareReady // 持ち物チェッカー</title>
     <meta name="description" content="介護・入院・ショートステイの持ち物準備チェッカー">
     <meta name="theme-color" content="#121824">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data:; font-src 'self'; manifest-src 'self'; connect-src 'self' https://6r6n0fjn4d.execute-api.ap-northeast-1.amazonaws.com;">
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" type="image/png" href="./icons/icon-192.png">
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
@@ -14,13 +15,26 @@
         body { background-color: #121824; color: #e2e8f0; }
         .line-through-text { text-decoration: line-through; color: #4b5563; }
 
-        /* ===== ライトテーマ ===== */
+        /* ===== ライトテーマ(パステル/やわらか基調。文字は濃いまま読みやすさ維持) ===== */
         body.light {
-            background-color: #f5f7fa;
-            color: #1a202c;
+            background-color: #edf6f1;
+            color: #22303a;
         }
         body.light .line-through-text {
             color: #9ca3af;
+        }
+        /* アクセント(ティール)をライト背景でも読みやすく */
+        body.light .text-teal-400,
+        body.light .text-teal-300 {
+            color: #0f766e !important;
+        }
+        body.light .text-teal-500,
+        body.light .text-teal-600 {
+            color: #0d9488 !important;
+        }
+        body.light .bg-teal-500,
+        body.light .bg-teal-400 {
+            background-color: #0d9488 !important;
         }
         /* ヘッダー・カード背景 */
         body.light .bg-gray-800\/50,
@@ -29,10 +43,10 @@
             background-color: #ffffff !important;
         }
         body.light .bg-gray-800\/20 {
-            background-color: #f0f4f8 !important;
+            background-color: #e2efe9 !important;
         }
         body.light .bg-gray-800\/30 {
-            background-color: #f0f4f8 !important;
+            background-color: #e2efe9 !important;
         }
         /* ボーダー */
         body.light .border-gray-700\/60,
@@ -199,37 +213,32 @@
 <body class="p-4 md:p-8 font-sans">
 
     <div class="max-w-xl mx-auto">
-        <!-- ヘッダー -->
-        <div class="flex items-center justify-between my-6">
-            <div class="text-center flex-1">
-                <h1 class="text-3xl font-bold text-cyan-400 tracking-wider">CareReady</h1>
-                <p class="text-sm text-gray-400 mt-1">// 持ち物チェッカー</p>
+        <!-- ヘッダー: ロゴ + タイトル左 / ユーティリティは小さく右上 -->
+        <div class="flex items-start justify-between gap-3 my-6">
+            <div class="flex items-center gap-2.5">
+                <img src="./icons/careready-logo.svg" alt="CareReady ロゴ" class="w-12 h-12 rounded-2xl shadow-sm shrink-0">
+                <div>
+                    <h1 class="text-3xl font-bold text-teal-400 tracking-wide">CareReady</h1>
+                    <p class="text-sm text-gray-400 mt-0.5">持ちものを、わすれずに。</p>
+                </div>
             </div>
-            <div class="flex items-center gap-2 shrink-0">
-                <button id="theme-btn" class="flex items-center gap-1.5 text-xs bg-gray-800 border border-gray-700 text-gray-300 hover:text-cyan-400 hover:border-cyan-500/60 rounded-lg px-3 py-2 transition-colors" title="テーマ切替">
-                    🌙
-                </button>
-                <button id="print-btn" class="flex items-center gap-1.5 text-xs bg-gray-800 border border-gray-700 text-gray-300 hover:text-cyan-400 hover:border-cyan-500/60 rounded-lg px-3 py-2 transition-colors">
-                    🖨️ 印刷
-                </button>
-                <button id="share-btn" class="flex items-center gap-1.5 text-xs bg-gray-800 border border-gray-700 text-gray-300 hover:text-cyan-400 hover:border-cyan-500/60 rounded-lg px-3 py-2 transition-colors">
-                    🔗 共有
-                </button>
-                <button id="line-share-btn" class="flex items-center gap-1.5 text-xs bg-[#06C755]/10 border border-[#06C755]/40 text-[#06C755] hover:bg-[#06C755]/20 hover:border-[#06C755]/70 rounded-lg px-3 py-2 transition-colors">
-                    💬 LINEで送る
-                </button>
+            <div class="flex items-center gap-1.5 shrink-0">
+                <button id="theme-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="テーマ切替" aria-label="テーマ切替">🌙</button>
+                <button id="print-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="印刷する" aria-label="印刷する">🖨️</button>
+                <button id="share-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="リンクを共有" aria-label="リンクを共有">🔗</button>
+                <button id="line-share-btn" class="h-11 px-3 flex items-center gap-1 text-sm font-bold bg-[#06C755] text-white hover:bg-[#05b34c] rounded-lg transition-colors shrink-0" title="LINEで送る" aria-label="LINEで送る">💬 LINE</button>
             </div>
         </div>
 
         <!-- テンプレ取り込みバナー -->
-        <div id="import-banner" class="hidden bg-cyan-500/10 border border-cyan-500/30 rounded-xl px-4 py-3 mb-4 items-start justify-between gap-3">
+        <div id="import-banner" class="hidden bg-teal-500/10 border border-teal-500/30 rounded-xl px-4 py-3 mb-4 items-start justify-between gap-3">
             <div>
-                <p class="text-sm font-bold text-cyan-300">リストを受け取りました</p>
+                <p class="text-sm font-bold text-teal-300">リストを受け取りました</p>
                 <p class="text-xs text-gray-400 mt-0.5">カスタムアイテムを取り込みますか？</p>
             </div>
             <div class="flex gap-2 shrink-0 mt-2">
                 <button id="import-cancel" class="text-xs text-gray-500 hover:text-gray-300 px-3 py-1 rounded border border-gray-700 transition-colors">いいえ</button>
-                <button id="import-ok" class="text-xs bg-cyan-500 text-slate-900 font-bold px-3 py-1 rounded-lg">取り込む</button>
+                <button id="import-ok" class="text-xs bg-teal-500 text-slate-900 font-bold px-3 py-1 rounded-lg">取り込む</button>
             </div>
         </div>
 
@@ -251,46 +260,52 @@
         <!-- API フォールバックバナー -->
         <div id="data-banner" class="hidden"></div>
 
-        <!-- 表示モード切替 (準備モード) -->
-        <div id="view-mode-toggle" class="flex justify-center bg-gray-800 rounded-xl p-1 mb-3 max-w-xs mx-auto border border-gray-700">
-            <button id="mode-category" class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-slate-900 shadow">
-                📋 場所別リスト
-            </button>
-            <button id="mode-container" class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200">
-                📦 コンテナ別ソート
+        <!-- ① 行き先をえらぶ (主役) -->
+        <div class="mb-4">
+            <p class="text-xs font-bold text-gray-500 mb-2">① 行き先をえらぶ</p>
+            <div id="location-tabs" class="grid grid-cols-2 gap-2">
+                <p class="text-gray-500 text-sm col-span-2 text-center py-2">データを読み込み中...</p>
+            </div>
+            <!-- 条件トグルUI (data.jsonのconditionsから動的生成) -->
+            <div id="condition-toggles" class="hidden flex flex-wrap items-center gap-2 mt-2"></div>
+        </div>
+
+        <!-- ② 作業のしかた: 箱に詰める(主・左) / 持ち物リスト + 帰宅チェック(小・事後) -->
+        <div class="flex items-stretch gap-2 mb-5">
+            <div id="view-mode-toggle" class="flex-1 flex bg-gray-800 rounded-xl p-1 border border-gray-700">
+                <button id="mode-container" class="flex-1 py-2.5 text-sm font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200">
+                    📦 箱に詰める
+                </button>
+                <button id="mode-category" class="flex-1 py-2.5 text-sm font-bold rounded-lg transition-all bg-teal-500 text-slate-900 shadow">
+                    📋 持ち物リスト
+                </button>
+            </div>
+            <button id="mode-return" class="shrink-0 text-[11px] font-bold leading-tight bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-3 transition-colors">
+                🏠 帰宅<br>チェック
             </button>
         </div>
 
-        <!-- 帰宅チェックモード切替 -->
-        <div class="flex justify-center mb-4">
-            <button id="mode-return" class="text-xs bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-4 py-1.5 transition-colors font-bold">
-                🏠 帰宅チェックモード
-            </button>
+        <!-- ③ 準備するもの: 見出し + 進捗 + リセット -->
+        <div id="progress-section">
+            <div class="flex items-end justify-between mb-2">
+                <h2 class="text-lg font-bold text-gray-200">準備するもの</h2>
+                <div class="flex items-center gap-3 shrink-0">
+                    <span class="text-sm text-gray-400"><span id="progress-text">0/0</span></span>
+                    <button id="reset-checks" class="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/20">
+                        リセット
+                    </button>
+                </div>
+            </div>
         </div>
-
-        <!-- 場所タブ -->
-        <div id="location-tabs" class="flex flex-wrap gap-2 justify-center mb-4">
-            <p class="text-gray-500 text-sm">データを読み込み中...</p>
+        <div id="progress-bar-wrap" class="bg-gray-800 rounded-full h-3.5 mb-2 overflow-hidden">
+            <div id="progress-bar" class="bg-[linear-gradient(90deg,#f472b6,#fbbf24,#34d399,#38bdf8,#a78bfa)] h-3.5 w-0 rounded-full transition-all duration-500"></div>
         </div>
-
-        <!-- 条件トグルUI (data.jsonのconditionsから動的生成) -->
-        <div id="condition-toggles" class="hidden flex flex-wrap gap-2 justify-center mb-4"></div>
-
-        <!-- 進捗バー (準備モード) -->
-        <div id="progress-section" class="flex items-center justify-between mb-4">
-            <div class="text-xs text-gray-400">準備の進捗 (<span id="progress-text">0/0</span>)</div>
-            <button id="reset-checks" class="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
-                チェックをリセット
-            </button>
-        </div>
-        <div id="progress-bar-wrap" class="bg-gray-800 rounded-full h-2.5 mb-6 overflow-hidden">
-            <div id="progress-bar" class="bg-cyan-500 h-2.5 w-0 transition-all duration-300"></div>
-        </div>
+        <p id="progress-msg" class="text-sm text-teal-400 mb-4 min-h-[1.25rem]"></p>
 
         <!-- 帰宅チェック進捗バー -->
         <div id="return-progress-section" class="hidden">
             <div class="flex items-center justify-between mb-4">
-                <div class="text-xs text-green-400">帰宅確認の進捗 (<span id="return-progress-text">0/0</span>)</div>
+                <div class="text-sm text-green-400">帰宅確認の進捗 (<span id="return-progress-text">0/0</span>)</div>
                 <div class="flex gap-2">
                     <button id="copy-missing-btn" class="text-xs text-amber-400 hover:text-amber-300 transition-colors bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
                         📋 未返却リストをコピー
@@ -308,26 +323,78 @@
         <!-- チェックリスト本体 -->
         <div id="checklist-container" class="space-y-6"></div>
 
-        <!-- 施設コードで受け取る -->
-        <div class="text-center mt-8 mb-3">
-            <button id="fc-open-btn" class="inline-flex items-center gap-2 text-sm font-bold text-blue-400 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/60 rounded-xl px-5 py-2.5 transition-colors">
-                🏥 施設コードで受け取る
+        <!-- A: 準備完了はユーザーが宣言する(押すとお祝い) -->
+        <div id="ready-section" class="mt-6 mb-2">
+            <button id="ready-btn" class="w-full flex items-center justify-center gap-2 text-base font-bold text-white bg-teal-500 hover:bg-teal-600 active:scale-[0.98] rounded-xl px-5 py-3.5 transition-all shadow-lg">
+                🎈 準備できた！
             </button>
         </div>
 
-        <!-- 公式LINE -->
-        <div class="text-center mt-2 mb-2">
+        <!-- リストを受け取る・追加する (関連導線をグループ化) -->
+        <div class="mt-8 mb-2">
+            <p class="text-center text-sm font-bold text-gray-400 mb-3">リストを受け取る・追加する</p>
+            <div class="flex flex-col items-stretch gap-2 max-w-xs mx-auto">
+                <button id="fc-open-btn" class="flex items-center justify-center gap-2 text-sm font-bold text-blue-400 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/60 rounded-xl px-5 py-2.5 transition-colors">
+                    🏥 施設コードで受け取る
+                </button>
+                <button id="ocr-open-btn" class="flex items-center justify-center gap-2 text-sm font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-500/60 rounded-xl px-5 py-2.5 transition-colors">
+                    📷 紙のリストから追加
+                </button>
+                <a href="https://line.me/R/ti/p/@775deusn" target="_blank" rel="noopener"
+                   class="flex items-center justify-center gap-2 text-sm font-bold text-[#06C755] bg-[#06C755]/10 border border-[#06C755]/40 hover:bg-[#06C755]/20 hover:border-[#06C755]/70 rounded-xl px-5 py-2.5 transition-colors">
+                    💬 公式LINEで最新情報を受け取る
+                </a>
+            </div>
+        </div>
+
+        <!-- ご意見・ご要望 (公式LINEへ) -->
+        <div class="text-center mt-6 mb-2">
+            <p class="text-xs text-gray-500 mb-2">お気づきの点・ご要望があれば教えてください</p>
             <a href="https://line.me/R/ti/p/@775deusn" target="_blank" rel="noopener"
-               class="inline-flex items-center gap-2 text-sm font-bold text-[#06C755] bg-[#06C755]/10 border border-[#06C755]/40 hover:bg-[#06C755]/20 hover:border-[#06C755]/70 rounded-xl px-5 py-2.5 transition-colors">
-                💬 公式LINEで最新情報を受け取る
+               class="inline-flex items-center gap-2 text-sm font-bold text-teal-400 bg-teal-500/10 border border-teal-500/30 hover:bg-teal-500/20 hover:border-teal-500/60 rounded-xl px-5 py-2.5 transition-colors">
+                📝 ご意見・ご要望を送る
             </a>
         </div>
 
+        <!-- 区切り: 破壊的操作を物理的に分離 -->
+        <hr class="border-gray-700 my-8 max-w-xs mx-auto">
+
         <!-- 全削除 -->
-        <div class="text-center mt-4 mb-4">
-            <button id="reset-all" class="text-[11px] text-gray-600 hover:text-red-400 underline transition-colors">
-                すべてのデータを削除(不要設定・箱・カスタムアイテム含む)
+        <div class="text-center mb-4">
+            <button id="reset-all" class="text-xs text-gray-600 hover:text-red-400 underline transition-colors">
+                すべてのデータを削除(箱・カスタムアイテム含む)
             </button>
+        </div>
+    </div>
+
+    <!-- OCR取込モーダル -->
+    <div id="ocr-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md space-y-4">
+            <h3 class="text-lg font-bold text-amber-300">📷 紙のリストから追加</h3>
+            <p class="text-sm text-gray-400">氏名・部屋番号・電話番号などが写らないように撮影してください。読み取った候補は確認してから追加します。</p>
+
+            <div>
+                <label class="text-xs text-gray-400 block mb-1">写真を選択 <span class="text-red-400">*</span></label>
+                <input id="ocr-file-input" type="file" accept="image/*" capture="environment"
+                    class="w-full text-sm text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-500 file:px-3 file:py-2 file:text-sm file:font-bold file:text-slate-900 hover:file:bg-amber-400">
+            </div>
+
+            <p id="ocr-status" class="text-xs text-gray-400"></p>
+            <p id="ocr-error-msg" class="hidden text-xs text-red-400"></p>
+
+            <div id="ocr-results" class="hidden space-y-3">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-bold text-amber-300">追加候補</p>
+                    <p id="ocr-count" class="text-xs text-gray-500"></p>
+                </div>
+                <div id="ocr-candidate-list" class="max-h-72 overflow-y-auto space-y-2 pr-1"></div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button id="ocr-modal-cancel" class="flex-1 py-2.5 rounded-xl text-sm text-gray-400 bg-gray-800 hover:bg-gray-700 transition-colors">キャンセル</button>
+                <button id="ocr-start-btn" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-900 bg-amber-500 hover:bg-amber-400 transition-colors">読み取る</button>
+                <button id="ocr-import-btn" class="hidden flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-900 bg-teal-500 hover:bg-teal-400 transition-colors">追加する</button>
+            </div>
         </div>
     </div>
 
@@ -335,7 +402,7 @@
     <div id="fc-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
         <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm space-y-4">
             <h3 class="text-lg font-bold text-blue-300">🏥 施設コードで受け取る</h3>
-            <p class="text-xs text-gray-400">施設から案内された6文字のコードを入力してください。</p>
+            <p class="text-sm text-gray-400">施設から案内された6文字のコードを入力してください。</p>
             <div>
                 <label class="text-xs text-gray-400 block mb-1">施設コード <span class="text-red-400">*</span></label>
                 <input id="fc-code-input" type="text" placeholder="例: ABC123" maxlength="6"
@@ -357,18 +424,18 @@
     <!-- アイテム追加モーダル -->
     <div id="add-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
         <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm space-y-4" id="add-modal-inner">
-            <h3 class="text-lg font-bold text-cyan-300">アイテムを追加</h3>
+            <h3 class="text-lg font-bold text-teal-300">アイテムを追加</h3>
 
             <div>
                 <label class="text-xs text-gray-400 block mb-1">アイテム名 <span class="text-red-400">*</span></label>
                 <input id="modal-item-name" type="text" placeholder="例: 耳栓、替えの眼鏡ケース…" maxlength="50"
-                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-cyan-500 placeholder-gray-600">
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-teal-500 placeholder-gray-600">
             </div>
 
             <div>
                 <label class="text-xs text-gray-400 block mb-1">カテゴリー</label>
                 <select id="modal-category"
-                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-cyan-500">
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-teal-500">
                 </select>
             </div>
 
@@ -390,7 +457,7 @@
                 <button id="modal-cancel" class="flex-1 py-2.5 rounded-xl text-sm text-gray-400 bg-gray-800 hover:bg-gray-700 transition-colors">
                     キャンセル
                 </button>
-                <button id="modal-save" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-900 bg-cyan-500 hover:bg-cyan-400 transition-colors">
+                <button id="modal-save" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-900 bg-teal-500 hover:bg-teal-400 transition-colors">
                     追加する
                 </button>
             </div>
