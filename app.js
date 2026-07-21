@@ -213,10 +213,11 @@ async function startApp() {
         switchViewMode(getState('viewMode', 'category'));
         renderPersonName();
         renderMemo();
+        renderReminder();
         // ⑤ 開いたときの寄り添う挨拶(名前があれば呼びかける)
         setTimeout(() => {
             const n = getPersonName();
-            showToast(n ? `${n}さん、きょうも いっしょに準備しましょう 🍀` : 'きょうも いってらっしゃいの準備、いっしょに 🍀', 3500);
+            showToast(`${n ? n + 'さん、' : ''}きょうも いっしょに準備していきましょう！`, 3500);
         }, 400);
         // ?fc= パラメータ処理 (data読込後)
         checkFacilityCodeParam();
@@ -1158,6 +1159,34 @@ function countdownLabel(dateStr) {
     if (n === 1) return 'あした！';
     if (n === 0) return 'きょう！';
     return '';
+}
+
+// 予定日が今日〜7日以内で一番近い特別なおでかけ
+function getUpcomingOuting() {
+    let best = null;
+    getSpecialOutings().forEach((o) => {
+        const n = daysUntil(o.date);
+        if (n !== null && n >= 0 && n <= 7 && (!best || n < best.days)) {
+            best = { id: o.id, name: o.name, days: n };
+        }
+    });
+    return best;
+}
+
+// 開いた時のやさしいお知らせ(しつこくない: その日に閉じたら再表示しない)
+function renderReminder() {
+    const banner = $('reminder-banner');
+    if (!banner) return;
+    const hide = () => { banner.classList.add('hidden'); banner.classList.remove('flex'); };
+    const today = new Date().toISOString().slice(0, 10);
+    if (getState('reminderDismissed', '') === today) { hide(); return; }
+    const up = getUpcomingOuting();
+    if (!up) { hide(); return; }
+    const when = up.days === 0 ? 'きょう' : up.days === 1 ? 'あした' : `あと${up.days}日`;
+    $('reminder-text').textContent = `🎉 ${up.name} まで ${when}！そろそろ準備しませんか？`;
+    banner.dataset.outingId = up.id;
+    banner.classList.remove('hidden');
+    banner.classList.add('flex');
 }
 
 function renderTabs() {
@@ -2510,6 +2539,7 @@ function resetAll() {
         'diary',
         'returnOthersOpen',
         'specialOutings',
+        'reminderDismissed',
         'viewMode',
         'returnChecked',
         'facilityTemplate',
@@ -2702,6 +2732,23 @@ $('tadaima-btn').addEventListener('click', handleTadaima);
 $('return-check-toggle').addEventListener('click', () => {
     returnCheckOpen = !returnCheckOpen;
     applyReturnCheckVisibility();
+});
+$('reminder-open').addEventListener('click', () => {
+    const id = $('reminder-banner').dataset.outingId;
+    if (id) {
+        currentSubtype = id;
+        renderTabs();
+        renderChecklist();
+        renderMemo();
+    }
+    $('reminder-banner').classList.add('hidden');
+    $('reminder-banner').classList.remove('flex');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+$('reminder-dismiss').addEventListener('click', () => {
+    setState('reminderDismissed', new Date().toISOString().slice(0, 10));
+    $('reminder-banner').classList.add('hidden');
+    $('reminder-banner').classList.remove('flex');
 });
 $('special-save').addEventListener('click', saveSpecialOuting);
 $('special-cancel').addEventListener('click', closeSpecialModal);

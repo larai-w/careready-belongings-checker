@@ -234,6 +234,15 @@
             </div>
         </div>
 
+        <!-- 予定リマインド(開いた時。予定日が近い特別なおでかけ) -->
+        <div id="reminder-banner" class="hidden bg-pink-500/10 border border-pink-300 rounded-2xl px-4 py-3 mb-4 items-center justify-between gap-2">
+            <button id="reminder-open" class="flex-1 text-left">
+                <p class="text-sm font-bold text-pink-600" id="reminder-text"></p>
+                <p class="text-xs text-gray-500 mt-0.5">タップして準備をはじめる</p>
+            </button>
+            <button id="reminder-dismiss" class="text-gray-400 hover:text-gray-600 text-xl leading-none px-2 shrink-0" aria-label="閉じる">×</button>
+        </div>
+
         <!-- テンプレ取り込みバナー -->
         <div id="import-banner" class="hidden bg-teal-500/10 border border-teal-500/30 rounded-xl px-4 py-3 mb-4 items-start justify-between gap-3">
             <div>
@@ -346,7 +355,7 @@
                 🔎 施設に忘れ物がないか確認する（任意）
             </button>
             <div id="return-check-details" class="hidden">
-                <p class="text-sm text-gray-600 mb-3 mt-2 text-center">ぜんぶ揃えなくて大丈夫。<br>気になるものだけ確認してね 🍵</p>
+                <p class="text-sm text-gray-600 mb-3 mt-2 text-center">ぜんぶ揃えなくて大丈夫。<br>気になるものだけで大丈夫です！🍵</p>
             </div>
         </div>
 
@@ -382,7 +391,7 @@
                 </button>
                 <a href="https://line.me/R/ti/p/@775deusn" target="_blank" rel="noopener"
                    class="flex items-center justify-center gap-2 text-sm font-bold text-[#06C755] bg-[#06C755]/10 border border-[#06C755]/40 hover:bg-[#06C755]/20 hover:border-[#06C755]/70 rounded-xl px-5 py-2.5 transition-colors">
-                    💬 公式LINEで最新情報を受け取る
+                    💬 veai公式LINE（お知らせ）
                 </a>
             </div>
         </div>
