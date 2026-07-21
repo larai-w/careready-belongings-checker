@@ -349,7 +349,7 @@
                     class="w-full bg-white border border-gray-300 rounded-2xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-amber-500 placeholder-gray-400 mb-3">
                 <div class="flex items-center gap-2 mb-3">
                     <input id="diary-photo-input" type="file" accept="image/*" capture="environment" class="hidden">
-                    <button id="diary-photo-btn" type="button" class="text-sm font-bold text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 hover:bg-amber-500/20 transition-colors">📷 写真を追加（任意）</button>
+                    <button id="diary-photo-btn" type="button" class="text-sm font-bold text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 hover:bg-amber-500/20 transition-colors">📸 思い出の写真（任意）</button>
                     <img id="diary-photo-preview" class="hidden w-12 h-12 rounded-lg object-cover border border-amber-200" alt="写真プレビュー">
                     <button id="diary-photo-clear" type="button" class="hidden text-xs text-gray-400 hover:text-red-400 underline">取り消す</button>
                 </div>
@@ -386,30 +386,35 @@
             </button>
         </div>
 
-        <!-- リストを受け取る・追加する (関連導線をグループ化) -->
+        <!-- すでにあるリストを取り込む (機能・任意) -->
         <div class="mt-8 mb-2">
-            <p class="text-center text-sm font-bold text-gray-400 mb-3">リストを受け取る・追加する</p>
+            <p class="text-center text-sm font-bold text-gray-400">持ち物リストを取り込む</p>
+            <p class="text-center text-xs text-gray-500 mb-3">施設や紙のリストがあれば、ここから読み込めます（任意）</p>
             <div class="flex flex-col items-stretch gap-2 max-w-xs mx-auto">
-                <button id="fc-open-btn" class="flex items-center justify-center gap-2 text-sm font-bold text-blue-400 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/60 rounded-xl px-5 py-2.5 transition-colors">
-                    🏥 施設コードで受け取る
+                <button id="fc-open-btn" class="flex flex-col items-center leading-tight text-sm font-bold text-blue-400 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/60 rounded-xl px-5 py-2 transition-colors">
+                    <span>🏥 施設コードで受け取る</span>
+                    <span class="text-[10px] font-normal opacity-70">施設からもらったコードで取り込む</span>
                 </button>
-                <button id="ocr-open-btn" class="flex items-center justify-center gap-2 text-sm font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-500/60 rounded-xl px-5 py-2.5 transition-colors">
-                    📷 紙のリストから追加
+                <button id="ocr-open-btn" class="flex flex-col items-center leading-tight text-sm font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-500/60 rounded-xl px-5 py-2 transition-colors">
+                    <span>📷 紙のリストから読み取る</span>
+                    <span class="text-[10px] font-normal opacity-70">紙の持ち物リストを写真から</span>
                 </button>
+            </div>
+        </div>
+
+        <!-- お知らせ・お問い合わせ (別目的なので分離) -->
+        <div class="mt-8 mb-2">
+            <p class="text-center text-xs text-gray-500 mb-2">お知らせ・お問い合わせ</p>
+            <div class="flex flex-col items-stretch gap-2 max-w-xs mx-auto">
                 <a href="https://line.me/R/ti/p/@775deusn" target="_blank" rel="noopener"
                    class="flex items-center justify-center gap-2 text-sm font-bold text-[#06C755] bg-[#06C755]/10 border border-[#06C755]/40 hover:bg-[#06C755]/20 hover:border-[#06C755]/70 rounded-xl px-5 py-2.5 transition-colors">
                     💬 veai公式LINE（お知らせ）
                 </a>
+                <button id="feedback-btn"
+                   class="flex items-center justify-center gap-2 text-sm font-bold text-teal-400 bg-teal-500/10 border border-teal-500/30 hover:bg-teal-500/20 hover:border-teal-500/60 rounded-xl px-5 py-2.5 transition-colors">
+                    📝 ご意見・ご要望を送る
+                </button>
             </div>
-        </div>
-
-        <!-- ご意見・ご要望 (CareReadyへ直接) -->
-        <div class="text-center mt-6 mb-2">
-            <p class="text-xs text-gray-500 mb-2">お気づきの点・ご要望があれば教えてください</p>
-            <button id="feedback-btn"
-               class="inline-flex items-center gap-2 text-sm font-bold text-teal-400 bg-teal-500/10 border border-teal-500/30 hover:bg-teal-500/20 hover:border-teal-500/60 rounded-xl px-5 py-2.5 transition-colors">
-                📝 ご意見・ご要望を送る
-            </button>
         </div>
 
         <!-- 区切り: 破壊的操作を物理的に分離 -->
