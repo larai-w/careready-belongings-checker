@@ -2208,6 +2208,18 @@ function renderReturnWelcome() {
 }
 
 function handleTadaima() {
+    // ① 日記エントリを記録
+    const dest = (appData.locations.find((l) => l.id === currentSubtype) || {}).name || 'おでかけ';
+    const noteEl = $('diary-note-input');
+    const note = noteEl ? noteEl.value.trim().slice(0, 100) : '';
+    setState('diary', [...getDiary(), {
+        date: new Date().toISOString().slice(0, 10),
+        dest,
+        mood: getState('lastMood', -1),
+        note,
+    }]);
+    if (noteEl) noteEl.value = '';
+
     const count = getState('outingCount', 0) + 1;
     setState('outingCount', count);
     renderReturnWelcome();
@@ -2215,6 +2227,92 @@ function handleTadaima() {
     if (navigator.vibrate) { try { navigator.vibrate([20, 40, 30]); } catch (e) { /* noop */ } }
     const name = getPersonName();
     showCelebrationOverlay('🏠', `${count}回目のおでかけ！`, `${name ? name + 'さん、' : ''}おつかれさま。また いっしょに行きましょうね 🍀`, 'text-amber-600');
+}
+
+// ---------- おでかけ日記 + 調子グラフ ----------
+
+const MOOD_COLORS = ['#f87171', '#fb923c', '#facc15', '#4ade80', '#34d399'];
+
+function getDiary() {
+    const d = getState('diary', []);
+    return Array.isArray(d) ? d : [];
+}
+
+function openDiary() {
+    renderDiary();
+    const m = $('diary-modal');
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+}
+
+function closeDiary() {
+    const m = $('diary-modal');
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+}
+
+function renderDiary() {
+    const entries = getDiary();
+    const graph = $('diary-graph');
+    const list = $('diary-list');
+    graph.textContent = '';
+    list.textContent = '';
+    if (entries.length === 0) {
+        const p = document.createElement('p');
+        p.className = 'text-sm text-gray-500 text-center py-6';
+        p.textContent = 'まだ記録がありません。おかえりのときに「🏠 ただいま！」で記録できます 🍀';
+        list.appendChild(p);
+        return;
+    }
+    graph.appendChild(buildMoodGraph(entries));
+    [...entries].reverse().forEach((e) => list.appendChild(buildDiaryRow(e)));
+}
+
+function buildMoodGraph(entries) {
+    const wrap = document.createElement('div');
+    const title = document.createElement('p');
+    title.className = 'text-xs font-bold text-gray-500 mb-2';
+    title.textContent = '調子の推移（最近）';
+    wrap.appendChild(title);
+
+    const chart = document.createElement('div');
+    chart.className = 'flex items-end justify-center gap-1 h-24 bg-amber-50 rounded-2xl p-2';
+    entries.slice(-14).forEach((e) => {
+        const m = typeof e.mood === 'number' && e.mood >= 0 ? e.mood : 2;
+        const col = document.createElement('div');
+        col.className = 'flex-1 flex flex-col justify-end h-full';
+        const bar = document.createElement('div');
+        bar.className = 'mx-auto w-3 rounded-t-lg';
+        bar.style.height = `${((m + 1) / 5) * 100}%`;
+        bar.style.backgroundColor = MOOD_COLORS[m] || '#facc15';
+        bar.title = `${e.date} ${MOODS[m] || ''}`;
+        col.appendChild(bar);
+        chart.appendChild(col);
+    });
+    wrap.appendChild(chart);
+    return wrap;
+}
+
+function buildDiaryRow(e) {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3 bg-gray-50 rounded-2xl px-3 py-2';
+    const face = document.createElement('span');
+    face.className = 'text-2xl shrink-0';
+    face.textContent = typeof e.mood === 'number' && e.mood >= 0 ? MOODS[e.mood] : '🎒';
+    const body = document.createElement('div');
+    body.className = 'flex-1 min-w-0';
+    const top = document.createElement('p');
+    top.className = 'text-sm font-bold text-gray-800';
+    top.textContent = `${e.date}　🎒 ${e.dest || 'おでかけ'}`;
+    body.appendChild(top);
+    if (e.note) {
+        const note = document.createElement('p');
+        note.className = 'text-xs text-gray-500';
+        note.textContent = e.note;
+        body.appendChild(note);
+    }
+    row.append(face, body);
+    return row;
 }
 
 // 送り出し/おかえり 共通のお祝いオーバーレイ
@@ -2325,6 +2423,7 @@ function resetAll() {
         'memos',
         'outingCount',
         'lastMood',
+        'diary',
         'viewMode',
         'returnChecked',
         'facilityTemplate',
@@ -2576,6 +2675,9 @@ $('ready-btn').addEventListener('click', celebratePrepDone);
 $('person-btn').addEventListener('click', handlePersonName);
 $('memo-input').addEventListener('input', saveMemo);
 $('tadaima-btn').addEventListener('click', handleTadaima);
+$('diary-btn').addEventListener('click', openDiary);
+$('diary-close').addEventListener('click', closeDiary);
+$('diary-modal').addEventListener('click', (e) => { if (e.target === $('diary-modal')) closeDiary(); });
 $('reset-checks').addEventListener('click', resetChecks);
 $('reset-return-checks').addEventListener('click', resetReturnChecks);
 $('copy-missing-btn').addEventListener('click', copyMissingItems);

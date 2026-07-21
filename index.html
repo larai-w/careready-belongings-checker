@@ -264,10 +264,13 @@
         <!-- API フォールバックバナー -->
         <div id="data-banner" class="hidden"></div>
 
-        <!-- だれの準備？(任意・ローカル保存で自分ごとに) -->
-        <div class="mb-3">
+        <!-- だれの準備？ / おでかけ日記 (任意・ローカル保存) -->
+        <div class="mb-3 flex flex-wrap gap-2">
             <button id="person-btn" class="inline-flex items-center gap-1.5 text-sm font-bold text-teal-500 bg-teal-500/10 border border-teal-500/30 hover:bg-teal-500/20 rounded-full px-4 py-1.5 transition-colors">
                 🍀 だれの準備？
+            </button>
+            <button id="diary-btn" class="inline-flex items-center gap-1.5 text-sm font-bold text-amber-600 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 rounded-full px-4 py-1.5 transition-colors">
+                📔 おでかけ日記
             </button>
         </div>
 
@@ -332,6 +335,8 @@
             <div class="bg-white border border-amber-200 rounded-3xl p-4 mb-4 shadow-sm">
                 <p class="text-sm font-bold text-gray-600 mb-2 text-center">きょうの調子は？</p>
                 <div id="mood-row" class="flex justify-center gap-2 mb-3"></div>
+                <input id="diary-note-input" type="text" maxlength="100" placeholder="きょうのひとこと（任意・例: たくさん歩けた）"
+                    class="w-full bg-white border border-gray-300 rounded-2xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-amber-500 placeholder-gray-400 mb-3">
                 <button id="tadaima-btn" class="w-full flex items-center justify-center gap-2 text-base font-bold text-white bg-amber-500 hover:bg-amber-600 active:scale-[0.98] rounded-2xl px-4 py-3 shadow-lg transition-all">
                     🏠 ただいま！（きょうを記録）
                 </button>
@@ -493,6 +498,18 @@
                     追加する
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- おでかけ日記モーダル -->
+    <div id="diary-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-md space-y-4 max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-amber-700">📔 おでかけ日記</h3>
+                <button id="diary-close" class="w-9 h-9 rounded-lg text-gray-400 hover:text-gray-600 text-2xl leading-none flex items-center justify-center">×</button>
+            </div>
+            <div id="diary-graph"></div>
+            <div id="diary-list" class="space-y-2"></div>
         </div>
     </div>
 
