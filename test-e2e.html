@@ -209,13 +209,13 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
 
         // ================= Phase 6: 表示モード切替 =================
         log('# Phase 6: カテゴリー/コンテナ表示の切替');
-        const isActive = (id) => doc5().getElementById(id).className.includes('bg-cyan-500');
+        const isActive = (id) => doc5().getElementById(id).className.includes('bg-teal-500');
         check('初期はカテゴリー表示がアクティブ', isActive('mode-category'));
         doc5().getElementById('mode-container').click();
         check('コンテナ表示に切替できる',
             await waitFor(() => isActive('mode-container') && !isActive('mode-category')));
-        check('コンテナ表示でも項目が描画される',
-            doc5().querySelectorAll('#checklist-container input[type=checkbox]').length >= 1);
+        check('箱に詰める表示に切り替わり内容が描画される',
+            doc5().getElementById('checklist-container').textContent.includes('いま詰めている箱'));
         doc5().getElementById('mode-category').click();
         check('カテゴリー表示に戻せる',
             await waitFor(() => isActive('mode-category') && !isActive('mode-container')));
