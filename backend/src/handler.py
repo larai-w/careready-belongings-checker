@@ -41,10 +41,18 @@ _dynamodb = boto3.resource("dynamodb")
 _textract = None
 _secretsmanager = None
 _openai_api_key_cache = None
+_sns = None
 
 
 def _table():
     return _dynamodb.Table(TABLE_NAME)
+
+
+def _sns_client():
+    global _sns
+    if _sns is None:
+        _sns = boto3.client("sns")
+    return _sns
 
 
 def _textract_client():
@@ -632,6 +640,23 @@ def submit_feedback(event):
         "createdAt": now,
     }
     _table().put_item(Item=item)
+
+    # 届いた声をメール通知(SNS)。失敗しても本処理は止めない。
+    topic_arn = os.environ.get("FEEDBACK_TOPIC_ARN")
+    if topic_arn:
+        try:
+            _sns_client().publish(
+                TopicArn=topic_arn,
+                Subject="CareReady ご意見が届きました",
+                Message=(
+                    f"メッセージ:\n{message}\n\n"
+                    f"連絡先: {contact or '(なし)'}\n"
+                    f"受信(epoch): {now}"
+                ),
+            )
+        except Exception:  # noqa: BLE001 通知失敗は無視
+            pass
+
     return _response(201, {"ok": True})
 
 
