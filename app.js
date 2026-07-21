@@ -938,6 +938,51 @@ function handleLineShare() {
     window.open('https://line.me/R/share?text=' + encodeURIComponent(text), '_blank', 'noopener');
 }
 
+// ---------- ご意見フォーム(CareReadyバックエンドへ直接) ----------
+
+function openFeedback() {
+    $('feedback-message').value = '';
+    $('feedback-contact').value = '';
+    $('feedback-error').classList.add('hidden');
+    $('feedback-modal').classList.remove('hidden');
+    $('feedback-modal').classList.add('flex');
+    setTimeout(() => $('feedback-message').focus(), 50);
+}
+
+function closeFeedback() {
+    $('feedback-modal').classList.add('hidden');
+    $('feedback-modal').classList.remove('flex');
+}
+
+async function sendFeedback() {
+    const message = $('feedback-message').value.trim();
+    const err = $('feedback-error');
+    if (!message) {
+        err.textContent = 'メッセージを入力してください。';
+        err.classList.remove('hidden');
+        return;
+    }
+    const contact = $('feedback-contact').value.trim();
+    const btn = $('feedback-send');
+    btn.disabled = true;
+    err.classList.add('hidden');
+    try {
+        const res = await fetch(`${API_BASE}/v1/feedback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message, contact }),
+        });
+        if (!res.ok) throw new Error('failed');
+        closeFeedback();
+        showToast('送信しました。ありがとうございます 🍀', 3500);
+    } catch (e) {
+        err.textContent = '送信に失敗しました。電波の良い所で もう一度お試しください。';
+        err.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
 // ---------- Theme ----------
 
 function applyTheme(isLight) {
@@ -2787,6 +2832,10 @@ $('reminder-dismiss').addEventListener('click', () => {
     $('reminder-banner').classList.add('hidden');
     $('reminder-banner').classList.remove('flex');
 });
+$('feedback-btn').addEventListener('click', openFeedback);
+$('feedback-cancel').addEventListener('click', closeFeedback);
+$('feedback-send').addEventListener('click', sendFeedback);
+$('feedback-modal').addEventListener('click', (e) => { if (e.target === $('feedback-modal')) closeFeedback(); });
 $('special-save').addEventListener('click', saveSpecialOuting);
 $('special-cancel').addEventListener('click', closeSpecialModal);
 $('special-modal').addEventListener('click', (e) => { if (e.target === $('special-modal')) closeSpecialModal(); });
