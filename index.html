@@ -347,6 +347,12 @@
                 <div id="mood-row" class="flex justify-center gap-2 mb-3"></div>
                 <input id="diary-note-input" type="text" maxlength="100" placeholder="きょうのひとこと（任意・例: たくさん歩けた）"
                     class="w-full bg-white border border-gray-300 rounded-2xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-amber-500 placeholder-gray-400 mb-3">
+                <div class="flex items-center gap-2 mb-3">
+                    <input id="diary-photo-input" type="file" accept="image/*" capture="environment" class="hidden">
+                    <button id="diary-photo-btn" type="button" class="text-sm font-bold text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 hover:bg-amber-500/20 transition-colors">📷 写真を追加（任意）</button>
+                    <img id="diary-photo-preview" class="hidden w-12 h-12 rounded-lg object-cover border border-amber-200" alt="写真プレビュー">
+                    <button id="diary-photo-clear" type="button" class="hidden text-xs text-gray-400 hover:text-red-400 underline">取り消す</button>
+                </div>
                 <button id="tadaima-btn" class="w-full flex items-center justify-center gap-2 text-base font-bold text-white bg-amber-500 hover:bg-amber-600 active:scale-[0.98] rounded-2xl px-4 py-3 shadow-lg transition-all">
                     🏠 ただいま！（きょうを記録）
                 </button>
