@@ -1,0 +1,97 @@
+# バックエンド(CDK)デプロイ
+#
+# 方針: 「自動化 + 人間の確認」。
+#   - main への push(backend/** 変更) → cdk synth + diff の「プレビュー」だけ実行(デプロイしない)
+#   - 実デプロイは手動トリガー(Actions の "Run workflow")のみ = 人間の明示操作を必須にする
+#     (CLAUDE.md「cdk deploy は人間の確認を得てから」を CI 上でも担保)
+#
+# 有効化に必要な設定:
+#   Secrets:   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+#              (このキーには CloudFormation/Lambda/APIGW/DynamoDB/IAM 等 CDK デプロイ権限が必要)
+#   Variables: AWS_REGION (省略時: ap-northeast-1)
+#   任意:      Environment "production-backend" に required reviewers を設定すると
+#              手動トリガー後にさらに承認待ちの二重ゲートにできる
+name: Deploy backend (CDK)
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**']
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check AWS credentials
+        id: creds
+        run: |
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::AWSシークレット未設定のためスキップ (deploy-backend.yml のコメント参照)"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.creds.outputs.configured == 'true'
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        if: steps.creds.outputs.configured == 'true'
+        with:
+          node-version: '20'
+      - name: Install CDK deps
+        if: steps.creds.outputs.configured == 'true'
+        run: pip install -r backend/infra/requirements.txt
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: steps.creds.outputs.configured == 'true'
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+      - name: CDK synth + diff (preview only)
+        if: steps.creds.outputs.configured == 'true'
+        working-directory: backend/infra
+        run: |
+          npx --yes aws-cdk@2 synth
+          npx --yes aws-cdk@2 diff || true
+
+  deploy:
+    # 実デプロイは手動トリガー時のみ(人間の明示操作)
+    if: github.event_name == 'workflow_dispatch'
+    needs: preview
+    runs-on: ubuntu-latest
+    environment: production-backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check AWS credentials
+        id: creds
+        run: |
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::error::AWSシークレット未設定のためデプロイできません"
+            exit 1
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install CDK deps
+        run: pip install -r backend/infra/requirements.txt
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+      - name: CDK deploy
+        working-directory: backend/infra
+        run: npx --yes aws-cdk@2 deploy --require-approval never
