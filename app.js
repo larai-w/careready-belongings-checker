@@ -208,8 +208,10 @@ async function startApp() {
         updateFacilityBanner();
         renderConditionToggles();
         renderTabs();
-        renderChecklist();
+        // ① 最後に使ったビューで開く(初回はリスト)
+        switchViewMode(getState('viewMode', 'category'));
         renderPersonName();
+        renderMemo();
         // ⑤ 開いたときの寄り添う挨拶(名前があれば呼びかける)
         setTimeout(() => {
             const n = getPersonName();
@@ -946,6 +948,24 @@ function handlePersonName() {
     renderPersonName();
 }
 
+// ---------- 行き先ごとのメモ ----------
+
+function renderMemo() {
+    const el = $('memo-input');
+    if (!el) return;
+    const memos = getState('memos', {});
+    el.value = (currentSubtype && memos[currentSubtype]) || '';
+}
+
+function saveMemo() {
+    if (!currentSubtype) return;
+    const memos = getState('memos', {});
+    const v = $('memo-input').value.slice(0, 500);
+    if (v.trim()) memos[currentSubtype] = v;
+    else delete memos[currentSubtype];
+    setState('memos', memos);
+}
+
 // ---------- Modal ----------
 
 function openModal(categoryId) {
@@ -1034,6 +1054,8 @@ function handleModalSave() {
 
 function switchReturnMode(enabled) {
     returnMode = enabled;
+    // 帰宅モードは背景を「おうち」の暖色に
+    document.body.classList.toggle('return-mode', enabled);
 
     const returnBtn = $('mode-return');
     const viewModeToggle = $('view-mode-toggle');
@@ -1041,10 +1063,11 @@ function switchReturnMode(enabled) {
     const progressBarWrap = $('progress-bar-wrap');
     const progressMsg = $('progress-msg');
     const readySection = $('ready-section');
+    const memoSection = $('memo-section');
     const returnProgressSection = $('return-progress-section');
 
     // 準備モード専用UIの表示/非表示
-    [progressSection, progressBarWrap, progressMsg, readySection].forEach((el) => {
+    [progressSection, progressBarWrap, progressMsg, readySection, memoSection].forEach((el) => {
         el.classList.toggle('hidden', returnMode);
     });
     returnProgressSection.classList.toggle('hidden', !returnMode);
@@ -1057,6 +1080,11 @@ function switchReturnMode(enabled) {
         ? 'shrink-0 text-[11px] font-bold leading-tight bg-green-500 text-slate-900 rounded-xl px-3 transition-colors shadow'
         : 'shrink-0 text-[11px] font-bold leading-tight bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-3 transition-colors';
 
+    if (returnMode) {
+        renderMood();
+        renderReturnWelcome();
+    }
+
     renderChecklist();
 }
 
@@ -1064,6 +1092,7 @@ function switchReturnMode(enabled) {
 
 function switchViewMode(mode) {
     viewMode = mode;
+    setState('viewMode', mode);   // 次回はこのビューで開く
     const active =
         'flex-1 py-2.5 text-sm font-bold rounded-lg transition-all bg-teal-500 text-slate-900 shadow';
     const inactive =
@@ -1100,6 +1129,7 @@ function renderTabs() {
             currentSubtype = loc.id;
             renderTabs();
             renderChecklist();
+            renderMemo();
         });
         tabsContainer.appendChild(button);
     });
@@ -2123,30 +2153,76 @@ function celebratePrepDone() {
 
 // 送り出しの瞬間: 温かい「いってらっしゃい」オーバーレイ
 function showSendOff() {
-    const name = getState('personName', '').trim();
+    const name = getPersonName();
+    showCelebrationOverlay(
+        '🎈',
+        name ? `${name}さん、いってらっしゃい！` : 'いってらっしゃい！',
+        '準備おつかれさま。気をつけてね 🍀',
+        'text-teal-600'
+    );
+}
+
+// ---------- おでかけ記録(調子 + 回数 + また行こう) ----------
+
+const MOODS = ['😟', '😐', '🙂', '😊', '😄'];
+
+function renderMood() {
+    const row = $('mood-row');
+    if (!row) return;
+    row.textContent = '';
+    const current = getState('lastMood', -1);
+    MOODS.forEach((face, i) => {
+        const b = document.createElement('button');
+        const on = i === current;
+        b.className = `w-11 h-11 rounded-full text-2xl flex items-center justify-center transition-all border-2 ${
+            on ? 'bg-amber-100 border-amber-400 scale-110' : 'bg-gray-50 border-transparent hover:bg-amber-50'
+        }`;
+        b.textContent = face;
+        b.setAttribute('aria-label', `調子 ${i + 1}`);
+        b.addEventListener('click', () => { setState('lastMood', i); renderMood(); });
+        row.appendChild(b);
+    });
+}
+
+function renderReturnWelcome() {
+    const el = $('return-welcome-msg');
+    if (!el) return;
+    const count = getState('outingCount', 0);
+    const name = getPersonName();
+    el.textContent = count > 0
+        ? `${name ? name + 'さん、' : ''}これまで ${count}回のおでかけ、おつかれさま 🎒`
+        : 'おつかれさま。忘れ物がないか、いっしょに確認しましょう 🍵';
+}
+
+function handleTadaima() {
+    const count = getState('outingCount', 0) + 1;
+    setState('outingCount', count);
+    renderReturnWelcome();
+    launchConfetti(30);
+    if (navigator.vibrate) { try { navigator.vibrate([20, 40, 30]); } catch (e) { /* noop */ } }
+    const name = getPersonName();
+    showCelebrationOverlay('🏠', `${count}回目のおでかけ！`, `${name ? name + 'さん、' : ''}おつかれさま。また いっしょに行きましょうね 🍀`, 'text-amber-600');
+}
+
+// 送り出し/おかえり 共通のお祝いオーバーレイ
+function showCelebrationOverlay(emojiChar, titleText, subText, titleColor) {
     const overlay = document.createElement('div');
     overlay.className = 'fixed inset-0 z-[70] flex items-center justify-center p-6 bg-black/30';
-
     const card = document.createElement('div');
     card.className = 'bg-white rounded-3xl shadow-2xl px-8 py-10 text-center max-w-xs w-full';
-
     const emoji = document.createElement('div');
     emoji.className = 'text-6xl mb-3';
-    emoji.textContent = '🎈';
-
+    emoji.textContent = emojiChar;
     const h = document.createElement('p');
-    h.className = 'text-2xl font-bold text-teal-600 mb-1';
-    h.textContent = name ? `${name}さん、いってらっしゃい！` : 'いってらっしゃい！';
-
+    h.className = `text-2xl font-bold mb-1 ${titleColor}`;
+    h.textContent = titleText;
     const sub = document.createElement('p');
     sub.className = 'text-sm text-gray-600';
-    sub.textContent = '準備おつかれさま。気をつけてね 🍀';
-
+    sub.textContent = subText;
     card.append(emoji, h, sub);
     overlay.appendChild(card);
     overlay.addEventListener('click', () => overlay.remove());
     document.body.appendChild(overlay);
-
     try {
         card.animate(
             [{ transform: 'scale(0.8)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }],
@@ -2233,6 +2309,10 @@ function resetAll() {
         'packGuideOpen',
         'sealedBoxes',
         'personName',
+        'memos',
+        'outingCount',
+        'lastMood',
+        'viewMode',
         'returnChecked',
         'facilityTemplate',
         'conditions',
@@ -2481,6 +2561,8 @@ $('mode-container').addEventListener('click', () => switchViewMode('container'))
 $('mode-return').addEventListener('click', () => switchReturnMode(!returnMode));
 $('ready-btn').addEventListener('click', celebratePrepDone);
 $('person-btn').addEventListener('click', handlePersonName);
+$('memo-input').addEventListener('input', saveMemo);
+$('tadaima-btn').addEventListener('click', handleTadaima);
 $('reset-checks').addEventListener('click', resetChecks);
 $('reset-return-checks').addEventListener('click', resetReturnChecks);
 $('copy-missing-btn').addEventListener('click', copyMissingItems);
