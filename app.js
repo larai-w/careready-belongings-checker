@@ -209,6 +209,8 @@ async function startApp() {
         renderConditionToggles();
         renderTabs();
         renderChecklist();
+        // ⑤ 開いたときの寄り添う挨拶
+        setTimeout(() => showToast('きょうも いってらっしゃいの準備、いっしょに 🍀', 3500), 400);
         // ?fc= パラメータ処理 (data読込後)
         checkFacilityCodeParam();
     } catch (e) {
@@ -1494,16 +1496,17 @@ function createPackItemRow(item, checked, currentBox, activeBox) {
     const row = document.createElement('button');
     // 進捗カウント用マーカー(パック表示は input を使わないため)
     row.setAttribute('data-pack-item', isChecked ? 'checked' : 'unchecked');
-    row.className = `w-full flex items-center gap-3 min-h-[56px] px-3 py-2 rounded-xl border transition-colors text-left ${
-        isChecked
-            ? 'bg-slate-800/70 border-gray-700'
-            : 'bg-slate-800/30 border-gray-800/60 hover:bg-slate-800/50'
+    // 箱に入れると、その箱のキャンディ色に色づく(箱との繋がりが見える)
+    row.className = `w-full flex items-center gap-3 min-h-[56px] px-3 py-2.5 rounded-2xl border-2 transition-all text-left ${
+        inBox
+            ? color.pale
+            : 'bg-slate-800/30 border-transparent hover:bg-slate-800/50'
     }`;
 
     const mark = document.createElement('span');
     mark.className =
-        'w-7 h-7 rounded-lg flex items-center justify-center font-bold shrink-0 ' +
-        (isChecked ? `${color ? color.badge : 'bg-teal-600'} text-white` : 'border-2 border-gray-600');
+        'w-7 h-7 rounded-full flex items-center justify-center font-bold shrink-0 ' +
+        (isChecked ? `${color ? color.badge : 'bg-teal-600'} text-white` : 'border-2 border-gray-400');
     mark.textContent = isChecked ? '✓' : '';
     row.appendChild(mark);
 
@@ -2072,11 +2075,50 @@ function getSealedBoxes() {
     return getState('sealedBoxes', {});
 }
 
-// A: ユーザーが「準備できた!」と宣言したとき
+// A: ユーザーが「準備できた!」と宣言したとき → 送り出しの演出
 function celebratePrepDone() {
     launchConfetti(44);
     if (navigator.vibrate) { try { navigator.vibrate([20, 40, 20, 40, 60]); } catch (e) { /* noop */ } }
-    showToast('いってらっしゃい 🎈 準備おつかれさまでした', 4000);
+    showSendOff();
+}
+
+// 送り出しの瞬間: 温かい「いってらっしゃい」オーバーレイ
+function showSendOff() {
+    const name = getState('personName', '').trim();
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 z-[70] flex items-center justify-center p-6 bg-black/30';
+
+    const card = document.createElement('div');
+    card.className = 'bg-white rounded-3xl shadow-2xl px-8 py-10 text-center max-w-xs w-full';
+
+    const emoji = document.createElement('div');
+    emoji.className = 'text-6xl mb-3';
+    emoji.textContent = '🎈';
+
+    const h = document.createElement('p');
+    h.className = 'text-2xl font-bold text-teal-600 mb-1';
+    h.textContent = name ? `${name}さん、いってらっしゃい！` : 'いってらっしゃい！';
+
+    const sub = document.createElement('p');
+    sub.className = 'text-sm text-gray-600';
+    sub.textContent = '準備おつかれさま。気をつけてね 🍀';
+
+    card.append(emoji, h, sub);
+    overlay.appendChild(card);
+    overlay.addEventListener('click', () => overlay.remove());
+    document.body.appendChild(overlay);
+
+    try {
+        card.animate(
+            [{ transform: 'scale(0.8)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }],
+            { duration: 300, easing: 'ease-out' }
+        );
+    } catch (e) { /* noop */ }
+    setTimeout(() => {
+        overlay.style.transition = 'opacity .4s';
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 400);
+    }, 3600);
 }
 
 // C: 箱を詰め終わったとき(小さなお祝い + ✅を記録)
@@ -2120,12 +2162,12 @@ function resetChecks() {
 function resetReturnChecks() {
     const prev = getState('returnChecked', {});
     if (Object.keys(prev).length === 0) {
-        showToast('帰宅チェックはまだありません');
+        showToast('おかえりチェックはまだありません');
         return;
     }
     removeState('returnChecked');
     renderChecklist();
-    showToast('帰宅チェックをリセットしました', 6000, {
+    showToast('おかえりチェックをリセットしました', 6000, {
         label: '元に戻す',
         onClick: () => {
             setState('returnChecked', prev);
