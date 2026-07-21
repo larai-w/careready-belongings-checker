@@ -209,8 +209,12 @@ async function startApp() {
         renderConditionToggles();
         renderTabs();
         renderChecklist();
-        // ⑤ 開いたときの寄り添う挨拶
-        setTimeout(() => showToast('きょうも いってらっしゃいの準備、いっしょに 🍀', 3500), 400);
+        renderPersonName();
+        // ⑤ 開いたときの寄り添う挨拶(名前があれば呼びかける)
+        setTimeout(() => {
+            const n = getPersonName();
+            showToast(n ? `${n}さん、きょうも いっしょに準備しましょう 🍀` : 'きょうも いってらっしゃいの準備、いっしょに 🍀', 3500);
+        }, 400);
         // ?fc= パラメータ処理 (data読込後)
         checkFacilityCodeParam();
     } catch (e) {
@@ -920,6 +924,28 @@ function restoreTheme() {
     applyTheme(saved === 'light');
 }
 
+// ---------- だれの準備？(任意・ローカル) ----------
+
+function getPersonName() {
+    return getState('personName', '').trim();
+}
+
+function renderPersonName() {
+    const btn = $('person-btn');
+    if (!btn) return;
+    const name = getPersonName();
+    btn.textContent = name ? `🍀 ${name}さんの おでかけ` : '🍀 だれの準備？';
+}
+
+function handlePersonName() {
+    const input = prompt('だれの準備ですか？（お名前・ニックネーム）', getPersonName());
+    if (input === null) return;
+    const name = input.trim().slice(0, 20);
+    if (name) setState('personName', name);
+    else removeState('personName');
+    renderPersonName();
+}
+
 // ---------- Modal ----------
 
 function openModal(categoryId) {
@@ -1374,6 +1400,12 @@ function buildActiveBoxBar() {
     card.appendChild(titleRow);
 
     const sealed = getSealedBoxes();
+    // 箱ごとの個数(詰まっていくのが見える)
+    const containersState = getState('containers', {});
+    const boxCounts = {};
+    Object.values(containersState).forEach((bid) => {
+        if (bid && bid !== 'none') boxCounts[bid] = (boxCounts[bid] || 0) + 1;
+    });
     const chips = document.createElement('div');
     chips.className = 'flex flex-wrap gap-2';
     boxes.forEach((box) => {
@@ -1390,6 +1422,13 @@ function buildActiveBoxBar() {
         const label = document.createElement('span');
         label.textContent = getContainerName(box.id);
         chip.append(dot, label);
+        const cnt = boxCounts[box.id] || 0;
+        if (cnt > 0) {
+            const badge = document.createElement('span');
+            badge.className = `text-xs rounded-full px-1.5 ${isActive ? 'bg-white/25' : 'bg-black/10'}`;
+            badge.textContent = String(cnt);
+            chip.appendChild(badge);
+        }
         if (sealed[box.id]) {
             const done = document.createElement('span');
             done.textContent = '✅';
@@ -2193,6 +2232,7 @@ function resetAll() {
         'activeBox',
         'packGuideOpen',
         'sealedBoxes',
+        'personName',
         'returnChecked',
         'facilityTemplate',
         'conditions',
@@ -2440,6 +2480,7 @@ $('mode-category').addEventListener('click', () => switchViewMode('category'));
 $('mode-container').addEventListener('click', () => switchViewMode('container'));
 $('mode-return').addEventListener('click', () => switchReturnMode(!returnMode));
 $('ready-btn').addEventListener('click', celebratePrepDone);
+$('person-btn').addEventListener('click', handlePersonName);
 $('reset-checks').addEventListener('click', resetChecks);
 $('reset-return-checks').addEventListener('click', resetReturnChecks);
 $('copy-missing-btn').addEventListener('click', copyMissingItems);
