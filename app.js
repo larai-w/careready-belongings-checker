@@ -27,6 +27,7 @@ let appData = null;
 let currentSubtype = '';
 let viewMode = 'category';   // 'category' | 'container'
 let returnMode = false;       // 帰宅チェックモード
+let returnCheckOpen = false;  // おかえりの忘れ物チェックは任意で開く
 let modalQty = 1;
 let pendingCategoryId = null;
 let pendingImportData = null;
@@ -1054,6 +1055,7 @@ function handleModalSave() {
 
 function switchReturnMode(enabled) {
     returnMode = enabled;
+    if (enabled) returnCheckOpen = false;   // 入るたびに忘れ物チェックは畳んでおく
     // 帰宅モードは背景を「おうち」の暖色に
     document.body.classList.toggle('return-mode', enabled);
 
@@ -1085,6 +1087,20 @@ function switchReturnMode(enabled) {
     }
 
     renderChecklist();
+    applyReturnCheckVisibility();
+}
+
+// おかえりの「忘れ物チェック」の表示/非表示(任意で開く)
+function applyReturnCheckVisibility() {
+    const details = $('return-check-details');
+    const container = $('checklist-container');
+    const toggle = $('return-check-toggle');
+    if (details) details.classList.toggle('hidden', !(returnMode && returnCheckOpen));
+    // 帰宅後はまず一息。リスト本体は開いた時だけ表示
+    if (container) container.classList.toggle('hidden', returnMode && !returnCheckOpen);
+    if (toggle) toggle.textContent = returnCheckOpen
+        ? '🔼 忘れ物チェックを閉じる'
+        : '🔎 施設に忘れ物がないか確認する（任意）';
 }
 
 // ---------- Render ----------
@@ -2675,6 +2691,10 @@ $('ready-btn').addEventListener('click', celebratePrepDone);
 $('person-btn').addEventListener('click', handlePersonName);
 $('memo-input').addEventListener('input', saveMemo);
 $('tadaima-btn').addEventListener('click', handleTadaima);
+$('return-check-toggle').addEventListener('click', () => {
+    returnCheckOpen = !returnCheckOpen;
+    applyReturnCheckVisibility();
+});
 $('diary-btn').addEventListener('click', openDiary);
 $('diary-close').addEventListener('click', closeDiary);
 $('diary-modal').addEventListener('click', (e) => { if (e.target === $('diary-modal')) closeDiary(); });

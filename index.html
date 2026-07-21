@@ -217,16 +217,16 @@
 <body class="p-4 md:p-8 font-sans">
 
     <div class="max-w-xl mx-auto">
-        <!-- ヘッダー: ロゴ + タイトル左 / ユーティリティは小さく右上 -->
-        <div class="flex items-start justify-between gap-3 my-6">
-            <div class="flex items-center gap-2.5">
+        <!-- ヘッダー: ロゴ+タイトルを1段目、ユーティリティを2段目に(狭い画面でも崩れない) -->
+        <div class="my-6">
+            <div class="flex items-center gap-2.5 mb-3">
                 <img src="./icons/careready-logo.svg" alt="CareReady ロゴ" class="w-12 h-12 rounded-2xl shadow-sm shrink-0">
-                <div>
+                <div class="min-w-0">
                     <h1 class="text-3xl font-bold text-teal-400 tracking-wide">CareReady</h1>
                     <p class="text-sm text-gray-400 mt-0.5">持ちものを、わすれずに。</p>
                 </div>
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
+            <div class="flex items-center justify-end gap-2">
                 <button id="theme-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="テーマ切替" aria-label="テーマ切替">🌙</button>
                 <button id="print-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="印刷する" aria-label="印刷する">🖨️</button>
                 <button id="share-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="リンクを共有" aria-label="リンクを共有">🔗</button>
@@ -341,19 +341,25 @@
                     🏠 ただいま！（きょうを記録）
                 </button>
             </div>
-            <div class="flex items-center justify-between mb-4">
-                <div class="text-sm text-green-600 font-bold">おかえりの確認 (<span id="return-progress-text">0/0</span>)</div>
-                <div class="flex gap-2">
-                    <button id="copy-missing-btn" class="text-xs text-amber-400 hover:text-amber-300 transition-colors bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
-                        📋 未返却リストをコピー
-                    </button>
-                    <button id="reset-return-checks" class="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
-                        おかえりチェックをリセット
-                    </button>
+            <!-- 忘れ物チェックは任意(家に帰ったら まず一息。施設に置き忘れがないかの確認用) -->
+            <button id="return-check-toggle" class="w-full text-sm font-bold text-green-700 bg-green-500/10 border border-green-500/30 hover:bg-green-500/20 rounded-2xl px-4 py-2.5 transition-colors">
+                🔎 施設に忘れ物がないか確認する（任意）
+            </button>
+            <div id="return-check-details" class="hidden">
+                <div class="flex items-center justify-between mb-4 mt-3">
+                    <div class="text-sm text-green-600 font-bold">おかえりの確認 (<span id="return-progress-text">0/0</span>)</div>
+                    <div class="flex gap-2">
+                        <button id="copy-missing-btn" class="text-xs text-amber-400 hover:text-amber-300 transition-colors bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
+                            📋 未返却リストをコピー
+                        </button>
+                        <button id="reset-return-checks" class="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
+                            おかえりチェックをリセット
+                        </button>
+                    </div>
                 </div>
-            </div>
-            <div class="bg-gray-800 rounded-full h-2.5 mb-6 overflow-hidden">
-                <div id="return-progress-bar" class="bg-green-500 h-2.5 w-0 transition-all duration-300"></div>
+                <div class="bg-gray-800 rounded-full h-2.5 mb-6 overflow-hidden">
+                    <div id="return-progress-bar" class="bg-green-500 h-2.5 w-0 transition-all duration-300"></div>
+                </div>
             </div>
         </div>
 
