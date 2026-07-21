@@ -44,9 +44,23 @@ function getCustomItems() {
     return getState('customItems', []);
 }
 
+function getCustomContainers() {
+    const list = getState('customContainers', []);
+    return Array.isArray(list) ? list : [];
+}
+
+// 固定コンテナ + ユーザー追加コンテナ をまとめて返す
+function getAllContainers() {
+    return [...CONTAINERS, ...getCustomContainers()];
+}
+
+function isCustomContainer(id) {
+    return typeof id === 'string' && id.startsWith('cc_');
+}
+
 function getContainerName(id) {
     const names = getState('containerNames', {});
-    const def = CONTAINERS.find((c) => c.id === id);
+    const def = getAllContainers().find((c) => c.id === id);
     return names[id] || (def ? def.name : id);
 }
 
@@ -256,6 +270,12 @@ function handleImportOk() {
     if (pendingImportData.containerNames) {
         const names = getState('containerNames', {});
         setState('containerNames', { ...names, ...pendingImportData.containerNames });
+    }
+    if (Array.isArray(pendingImportData.customContainers) && pendingImportData.customContainers.length > 0) {
+        const existing = getCustomContainers();
+        const existingIds = new Set(existing.map((c) => c.id));
+        const toAdd = pendingImportData.customContainers.filter((c) => c && c.id && !existingIds.has(c.id));
+        if (toAdd.length > 0) setState('customContainers', [...existing, ...toAdd]);
     }
 
     pendingImportData = null;
@@ -834,6 +854,7 @@ function generateShareURL() {
     const data = {
         customItems: getCustomItems(),
         containerNames: getState('containerNames', {}),
+        customContainers: getCustomContainers(),
     };
     const encoded = encodeShareData(data);
     const base = window.location.origin + window.location.pathname;
@@ -1173,22 +1194,276 @@ function renderPrepChecklist() {
             }
         });
 
-        // 未割り当ては常に表示(詰め忘れ防止)
-        const unassigned = allFilteredItems.filter(
-            (item) => !containers[item.id] || containers[item.id] === 'none'
-        );
-        if (unassigned.length > 0) {
-            container.appendChild(buildContainerSection('none', unassigned, checked, skipped, containers));
-        }
+        // ===== 「箱に詰める」モード: 使い方ガイド + いま詰めている箱 + タップで割り当て =====
+        const guide = buildPackGuide();
+        if (guide) container.appendChild(guide);
+        container.appendChild(buildActiveBoxBar());
 
-        CONTAINERS.slice(1).forEach((box) => {
-            const boxItems = allFilteredItems.filter((item) => containers[item.id] === box.id);
-            if (boxItems.length === 0) return;
-            container.appendChild(buildContainerSection(box.id, boxItems, checked, skipped, containers));
+        const activeBox = getActiveBox();
+
+        // カテゴリ順にグルーピング(「不要」は非表示)
+        const groups = [];
+        const groupIndex = {};
+        allFilteredItems.forEach((item) => {
+            if (skipped[item.id]) return;
+            const key = item.categoryName || 'その他';
+            if (groupIndex[key] === undefined) {
+                groupIndex[key] = groups.length;
+                groups.push({ name: key, items: [] });
+            }
+            groups[groupIndex[key]].items.push(item);
+        });
+
+        groups.forEach((group) => {
+            const section = document.createElement('div');
+            section.className = 'bg-slate-800/60 border border-gray-700/60 rounded-xl p-3';
+            const title = document.createElement('p');
+            title.className = 'text-xs font-bold text-gray-400 px-1 pb-2';
+            title.textContent = group.name;
+            section.appendChild(title);
+            const list = document.createElement('div');
+            list.className = 'space-y-1';
+            group.items.forEach((item) => {
+                list.appendChild(createPackItemRow(item, checked, containers[item.id], activeBox));
+            });
+            section.appendChild(list);
+            container.appendChild(section);
         });
     }
 
     updateProgress();
+}
+
+// 箱ごとの色(実物の箱に同色シールを貼れば対応が直感的)
+const BOX_PALETTE = [
+    { dot: 'bg-teal-500',    badge: 'bg-teal-600',    chipBg: 'bg-teal-600',    chipBorder: 'border-teal-700' },
+    { dot: 'bg-sky-500',     badge: 'bg-sky-600',     chipBg: 'bg-sky-600',     chipBorder: 'border-sky-700' },
+    { dot: 'bg-amber-500',   badge: 'bg-amber-600',   chipBg: 'bg-amber-600',   chipBorder: 'border-amber-700' },
+    { dot: 'bg-rose-500',    badge: 'bg-rose-600',    chipBg: 'bg-rose-600',    chipBorder: 'border-rose-700' },
+    { dot: 'bg-violet-500',  badge: 'bg-violet-600',  chipBg: 'bg-violet-600',  chipBorder: 'border-violet-700' },
+    { dot: 'bg-emerald-500', badge: 'bg-emerald-600', chipBg: 'bg-emerald-600', chipBorder: 'border-emerald-700' },
+];
+
+function getBoxColor(id) {
+    const boxes = getAllContainers().slice(1);
+    const idx = boxes.findIndex((b) => b.id === id);
+    return BOX_PALETTE[(idx >= 0 ? idx : 0) % BOX_PALETTE.length];
+}
+
+function getActiveBox() {
+    const boxes = getAllContainers().slice(1);
+    const saved = getState('activeBox', null);
+    if (saved && boxes.some((b) => b.id === saved)) return saved;
+    return boxes.length ? boxes[0].id : null;
+}
+
+function setActiveBox(id) {
+    setState('activeBox', id);
+    renderChecklist();
+}
+
+// アイテムをタップしたとき: アクティブな箱に入れる / 取り出す
+function packTap(itemId) {
+    const checked = getState('checked', {});
+    const containers = getState('containers', {});
+    const active = getActiveBox();
+    if (checked[itemId] && containers[itemId] === active) {
+        // すでにアクティブな箱に入っている → 取り出す
+        delete checked[itemId];
+        delete containers[itemId];
+    } else {
+        // 未割り当て/別の箱 → アクティブな箱へ入れる(チェックも付ける)
+        checked[itemId] = true;
+        containers[itemId] = active;
+    }
+    setState('checked', checked);
+    setState('containers', containers);
+    renderChecklist();
+}
+
+// 「箱に詰める」モードの使い方ガイド(開閉式)。閉じた状態は記憶する
+function buildPackGuide() {
+    if (getState('packGuideDismissed', false)) return null;
+    const box = document.createElement('div');
+    box.className = 'relative bg-teal-500/10 border border-teal-500/30 rounded-2xl p-4 pr-9';
+
+    const title = document.createElement('p');
+    title.className = 'text-sm font-bold text-teal-300 mb-1';
+    title.textContent = '💡 箱に詰めるモードの使い方';
+    box.appendChild(title);
+
+    const steps = document.createElement('div');
+    steps.className = 'text-sm text-gray-300 space-y-0.5';
+    [
+        '① 上で「いま詰めている箱」を選ぶ',
+        '② 入れる物をタップすると、その箱に入ります',
+        '③ もう一度タップすると取り出せます',
+        '④ 箱は名前の変更・追加ができます',
+    ].forEach((t) => {
+        const p = document.createElement('p');
+        p.textContent = t;
+        steps.appendChild(p);
+    });
+    box.appendChild(steps);
+
+    const close = document.createElement('button');
+    close.className = 'absolute top-2.5 right-2.5 w-7 h-7 rounded-lg text-gray-400 hover:text-gray-200 text-xl leading-none flex items-center justify-center';
+    close.textContent = '×';
+    close.setAttribute('aria-label', '使い方を閉じる');
+    close.addEventListener('click', () => {
+        setState('packGuideDismissed', true);
+        renderChecklist();
+    });
+    box.appendChild(close);
+
+    return box;
+}
+
+function buildActiveBoxBar() {
+    const activeBox = getActiveBox();
+    const boxes = getAllContainers().slice(1);
+
+    const card = document.createElement('div');
+    card.className = 'bg-slate-800/80 border border-gray-700/60 rounded-2xl p-4';
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'flex items-center justify-between mb-2';
+    const title = document.createElement('p');
+    title.className = 'text-sm font-bold text-gray-300';
+    title.textContent = 'いま詰めている箱';
+    const helpBtn = document.createElement('button');
+    helpBtn.className =
+        'shrink-0 text-xs font-bold text-teal-400 hover:text-teal-300 border border-teal-500/40 rounded-lg px-2.5 py-1 transition-colors';
+    helpBtn.textContent = '❔ 使い方';
+    helpBtn.addEventListener('click', () => {
+        setState('packGuideDismissed', false);
+        renderChecklist();
+    });
+    titleRow.append(title, helpBtn);
+    card.appendChild(titleRow);
+
+    const chips = document.createElement('div');
+    chips.className = 'flex flex-wrap gap-2';
+    boxes.forEach((box) => {
+        const isActive = box.id === activeBox;
+        const color = getBoxColor(box.id);
+        const chip = document.createElement('button');
+        chip.className = `flex items-center gap-2 min-h-[48px] px-4 rounded-xl font-bold border-2 transition-colors ${
+            isActive
+                ? `${color.chipBg} text-white ${color.chipBorder} shadow`
+                : 'bg-gray-800 text-gray-300 border-gray-700 hover:border-gray-500'
+        }`;
+        const dot = document.createElement('span');
+        dot.className = `w-3 h-3 rounded-full ${isActive ? 'bg-white' : color.dot}`;
+        const label = document.createElement('span');
+        label.textContent = getContainerName(box.id);
+        chip.append(dot, label);
+        if (isActive) {
+            const mark = document.createElement('span');
+            mark.className = 'text-xs font-normal';
+            mark.textContent = '✓ 選択中';
+            chip.appendChild(mark);
+        }
+        chip.addEventListener('click', () => setActiveBox(box.id));
+        chips.appendChild(chip);
+    });
+
+    const addChip = document.createElement('button');
+    addChip.className =
+        'flex items-center gap-1 min-h-[48px] px-4 rounded-xl font-bold text-teal-400 bg-teal-500/10 border-2 border-dashed border-teal-500/50 hover:bg-teal-500/20 transition-colors';
+    addChip.textContent = '＋ 箱を追加';
+    addChip.addEventListener('click', addContainer);
+    chips.appendChild(addChip);
+    card.appendChild(chips);
+
+    // アクティブな箱の 名前変更 / 削除(対象を明示した分かりやすいボタン)
+    const activeName = getContainerName(activeBox);
+    const actions = document.createElement('div');
+    actions.className = 'flex flex-wrap gap-2 mt-3';
+    const renameBtn = document.createElement('button');
+    renameBtn.className =
+        'inline-flex items-center gap-1.5 text-xs font-bold text-teal-400 bg-teal-500/10 border border-teal-500/30 hover:bg-teal-500/20 rounded-lg px-3 py-2 transition-colors';
+    renameBtn.textContent = `✏️「${activeName}」の名前を変更`;
+    renameBtn.addEventListener('click', () => renameContainer(activeBox));
+    actions.appendChild(renameBtn);
+    if (isCustomContainer(activeBox)) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className =
+            'inline-flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 rounded-lg px-3 py-2 transition-colors';
+        deleteBtn.textContent = '🗑️ この箱を削除';
+        deleteBtn.addEventListener('click', () => deleteContainer(activeBox));
+        actions.appendChild(deleteBtn);
+    }
+    card.appendChild(actions);
+
+    const hint = document.createElement('p');
+    hint.className = 'text-sm text-teal-400 mt-3';
+    hint.textContent = `👇 下のアイテムをタップすると「${getContainerName(activeBox)}」に入ります`;
+    card.appendChild(hint);
+
+    return card;
+}
+
+function createPackItemRow(item, checked, currentBox, activeBox) {
+    const isChecked = Boolean(checked[item.id]);
+    const inBox = Boolean(currentBox) && currentBox !== 'none';
+    const color = inBox ? getBoxColor(currentBox) : null;
+
+    const row = document.createElement('button');
+    row.className = `w-full flex items-center gap-3 min-h-[56px] px-3 py-2 rounded-xl border transition-colors text-left ${
+        isChecked
+            ? 'bg-slate-800/70 border-gray-700'
+            : 'bg-slate-800/30 border-gray-800/60 hover:bg-slate-800/50'
+    }`;
+
+    const mark = document.createElement('span');
+    mark.className =
+        'w-7 h-7 rounded-lg flex items-center justify-center font-bold shrink-0 ' +
+        (isChecked ? `${color ? color.badge : 'bg-teal-600'} text-white` : 'border-2 border-gray-600');
+    mark.textContent = isChecked ? '✓' : '';
+    row.appendChild(mark);
+
+    const nameWrap = document.createElement('span');
+    nameWrap.className =
+        'flex-1 flex items-center flex-wrap gap-1.5 ' + (isChecked ? 'text-gray-200' : 'text-gray-400');
+    const name = document.createElement('span');
+    name.textContent = item.name;
+    nameWrap.appendChild(name);
+
+    const qty = item.quantity && item.quantity > 1 ? item.quantity : null;
+    if (qty) {
+        const qtyBadge = document.createElement('span');
+        qtyBadge.className =
+            'text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded';
+        qtyBadge.textContent = `×${qty}`;
+        nameWrap.appendChild(qtyBadge);
+    }
+    if (item.isCustom) {
+        const b = document.createElement('span');
+        b.className = 'text-[9px] text-teal-600 border border-teal-700/40 px-1 py-0.5 rounded';
+        b.textContent = 'カスタム';
+        nameWrap.appendChild(b);
+    }
+    if (item.isFacility) {
+        const b = document.createElement('span');
+        b.className = 'text-[9px] text-blue-400 border border-blue-500/40 px-1 py-0.5 rounded';
+        b.textContent = '🏥施設';
+        nameWrap.appendChild(b);
+    }
+    row.appendChild(nameWrap);
+
+    const status = document.createElement('span');
+    if (inBox) {
+        status.className = `shrink-0 text-xs font-bold text-white px-2.5 py-1 rounded-full ${color.badge}`;
+        status.textContent = getContainerName(currentBox);
+    } else {
+        status.className = 'shrink-0 text-xs text-gray-500';
+        status.textContent = `タップで${getContainerName(activeBox)}へ`;
+    }
+    row.appendChild(status);
+
+    row.addEventListener('click', () => packTap(item.id));
+    return row;
 }
 
 function renderReturnChecklist() {
@@ -1365,49 +1640,6 @@ function createReturnItemRow(item, returnChecked, currentBox) {
     return itemRow;
 }
 
-function buildContainerSection(boxId, items, checked, skipped, containers) {
-    const isUnassigned = boxId === 'none';
-    const section = document.createElement('div');
-    section.className = isUnassigned
-        ? 'bg-slate-800/60 border border-gray-700/60 rounded-xl p-4'
-        : 'bg-slate-800/80 border border-dashed border-teal-500/30 rounded-xl p-4';
-
-    const titleRow = document.createElement('div');
-    titleRow.className = 'flex items-center justify-between mb-3 border-b border-gray-700 pb-1';
-
-    const nameSpan = document.createElement('span');
-    nameSpan.className = `text-md font-bold ${isUnassigned ? 'text-gray-400' : 'text-amber-400'}`;
-    nameSpan.textContent = isUnassigned ? '📦 未割り当て' : `📦 ${getContainerName(boxId)}`;
-
-    const rightWrap = document.createElement('div');
-    rightWrap.className = 'flex items-center gap-2';
-    const countSpan = document.createElement('span');
-    countSpan.className = 'text-xs text-gray-500';
-    countSpan.textContent = `計 ${items.length} 点`;
-    rightWrap.appendChild(countSpan);
-
-    if (!isUnassigned) {
-        const renameBtn = document.createElement('button');
-        renameBtn.className = 'text-[11px] text-gray-500 hover:text-teal-400 transition-colors px-1';
-        renameBtn.textContent = '✏️ 名前変更';
-        renameBtn.addEventListener('click', () => renameContainer(boxId));
-        rightWrap.appendChild(renameBtn);
-    }
-
-    titleRow.append(nameSpan, rightWrap);
-    section.appendChild(titleRow);
-
-    const itemSpace = document.createElement('div');
-    itemSpace.className = 'space-y-3';
-    items.forEach((item) => {
-        itemSpace.appendChild(
-            createItemRow(item, checked, skipped, containers[item.id] || 'none', true)
-        );
-    });
-    section.appendChild(itemSpace);
-    return section;
-}
-
 function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = false) {
     const isSkipped = Boolean(skipped[item.id]);
     const qty = item.quantity && item.quantity > 1 ? item.quantity : null;
@@ -1478,7 +1710,7 @@ function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = f
     select.disabled = isSkipped;
     select.className =
         'text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-teal-400 focus:ring-teal-500 focus:border-teal-500 disabled:opacity-20';
-    CONTAINERS.forEach((b) => {
+    getAllContainers().forEach((b) => {
         const opt = document.createElement('option');
         opt.value = b.id;
         opt.textContent = getContainerName(b.id);
@@ -1602,13 +1834,53 @@ function deleteCustomItem(itemId) {
     renderChecklist();
 }
 
+function addContainer() {
+    const list = getCustomContainers();
+    if (list.length >= 20) {
+        showToast('コンテナは最大20個までです');
+        return;
+    }
+    const input = prompt('新しいコンテナの名前:', `箱 ${CONTAINERS.length + list.length}`);
+    if (input === null) return;
+    const name = input.trim().slice(0, 20) || `箱 ${CONTAINERS.length + list.length}`;
+    const id = `cc_${Date.now()}`;
+    setState('customContainers', [...list, { id, name }]);
+    setState('activeBox', id);
+    renderChecklist();
+    showToast(`「${name}」を追加しました`);
+}
+
+function deleteContainer(containerId) {
+    if (!isCustomContainer(containerId)) return;
+    const name = getContainerName(containerId);
+    if (!confirm(`コンテナ「${name}」を削除しますか？\n中のアイテムは「未割り当て」に戻ります。`)) return;
+
+    // このコンテナに割り当てられたアイテムを未割り当てに戻す
+    const containers = getState('containers', {});
+    Object.keys(containers).forEach((itemId) => {
+        if (containers[itemId] === containerId) delete containers[itemId];
+    });
+    setState('containers', containers);
+
+    // コンテナ本体と名前の上書きを削除
+    setState('customContainers', getCustomContainers().filter((c) => c.id !== containerId));
+    const names = getState('containerNames', {});
+    if (names[containerId] !== undefined) {
+        delete names[containerId];
+        setState('containerNames', names);
+    }
+
+    renderChecklist();
+    showToast(`「${name}」を削除しました`);
+}
+
 function renameContainer(containerId) {
     const current = getContainerName(containerId);
     const newName = prompt('コンテナ名を変更:', current);
     if (newName === null) return;
     const names = getState('containerNames', {});
     const trimmed = newName.trim().slice(0, 20);
-    const def = CONTAINERS.find((c) => c.id === containerId);
+    const def = getAllContainers().find((c) => c.id === containerId);
     if (!trimmed || trimmed === (def ? def.name : containerId)) {
         delete names[containerId];
     } else {
@@ -1694,6 +1966,9 @@ function resetAll() {
         'containers',
         'customItems',
         'containerNames',
+        'customContainers',
+        'activeBox',
+        'packGuideDismissed',
         'returnChecked',
         'facilityTemplate',
         'conditions',
