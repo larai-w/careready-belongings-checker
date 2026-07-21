@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- CareReady D: "Suitcase Check" — 正式ロゴ(スーツケース+大チェック / アンバー配色) -->
+  <defs>
+    <linearGradient id="crdbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fdf1da"/>
+      <stop offset="1" stop-color="#f7dfae"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="122" fill="url(#crdbg)"/>
+  <!-- handle -->
+  <path d="M212 176 Q212 136 256 136 Q300 136 300 176" fill="none" stroke="#b45309" stroke-width="24" stroke-linecap="round"/>
+  <!-- suitcase body -->
+  <rect x="126" y="172" width="260" height="196" rx="34" fill="#ffffff" stroke="#b45309" stroke-width="14"/>
+  <!-- side straps -->
+  <line x1="180" y1="176" x2="180" y2="364" stroke="#f0cf96" stroke-width="14"/>
+  <line x1="332" y1="176" x2="332" y2="364" stroke="#f0cf96" stroke-width="14"/>
+  <!-- big check -->
+  <path d="M196 268 L244 316 L338 212" fill="none" stroke="#d97706" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

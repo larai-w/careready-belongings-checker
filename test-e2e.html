@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"><title>e2e</title></head>
+<body>
+<pre id="log"></pre>
+<!-- 実アプリを同一オリジンの iframe で読み込み、実DOMを操作して家族フローを検証する。
+     依存を増やさず headless Chrome の --dump-dom で結果(E2E_RESULT)を回収できる。 -->
+<div id="frames"></div>
+<script>
+const logEl = document.getElementById('log');
+const log = (m) => { logEl.textContent += m + '\n'; };
+let failures = 0;
+const check = (name, cond) => { log((cond ? 'PASS' : 'FAIL') + ': ' + name); if (!cond) failures += 1; };
+window.addEventListener('error', (e) => log('WINDOW_ERR: ' + e.message));
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 反復回数でポーリングする。--virtual-time-budget 下では Date.now() が一気に
+// 飛び、経過時間ベースだと非同期初期化の完了前に「0回ポーリングでタイムアウト」
+// しうる。各反復は必ず await sleep で1回イベントループへ譲り、所定回数だけ待つ。
+async function waitFor(fn, timeout = 10000, step = 100) {
+    const maxIter = Math.max(1, Math.ceil(timeout / step));
+    for (let i = 0; i < maxIter; i++) {
+        try { if (fn()) return true; } catch (e) { /* not ready yet */ }
+        await sleep(step);
+    }
+    try { return !!fn(); } catch (e) { return false; }
+}
+
+// 指定URLの iframe を生成し、アプリ初期化完了まで待って返す。
+// #checklist-container は静的マークアップに最初から存在するため、その出現では
+// app.js の実行を保証できない(checkImportParam 等が未実行のまま返ってしまう)。
+// チェックボックスが描画されたこと = 初期化・描画が走ったこと、を待機条件にする。
+async function loadFrame(url) {
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'width:430px;height:900px;border:0';
+    frame.src = url;
+    document.getElementById('frames').appendChild(frame);
+    await waitFor(() => {
+        try {
+            const d = frame.contentDocument;
+            return !!(d && d.querySelectorAll('#checklist-container input[type=checkbox]').length >= 1);
+        } catch (e) { return false; }
+    }, 20000);
+    return frame;
+}
+
+const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+
+(async () => {
+    try {
+        // ================= Phase 1: 家族の準備フロー =================
+        log('# Phase 1: 準備→帰宅チェック→印刷');
+        const frame = await loadFrame('./index.html');
+        const doc = () => frame.contentDocument;
+        const boxes = () => doc().querySelectorAll('#checklist-container input[type=checkbox]');
+
+        const rendered = await waitFor(() => boxes().length >= 10);
+        check('既定チェックリストが描画される (>=10)', rendered);
+        if (!rendered) throw new Error('checklist did not render');
+
+        const progText = () => doc().getElementById('progress-text').textContent.trim();
+        const before = progText();
+        const unchecked = Array.from(boxes()).filter((cb) => !cb.checked).slice(0, 3);
+        check('チェック可能な未チェック項目がある', unchecked.length >= 1);
+        for (const cb of unchecked) {
+            cb.checked = true;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        await sleep(150);
+        const after = progText();
+        check('チェックで準備の進捗が増える', before !== after && /^[1-9]/.test(after));
+        log(`progress: "${before}" -> "${after}"`);
+
+        const retSec = doc().getElementById('return-progress-section');
+        doc().getElementById('mode-return').click();
+        check('帰宅チェックモードに切替できる', await waitFor(() => !retSec.classList.contains('hidden')));
+        check('帰宅モードでも項目が描画される', boxes().length >= 1);
+
+        frame.contentWindow.print = () => {};
+        doc().getElementById('print-btn').click();
+        await sleep(150);
+        const printArea = doc().getElementById('print-area');
+        check('印刷ビューが構築される', !!printArea && printArea.children.length > 0);
+
+        // ================= Phase 2: 共有URLの往復 =================
+        log('# Phase 2: 共有URL(?t=)の取込');
+        const appData = await (await fetch('./data.json')).json();
+        const allLocations = appData.locations.map((l) => l.id);
+        const cat = appData.categories[0];
+        const SHARE_NAME = 'E2E共有テスト品';
+        const shareData = {
+            customItems: [{
+                id: 'e2e_share_1',
+                name: SHARE_NAME,
+                categoryId: cat.id,
+                categoryName: cat.name,
+                applicable_locations: allLocations,
+                quantity: 1,
+                isCustom: true,
+            }],
+        };
+        const frame2 = await loadFrame('./index.html?t=' + encodeURIComponent(share(shareData)));
+        const doc2 = () => frame2.contentDocument;
+        const banner = () => doc2().getElementById('import-banner');
+        check('共有データで取込バナーが表示される',
+            await waitFor(() => !banner().classList.contains('hidden')));
+        doc2().getElementById('import-ok').click();
+        check('取込でバナーが閉じる', await waitFor(() => banner().classList.contains('hidden')));
+        const shown = await waitFor(
+            () => doc2().getElementById('checklist-container').textContent.includes(SHARE_NAME)
+        );
+        check('取り込んだ品目がチェックリストに現れる', shown);
+
+        // ================= Phase 3: 施設コード取込(fetchモック)=================
+        log('# Phase 3: 施設コード取込');
+        const TEMPLATE = {
+            name: 'E2Eテスト施設リスト',
+            items: [{ name: '施設タオル' }],
+            overrides: {},
+            facilityName: 'テスト苑',
+            shareCode: 'ABC234',
+        };
+        // バックエンド fetch をモック(決定的に templates/redeem を返す)
+        frame.contentWindow.fetch = async () => ({
+            ok: true,
+            status: 200,
+            json: async () => TEMPLATE,
+        });
+        doc().getElementById('fc-open-btn').click();
+        await waitFor(() => !doc().getElementById('fc-modal').classList.contains('hidden'));
+        doc().getElementById('fc-code-input').value = 'ABC234';
+        const confirmArea = doc().getElementById('fc-confirm-area');
+        doc().getElementById('fc-modal-submit').click();               // 1回目: 確認取得
+        check('施設コード確認フェーズに進む', await waitFor(() => !confirmArea.classList.contains('hidden')));
+        check('確認名にテンプレ名が出る',
+            doc().getElementById('fc-confirm-name').textContent.includes(TEMPLATE.name));
+        doc().getElementById('fc-modal-submit').click();               // 2回目: 適用
+        const facBanner = doc().getElementById('facility-banner');
+        check('施設テンプレ適用でバナーが表示される',
+            await waitFor(() => !facBanner.classList.contains('hidden')));
+        check('施設バナーにテンプレ名が出る',
+            doc().getElementById('facility-banner-name').textContent.includes(TEMPLATE.name));
+
+        // ================= Phase 4: OCR取込UI =================
+        log('# Phase 4: OCR取込UI(写真→候補→取込)');
+        // Phase 1 で帰宅チェックモードに入ったため、準備モードへ戻す
+        // (帰宅モードのリストはチェック済み品のみ描画され、新規品が現れないため)
+        if (!doc().getElementById('return-progress-section').classList.contains('hidden')) {
+            doc().getElementById('mode-return').click();
+            await waitFor(() => doc().getElementById('return-progress-section').classList.contains('hidden'));
+        }
+        const win = frame.contentWindow;
+        // headless の仮想時間下では Image デコードと canvas.toBlob が非決定的で
+        // フレークの原因になる。これらは実アプリロジックではなくブラウザ配管なので
+        // スタブし、検証対象の OCR UIロジック(候補描画→選択→取込)を安定させる。
+        const pngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
+        win.URL.createObjectURL = () => 'data:image/png;base64,' + pngB64;
+        win.HTMLCanvasElement.prototype.toBlob = function (cb) {
+            cb(new win.Blob([win.Uint8Array.from([255, 216, 255, 217])], { type: 'image/jpeg' }));
+        };
+        // OCR エンドポイントをモック(決定的に候補を返す)
+        win.fetch = async () => ({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                items: [{ name: 'E2Eガーゼ', confidence: 88 }, { name: 'E2E綿棒', confidence: 80 }],
+                lineCount: 2, pageCount: 1, provider: 'openai',
+            }),
+        });
+        doc().getElementById('ocr-open-btn').click();
+        check('OCRモーダルが開く',
+            await waitFor(() => !doc().getElementById('ocr-modal').classList.contains('hidden')));
+
+        // 1x1 PNG を File として file input に設定(iframe realm の File/DataTransfer を使う)
+        const bytes = win.Uint8Array.from(win.atob(pngB64), (c) => c.charCodeAt(0));
+        const dt = new win.DataTransfer();
+        dt.items.add(new win.File([bytes], 'shot.png', { type: 'image/png' }));
+        doc().getElementById('ocr-file-input').files = dt.files;
+
+        doc().getElementById('ocr-start-btn').click();
+        check('OCR候補が描画される',
+            await waitFor(() => doc().querySelectorAll('#ocr-candidate-list input[type=checkbox]').length >= 2));
+        check('候補件数が表示される', doc().getElementById('ocr-count').textContent.includes('2'));
+
+        doc().getElementById('ocr-import-btn').click();
+        check('OCR取込品目がチェックリストに現れる',
+            await waitFor(() => doc().getElementById('checklist-container').textContent.includes('E2Eガーゼ')));
+
+        // ================= Phase 5: 条件トグル(おむつ)=================
+        log('# Phase 5: 条件トグルで品目が出没する');
+        const frame5 = await loadFrame('./index.html');
+        const doc5 = () => frame5.contentDocument;
+        const clist5 = () => doc5().getElementById('checklist-container').textContent;
+        // diaper 品目(紙おむつ)が出るロケーション(shortstay)を選ぶ
+        const diaperLoc = ['shortstay', 'hospital'].find((id) => appData.locations.some((l) => l.id === id));
+        const locIdx = appData.locations.findIndex((l) => l.id === diaperLoc);
+        doc5().querySelectorAll('#location-tabs button')[locIdx].click();
+        await waitFor(() => doc5().querySelectorAll('#checklist-container input[type=checkbox]').length >= 1);
+        check('条件ON(既定)でおむつ品目が表示される',
+            await waitFor(() => clist5().includes('紙おむつ')));
+        const diaperBtn = () => doc5().querySelector('[data-condition-id="diaper"]');
+        check('おむつ条件トグルが存在する', !!diaperBtn());
+        diaperBtn().click();   // OFF
+        check('条件OFFでおむつ品目が消える',
+            await waitFor(() => !clist5().includes('紙おむつ')));
+        diaperBtn().click();   // ON
+        check('再ONでおむつ品目が戻る',
+            await waitFor(() => clist5().includes('紙おむつ')));
+
+        // ================= Phase 6: 表示モード切替 =================
+        log('# Phase 6: カテゴリー/コンテナ表示の切替');
+        const isActive = (id) => doc5().getElementById(id).className.includes('bg-teal-500');
+        check('初期はカテゴリー表示がアクティブ', isActive('mode-category'));
+        doc5().getElementById('mode-container').click();
+        check('コンテナ表示に切替できる',
+            await waitFor(() => isActive('mode-container') && !isActive('mode-category')));
+        check('箱に詰める表示に切り替わり内容が描画される',
+            doc5().getElementById('checklist-container').textContent.includes('いま詰めている箱'));
+        doc5().getElementById('mode-category').click();
+        check('カテゴリー表示に戻せる',
+            await waitFor(() => isActive('mode-category') && !isActive('mode-container')));
+    } catch (e) {
+        log('ERR: ' + ((e && e.stack) || e));
+        failures += 1;
+    } finally {
+        // マーカーは連結で組み立てる(スクリプト原文に完全一致文字列を残さず、dump-dom の誤検出を防ぐ)
+        log('E2E_' + 'RESULT: ' + (failures === 0 ? 'ALL_' + 'PASS' : 'FAILURES=' + failures));
+        log('DONE');
+    }
+})();
+</script>
+</body>
+</html>

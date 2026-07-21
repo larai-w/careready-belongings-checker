@@ -7,3 +7,25 @@ backend/infra/cdk.out/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Private working material: keep locally, never commit to this public repository.
+/.private/
+/private/
+/internal/
+/strategy-notes/
+/docs/private/
+/docs/internal/
+/docs/strategy-notes/
+/**/*.[Pp][Rr][Ii][Vv][Aa][Tt][Ee].*
+/**/*.[Ii][Nn][Tt][Ee][Rr][Nn][Aa][Ll].*
+
+# Existing internal planning and unpublished working files.
+/docs/02_開発戦略.md
+/docs/03_マーケティング戦略.md
+/docs/05_開発費見積もり.md
+/docs/07_作業ノート_引き継ぎ.md
+/docs/09_CareReady_SEO記事戦略_ドラフト.md
+/docs/10_パイロットデモ_ヒアリングシート.md
+/docs/11_次の作業一覧_人間と自動化.md
+/docs/12_一般公開マイルストーン.md
+/docs/blog_drafts/
