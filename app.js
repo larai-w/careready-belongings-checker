@@ -205,7 +205,7 @@ async function startApp() {
         msg.className = 'text-red-400 text-sm';
         msg.textContent = 'データの読み込みに失敗しました。';
         const retry = document.createElement('button');
-        retry.className = 'ml-2 text-cyan-400 underline text-sm';
+        retry.className = 'ml-2 text-teal-400 underline text-sm';
         retry.textContent = '再試行';
         retry.addEventListener('click', () => {
             tabs.textContent = '読み込み中...';
@@ -803,12 +803,12 @@ function renderConditionToggles() {
 
         const btn = document.createElement('button');
         btn.className = isOn
-            ? 'flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-colors bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+            ? 'flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-colors bg-teal-500/20 text-teal-300 border-teal-500/40'
             : 'flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-colors bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-600';
 
         const indicator = document.createElement('span');
         indicator.textContent = isOn ? '●' : '○';
-        indicator.className = isOn ? 'text-cyan-400' : 'text-gray-600';
+        indicator.className = isOn ? 'text-teal-400' : 'text-gray-600';
 
         const label = document.createElement('span');
         label.textContent = cond.name;
@@ -871,7 +871,7 @@ function handleLineShare() {
 function applyTheme(isLight) {
     if (isLight) {
         document.body.classList.add('light');
-        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f5f7fa');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#faf6f0');
         $('theme-btn').textContent = '☀️ ライト';
     } else {
         document.body.classList.remove('light');
@@ -881,14 +881,14 @@ function applyTheme(isLight) {
 }
 
 function handleThemeToggle() {
-    const current = getState('theme', 'dark');
+    const current = getState('theme', 'light');
     const next = current === 'dark' ? 'light' : 'dark';
     setState('theme', next);
     applyTheme(next === 'light');
 }
 
 function restoreTheme() {
-    const saved = getState('theme', 'dark');
+    const saved = getState('theme', 'light');
     applyTheme(saved === 'light');
 }
 
@@ -917,12 +917,12 @@ function openModal(categoryId) {
     appData.locations.forEach((loc) => {
         const label = document.createElement('label');
         label.className =
-            'flex items-center gap-1.5 text-sm text-gray-300 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 cursor-pointer hover:border-cyan-500 transition-colors';
+            'flex items-center gap-1.5 text-sm text-gray-300 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 cursor-pointer hover:border-teal-500 transition-colors';
         const cb = document.createElement('input');
         cb.type = 'checkbox';
         cb.value = loc.id;
         cb.checked = true;
-        cb.className = 'accent-cyan-500';
+        cb.className = 'accent-teal-500';
         const span = document.createElement('span');
         span.textContent = loc.name;
         label.append(cb, span);
@@ -1015,7 +1015,7 @@ function switchReturnMode(enabled) {
 function switchViewMode(mode) {
     viewMode = mode;
     const active =
-        'flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-slate-900 shadow';
+        'flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-teal-500 text-slate-900 shadow';
     const inactive =
         'flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200';
     $('mode-category').className = mode === 'category' ? active : inactive;
@@ -1031,7 +1031,7 @@ function renderTabs() {
         button.textContent = loc.name;
         button.className = `px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
             currentSubtype === loc.id
-                ? 'bg-cyan-500 text-slate-900 shadow-lg shadow-cyan-500/20'
+                ? 'bg-teal-500 text-slate-900 shadow-lg shadow-teal-500/20'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
         }`;
         button.addEventListener('click', () => {
@@ -1093,11 +1093,11 @@ function renderPrepChecklist() {
             const titleRow = document.createElement('div');
             titleRow.className = 'flex items-center justify-between mb-3 border-b border-gray-700 pb-1';
             const title = document.createElement('h2');
-            title.className = 'text-md font-bold text-cyan-300';
+            title.className = 'text-md font-bold text-teal-300';
             title.textContent = cat.name;
             const addBtn = document.createElement('button');
             addBtn.className =
-                'text-[11px] text-cyan-500 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 px-2 py-0.5 rounded transition-colors';
+                'text-[11px] text-teal-500 hover:text-teal-300 bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/20 px-2 py-0.5 rounded transition-colors';
             addBtn.textContent = '+ 追加';
             addBtn.addEventListener('click', () => openModal(cat.id));
             titleRow.append(title, addBtn);
@@ -1370,7 +1370,7 @@ function buildContainerSection(boxId, items, checked, skipped, containers) {
     const section = document.createElement('div');
     section.className = isUnassigned
         ? 'bg-slate-800/60 border border-gray-700/60 rounded-xl p-4'
-        : 'bg-slate-800/80 border border-dashed border-cyan-500/30 rounded-xl p-4';
+        : 'bg-slate-800/80 border border-dashed border-teal-500/30 rounded-xl p-4';
 
     const titleRow = document.createElement('div');
     titleRow.className = 'flex items-center justify-between mb-3 border-b border-gray-700 pb-1';
@@ -1388,7 +1388,7 @@ function buildContainerSection(boxId, items, checked, skipped, containers) {
 
     if (!isUnassigned) {
         const renameBtn = document.createElement('button');
-        renameBtn.className = 'text-[11px] text-gray-500 hover:text-cyan-400 transition-colors px-1';
+        renameBtn.className = 'text-[11px] text-gray-500 hover:text-teal-400 transition-colors px-1';
         renameBtn.textContent = '✏️ 名前変更';
         renameBtn.addEventListener('click', () => renameContainer(boxId));
         rightWrap.appendChild(renameBtn);
@@ -1426,7 +1426,7 @@ function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = f
     checkbox.type = 'checkbox';
     checkbox.checked = Boolean(checked[item.id]);
     checkbox.disabled = isSkipped;
-    checkbox.className = `w-5 h-5 rounded border-gray-600 bg-gray-700 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-800 mt-0.5 ${isSkipped ? 'opacity-20' : ''}`;
+    checkbox.className = `w-5 h-5 rounded border-gray-600 bg-gray-700 text-teal-500 focus:ring-teal-500 focus:ring-offset-gray-800 mt-0.5 ${isSkipped ? 'opacity-20' : ''}`;
     checkbox.addEventListener('change', () => setChecked(item.id, checkbox.checked));
 
     const textWrap = document.createElement('div');
@@ -1448,7 +1448,7 @@ function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = f
     }
     if (item.isCustom) {
         const customBadge = document.createElement('span');
-        customBadge.className = 'text-[9px] text-cyan-600 border border-cyan-700/40 px-1 py-0.5 rounded';
+        customBadge.className = 'text-[9px] text-teal-600 border border-teal-700/40 px-1 py-0.5 rounded';
         customBadge.textContent = 'カスタム';
         nameWrap.appendChild(customBadge);
     }
@@ -1477,7 +1477,7 @@ function createItemRow(item, checked, skipped, currentBox, showCategoryBadge = f
     const select = document.createElement('select');
     select.disabled = isSkipped;
     select.className =
-        'text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-cyan-400 focus:ring-cyan-500 focus:border-cyan-500 disabled:opacity-20';
+        'text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-teal-400 focus:ring-teal-500 focus:border-teal-500 disabled:opacity-20';
     CONTAINERS.forEach((b) => {
         const opt = document.createElement('option');
         opt.value = b.id;
@@ -1625,6 +1625,18 @@ function updateProgress() {
     const done = checkedBoxes.length;
     $('progress-text').textContent = `${done} / ${total} 個`;
     $('progress-bar').style.width = total > 0 ? `${(done / total) * 100}%` : '0%';
+
+    const msgEl = document.getElementById('progress-msg');
+    if (msgEl) {
+        const remaining = total - done;
+        if (total === 0 || remaining > 3) {
+            msgEl.textContent = '';
+        } else if (remaining === 0) {
+            msgEl.textContent = 'すべて準備できました。おつかれさまでした 🌸';
+        } else {
+            msgEl.textContent = `あと${remaining}つで準備完了です 🌸`;
+        }
+    }
 }
 
 function updateReturnProgress(returnableItems, returnChecked) {
@@ -1887,7 +1899,7 @@ function showToast(message, duration = 2500, action = null) {
     if (action && action.label && typeof action.onClick === 'function') {
         const btn = document.createElement('button');
         btn.textContent = action.label;
-        btn.className = 'shrink-0 font-bold text-cyan-300 hover:text-cyan-200 underline underline-offset-2';
+        btn.className = 'shrink-0 font-bold text-teal-300 hover:text-teal-200 underline underline-offset-2';
         btn.addEventListener('click', () => {
             clearTimeout(toastTimer);
             toast.style.opacity = '0';
