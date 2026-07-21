@@ -2428,7 +2428,7 @@ function handleTadaima() {
     launchConfetti(30);
     if (navigator.vibrate) { try { navigator.vibrate([20, 40, 30]); } catch (e) { /* noop */ } }
     const name = getPersonName();
-    showCelebrationOverlay('🏠', `${count}回目のおでかけ！`, `${name ? name + 'さん、' : ''}おつかれさま。また いっしょに行きましょうね 🍀`, 'text-amber-600');
+    showCelebrationOverlay('🏠', `${count}回目のおでかけ！`, `${name ? name + 'さん、' : ''}おつかれさまでした。また 一緒に準備しましょう 🍀`, 'text-amber-600');
 }
 
 // ---------- おでかけ日記 + 調子グラフ ----------
