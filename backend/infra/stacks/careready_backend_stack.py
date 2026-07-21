@@ -14,6 +14,7 @@ from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_secretsmanager as secretsmanager
+from aws_cdk import aws_sns as sns
 from constructs import Construct
 
 # Lambda ソース(backend/src)への相対パス
@@ -121,6 +122,14 @@ class CareReadyBackendStack(Stack):
                     resources=["*"],
                 )
             )
+
+        # --- フィードバック通知(SNS: 届いた声をメールに) ---
+        feedback_topic = sns.Topic(
+            self, "FeedbackTopic", topic_name="careready-feedback"
+        )
+        feedback_topic.grant_publish(fn)
+        fn.add_environment("FEEDBACK_TOPIC_ARN", feedback_topic.topic_arn)
+        CfnOutput(self, "FeedbackTopicArn", value=feedback_topic.topic_arn)
 
         # --- API Gateway (HTTP API) ---
         cors = apigwv2.CorsPreflightOptions(
