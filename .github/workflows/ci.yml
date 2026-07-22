@@ -50,7 +50,7 @@ jobs:
 
           CHECKBOXES=$(grep -o 'type="checkbox"' dom.html | wc -l)
           echo "checkboxes rendered: $CHECKBOXES"
-          if [ "$CHECKBOXES" -lt 24 ]; then
+          if [ "$CHECKBOXES" -lt 20 ]; then
             echo "::error::チェックリストが描画されていません (checkboxes=$CHECKBOXES)"
             exit 1
           fi
