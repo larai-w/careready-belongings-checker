@@ -1612,7 +1612,7 @@ function renderPrepChecklist() {
             const candy = CANDY_PALETTE[catIdx % CANDY_PALETTE.length];
             const section = document.createElement('div');
             // ホバーでふわっと浮いて輝く(荷物集めのモチベ)
-            section.className = `${candy.bg} border ${candy.border} rounded-3xl p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:ring-2 ${candy.ring}`;
+            section.className = `candy-card ${candy.bg} border ${candy.border} rounded-3xl p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:ring-2 ${candy.ring}`;
 
             // タイトル行 + 追加ボタン
             const titleRow = document.createElement('div');
