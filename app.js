@@ -1523,7 +1523,8 @@ function saveSpecialOuting() {
     renderChecklist();
     renderMemo();
     renderPushPrompt();
-    showToast(`「${name}」を作りました 🎉`);
+    launchConfetti(24);
+    showToast(`「${name}」ができました！ワクワクを詰めていきましょう 🎉`, 3500);
 }
 
 function deleteSpecialOuting(id) {
