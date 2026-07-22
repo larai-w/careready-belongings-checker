@@ -32,12 +32,11 @@
         /* ロゴ・タイトルもネオンで光る */
         body:not(.light) .app-logo { filter: drop-shadow(0 0 10px rgba(45,212,191,0.60)); }
         body:not(.light) .app-title { text-shadow: 0 0 14px rgba(45,212,191,0.55), 0 0 4px rgba(45,212,191,0.45); }
-        /* 濃すぎて暗背景で沈む色を明るく */
-        body:not(.light) .text-amber-600 { color: #fbbf24 !important; }
-        body:not(.light) .text-pink-600 { color: #f9a8d4 !important; }
         /* ライトでは薄すぎる色を濃く(可読性) */
         body.light .text-amber-600 { color: #b45309 !important; }
         body.light .text-pink-600 { color: #be185d !important; }
+        /* ダークのキャンディカード見出しだけネオンで明るく(白背景モーダル等は対象外) */
+        body:not(.light) .candy-card h2 { filter: brightness(1.35) saturate(1.15); }
 
         /* ===== ライトテーマ(パステル/やわらか基調。文字は濃いまま読みやすさ維持) ===== */
         body.light {
@@ -329,7 +328,7 @@
 
         <!-- 📝 伝えたいこと・メモ (行き先ごと・ローカル保存) -->
         <div id="memo-section" class="mb-4">
-            <label for="memo-input" class="text-xs font-bold text-gray-500 block mb-1">📝 伝えたいこと・メモ（この行き先用）</label>
+            <label for="memo-input" class="text-xs font-bold text-gray-400 block mb-1">📝 伝えたいこと・メモ（この行き先用）</label>
             <textarea id="memo-input" rows="2" maxlength="500" placeholder="施設に伝えたいこと・忘れないことをメモ（例: 看護師さんに薬のことを伝える）"
                 class="w-full bg-white border border-gray-300 rounded-2xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-teal-500 placeholder-gray-400 resize-none"></textarea>
         </div>
