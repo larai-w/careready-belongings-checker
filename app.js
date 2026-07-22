@@ -824,10 +824,19 @@ function handleOcrImport() {
 
 function renderConditionToggles() {
     const wrap = $('condition-toggles');
-    if (!appData || !Array.isArray(appData.conditions) || appData.conditions.length === 0) {
+    if (returnMode || !appData || !Array.isArray(appData.conditions) || appData.conditions.length === 0) {
         wrap.classList.add('hidden');
         return;
     }
+    // 選択中の行き先に関係する条件だけ出す(例:「デイで入浴」はデイのときだけ)
+    const relevant = appData.conditions.filter((cond) =>
+        appData.categories.some((c) =>
+            (c.items || []).some((it) =>
+                it.condition === cond.id && (it.applicable_locations || []).includes(currentSubtype)
+            )
+        )
+    );
+    if (relevant.length === 0) { wrap.classList.add('hidden'); return; }
     wrap.textContent = '';
     wrap.classList.remove('hidden');
 
@@ -837,7 +846,7 @@ function renderConditionToggles() {
     wrap.appendChild(condLabel);
 
     const condState = getConditionState();
-    appData.conditions.forEach((cond) => {
+    relevant.forEach((cond) => {
         const isOn = condState[cond.id] !== undefined ? condState[cond.id] : cond.default;
 
         const btn = document.createElement('button');
@@ -1133,7 +1142,17 @@ function renderMemo() {
     if (!el) return;
     const memos = getState('memos', {});
     el.value = (currentSubtype && memos[currentSubtype]) || '';
+    // 文脈で見出し・例文を変える(おでかけと入院/入所では書く内容が違う)
+    const labelEl = document.querySelector('label[for="memo-input"]');
+    if (isSpecialOuting(currentSubtype)) {
+        if (labelEl) labelEl.textContent = '📝 メモ（このおでかけ用）';
+        el.placeholder = '持っていく物や気をつけることをメモ（例: 酔い止め、帽子、こまめに休憩）';
+    } else {
+        if (labelEl) labelEl.textContent = '📝 伝えたいこと・メモ（この行き先用）';
+        el.placeholder = '伝えたいこと・忘れないことをメモ（例: 薬のこと、アレルギー、生活のクセ）';
+    }
 }
+
 
 function saveMemo() {
     if (!currentSubtype) return;
@@ -1557,6 +1576,7 @@ function renderChecklist() {
     const nameNote = $('name-note');
     if (nameNote) nameNote.classList.toggle('hidden', returnMode);
     renderPresetDate();
+    renderConditionToggles();
     if (returnMode) {
         renderReturnChecklist();
     } else {
