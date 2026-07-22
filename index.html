@@ -22,13 +22,16 @@
             background: linear-gradient(165deg, #1c1338 0%, #131b2c 58%, #0d1524 100%);
             background-attachment: fixed;
         }
-        body:not(.light) .candy-card { border-color: rgba(255, 255, 255, 0.12) !important; }
-        body:not(.light) .candy-card.bg-pink-50 { background-color: #43263a !important; box-shadow: 0 0 20px rgba(244,114,182,0.14), 0 4px 22px rgba(0,0,0,0.40); }
-        body:not(.light) .candy-card.bg-sky-50 { background-color: #173049 !important; box-shadow: 0 0 20px rgba(56,189,248,0.14), 0 4px 22px rgba(0,0,0,0.40); }
-        body:not(.light) .candy-card.bg-amber-50 { background-color: #3d2f18 !important; box-shadow: 0 0 20px rgba(251,191,36,0.14), 0 4px 22px rgba(0,0,0,0.40); }
-        body:not(.light) .candy-card.bg-violet-50 { background-color: #2f2350 !important; box-shadow: 0 0 20px rgba(167,139,250,0.16), 0 4px 22px rgba(0,0,0,0.40); }
-        body:not(.light) .candy-card.bg-emerald-50 { background-color: #153a2b !important; box-shadow: 0 0 20px rgba(52,211,153,0.14), 0 4px 22px rgba(0,0,0,0.40); }
-        body:not(.light) .candy-card.bg-rose-50 { background-color: #43242f !important; box-shadow: 0 0 20px rgba(251,113,133,0.14), 0 4px 22px rgba(0,0,0,0.40); }
+        body:not(.light) .candy-card { border-width: 1.5px !important; }
+        body:not(.light) .candy-card.bg-pink-50 { background-color: #3f2236 !important; border-color: rgba(244,114,182,0.55) !important; box-shadow: 0 0 26px rgba(244,114,182,0.32), inset 0 0 22px rgba(244,114,182,0.10); }
+        body:not(.light) .candy-card.bg-sky-50 { background-color: #153048 !important; border-color: rgba(56,189,248,0.55) !important; box-shadow: 0 0 26px rgba(56,189,248,0.32), inset 0 0 22px rgba(56,189,248,0.10); }
+        body:not(.light) .candy-card.bg-amber-50 { background-color: #3a2c16 !important; border-color: rgba(251,191,36,0.55) !important; box-shadow: 0 0 26px rgba(251,191,36,0.30), inset 0 0 22px rgba(251,191,36,0.10); }
+        body:not(.light) .candy-card.bg-violet-50 { background-color: #2c2150 !important; border-color: rgba(167,139,250,0.60) !important; box-shadow: 0 0 26px rgba(167,139,250,0.34), inset 0 0 22px rgba(167,139,250,0.10); }
+        body:not(.light) .candy-card.bg-emerald-50 { background-color: #143a2a !important; border-color: rgba(52,211,153,0.55) !important; box-shadow: 0 0 26px rgba(52,211,153,0.30), inset 0 0 22px rgba(52,211,153,0.10); }
+        body:not(.light) .candy-card.bg-rose-50 { background-color: #3f232e !important; border-color: rgba(251,113,133,0.55) !important; box-shadow: 0 0 26px rgba(251,113,133,0.32), inset 0 0 22px rgba(251,113,133,0.10); }
+        /* ロゴ・タイトルもネオンで光る */
+        body:not(.light) .app-logo { filter: drop-shadow(0 0 10px rgba(45,212,191,0.60)); }
+        body:not(.light) .app-title { text-shadow: 0 0 14px rgba(45,212,191,0.55), 0 0 4px rgba(45,212,191,0.45); }
         /* 濃すぎて暗背景で沈む色を明るく */
         body:not(.light) .text-amber-600 { color: #fbbf24 !important; }
         body:not(.light) .text-pink-600 { color: #f9a8d4 !important; }
@@ -241,9 +244,9 @@
         <!-- ヘッダー: ロゴ+タイトルを1段目、ユーティリティを2段目に(狭い画面でも崩れない) -->
         <div class="my-6">
             <div class="flex items-center gap-2.5 mb-3">
-                <img src="./icons/careready-logo.svg" alt="CareReady ロゴ" class="w-12 h-12 rounded-2xl shadow-sm shrink-0">
+                <img src="./icons/careready-logo.svg" alt="CareReady ロゴ" class="app-logo w-12 h-12 rounded-2xl shadow-sm shrink-0">
                 <div class="min-w-0">
-                    <h1 class="text-3xl font-bold text-teal-400 tracking-wide">CareReady</h1>
+                    <h1 class="app-title text-3xl font-bold text-teal-400 tracking-wide">CareReady</h1>
                     <p class="text-sm text-gray-400 mt-0.5">持ちものを、わすれずに。</p>
                 </div>
             </div>

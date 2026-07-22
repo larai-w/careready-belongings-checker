@@ -2032,8 +2032,9 @@ function createPackItemRow(item, checked, currentBox, activeBox) {
     row.appendChild(mark);
 
     const nameWrap = document.createElement('span');
+    // 詰めた項目は行が淡色パステル(color.pale)になるので、文字は濃色で(ダークでも読めるよう)
     nameWrap.className =
-        'flex-1 flex items-center flex-wrap gap-1.5 ' + (isChecked ? 'text-gray-200' : 'text-gray-400');
+        'flex-1 flex items-center flex-wrap gap-1.5 ' + (isChecked ? 'text-gray-800 font-bold' : 'text-gray-400');
     const name = document.createElement('span');
     name.textContent = item.name;
     nameWrap.appendChild(name);
