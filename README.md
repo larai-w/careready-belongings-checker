@@ -1,7 +1,7 @@
 # CareReady — Dynamic Belongings Checklist for Care Facility Transfers
 
-A serverless PWA that helps families of Parkinson's Disease patients prepare and verify
-personal belongings when moving between care settings (hospital, short stay, day service).
+A serverless PWA that helps family caregivers prepare and verify personal belongings when an
+older relative moves between care settings (hospital admission, short stay, day service, facility admission).
 Facility staff publish a template via a 6-character share code; families redeem it on any
 browser—no app install, no login required.
 
@@ -20,6 +20,32 @@ browser—no app install, no login required.
 
 This is an in-development project by VEAI LAB. It is not a medical device
 and does not make clinical recommendations.
+
+---
+
+## Product Management
+
+CareReady doubles as a working **product-management portfolio** — a real product taken from problem to
+deployed system, solo and AI-assisted, with the delivery discipline kept in public. Start with the
+**[PM case study](docs/13_product_management_case_study.md)**. What it demonstrates:
+
+- **Evidence-based delivery** — features are gated on pilot evidence, not opinion; scope is controlled
+  explicitly; and the boundary between "working software" and "finished service" is kept visible. The
+  case study states outcome evidence *and* what is not yet validated.
+- **Stakeholder management** — two users with conflicting needs: families who need zero-friction,
+  no-login use, and facility staff who publish belongings templates via a 6-character share code. The
+  design serves both without an account wall — a trade-off made explicit rather than hidden.
+- **Technical product management** — architecture and delivery decisions owned end to end: an
+  offline-first PWA over a serverless backend (Lambda + DynamoDB + Cognito), CI/CD to S3/CloudFront,
+  and an explicit cache/trust boundary (see **Architecture** below and the case study's technical-PM section).
+- **Agile in practice** — a live **[GitHub Project — CareReady Product Delivery](https://github.com/users/larai-w/projects/2)**
+  run as **experiments, decisions, tasks and risks** (priority p0–p2, phase labels) with a traceable
+  Definition of Ready / Definition of Done — see the
+  **[operating model](docs/14_github_project_operating_model.md)** and the
+  **[issues](https://github.com/larai-w/careready-belongings-checker/issues)**.
+
+Delivery write-ups (architecture, evidence-based scope decisions, technical trade-offs) are on the
+[VEAI LAB blog](https://veai.jp/blog/).
 
 ---
 
