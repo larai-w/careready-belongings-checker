@@ -17,14 +17,18 @@
         .line-through-text { text-decoration: line-through; color: #4b5563; }
 
         /* ===== ダークモード可読性(既定はライト。ダーク時のみ適用) ===== */
-        /* 持ち物リストのキャンディカードは、ダークでも“濃色キャンディ”で色分けを残す */
-        body:not(.light) .candy-card { border-color: rgba(255, 255, 255, 0.10) !important; }
-        body:not(.light) .candy-card.bg-pink-50 { background-color: #3a2233 !important; }
-        body:not(.light) .candy-card.bg-sky-50 { background-color: #16293b !important; }
-        body:not(.light) .candy-card.bg-amber-50 { background-color: #33291a !important; }
-        body:not(.light) .candy-card.bg-violet-50 { background-color: #281f3b !important; }
-        body:not(.light) .candy-card.bg-emerald-50 { background-color: #163026 !important; }
-        body:not(.light) .candy-card.bg-rose-50 { background-color: #381f29 !important; }
+        /* ダーク = 夜の楽しいパーティ: 深い夜空グラデ + 色ごとに光るキャンディカード */
+        body:not(.light) {
+            background: linear-gradient(165deg, #1c1338 0%, #131b2c 58%, #0d1524 100%);
+            background-attachment: fixed;
+        }
+        body:not(.light) .candy-card { border-color: rgba(255, 255, 255, 0.12) !important; }
+        body:not(.light) .candy-card.bg-pink-50 { background-color: #43263a !important; box-shadow: 0 0 20px rgba(244,114,182,0.14), 0 4px 22px rgba(0,0,0,0.40); }
+        body:not(.light) .candy-card.bg-sky-50 { background-color: #173049 !important; box-shadow: 0 0 20px rgba(56,189,248,0.14), 0 4px 22px rgba(0,0,0,0.40); }
+        body:not(.light) .candy-card.bg-amber-50 { background-color: #3d2f18 !important; box-shadow: 0 0 20px rgba(251,191,36,0.14), 0 4px 22px rgba(0,0,0,0.40); }
+        body:not(.light) .candy-card.bg-violet-50 { background-color: #2f2350 !important; box-shadow: 0 0 20px rgba(167,139,250,0.16), 0 4px 22px rgba(0,0,0,0.40); }
+        body:not(.light) .candy-card.bg-emerald-50 { background-color: #153a2b !important; box-shadow: 0 0 20px rgba(52,211,153,0.14), 0 4px 22px rgba(0,0,0,0.40); }
+        body:not(.light) .candy-card.bg-rose-50 { background-color: #43242f !important; box-shadow: 0 0 20px rgba(251,113,133,0.14), 0 4px 22px rgba(0,0,0,0.40); }
         /* 濃すぎて暗背景で沈む色を明るく */
         body:not(.light) .text-amber-600 { color: #fbbf24 !important; }
         body:not(.light) .text-pink-600 { color: #f9a8d4 !important; }
