@@ -29,3 +29,12 @@ __pycache__/
 /docs/11_次の作業一覧_人間と自動化.md
 /docs/12_一般公開マイルストーン.md
 /docs/blog_drafts/
+
+# --- 非公開の作業ドキュメント（公開フォルダに置いても追跡しない安全策）---
+docs-private/
+.private/
+private/
+*-private.md
+**/WORKLOG*.md
+**/*HANDOFF*.md
+**/*-todo.md
