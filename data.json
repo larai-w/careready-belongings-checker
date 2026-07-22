@@ -20,13 +20,13 @@
       "id": "clothing",
       "name": "👕 衣類",
       "items": [
-        { "id": "cloth_top_bottom", "name": "着替え上下(日数分+予備1組)※全てに名前記入", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
+        { "id": "cloth_top_bottom", "name": "着替え上下(日数分+予備1組)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "cloth_underwear", "name": "下着・肌着(日数分+予備)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "cloth_socks", "name": "靴下(日数分)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
-        { "id": "cloth_pajamas", "name": "パジャマ・寝間着(2〜3組)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
+        { "id": "cloth_pajamas", "name": "パジャマ・寝間着(必要な数)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "cloth_outer", "name": "羽織り物(カーディガン等・冷房対策)", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] },
         { "id": "cloth_slippers", "name": "室内履き(かかとのある滑りにくい物)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
-        { "id": "cloth_spare_day", "name": "着替え1組(失禁・食べこぼし時の予備)", "applicable_locations": ["dayservice"] },
+        { "id": "cloth_spare_day", "name": "着替え1組(汚れたとき用の予備)", "applicable_locations": ["dayservice"] },
         { "id": "cloth_day_bath_change", "name": "入浴後の着替え一式", "applicable_locations": ["dayservice"], "condition": "daycare_bath" }
       ]
     },
@@ -39,7 +39,7 @@
         { "id": "hyg_toothbrush", "name": "歯ブラシ・コップ", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "hyg_denture", "name": "入れ歯ケース・洗浄剤", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true, "condition": "denture" },
         { "id": "hyg_towel", "name": "フェイスタオル(日数分)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
-        { "id": "hyg_bathtowel", "name": "バスタオル(2〜3枚)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
+        { "id": "hyg_bathtowel", "name": "バスタオル(必要な枚数)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "hyg_shampoo", "name": "石けん・シャンプー(施設指定を確認)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "hyg_tissue", "name": "ティッシュ・ウェットティッシュ", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"], "consumable": true },
         { "id": "hyg_plasticbag", "name": "ビニール袋(汚れ物持ち帰り用・数枚)", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"], "consumable": true },
@@ -52,8 +52,8 @@
       "items": [
         { "id": "med_medicine", "name": "常用薬(日数分)", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"], "consumable": true , "important": true },
         { "id": "med_notebook", "name": "お薬手帳", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
-        { "id": "med_glasses", "name": "眼鏡・眼鏡ケース ※名前記入", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] , "important": true },
-        { "id": "med_hearingaid", "name": "補聴器・予備電池 ※名前記入", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] , "important": true, "condition": "hearingaid" },
+        { "id": "med_glasses", "name": "眼鏡・眼鏡ケース", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] , "important": true },
+        { "id": "med_hearingaid", "name": "補聴器・予備電池", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] , "important": true, "condition": "hearingaid" },
         { "id": "med_ointment", "name": "湿布・軟膏・目薬(処方されている物)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "med_thickener", "name": "とろみ剤", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"], "condition": "thickener" }
       ]
@@ -73,7 +73,7 @@
       "name": "🎒 その他",
       "items": [
         { "id": "oth_mask", "name": "マスク(必要な枚数)", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"], "consumable": true },
-        { "id": "oth_drink", "name": "飲み物・水筒 ※名前記入", "applicable_locations": ["dayservice"] },
+        { "id": "oth_drink", "name": "飲み物・水筒", "applicable_locations": ["dayservice"] },
         { "id": "oth_bag", "name": "連絡帳・利用者カード", "applicable_locations": ["dayservice"] },
         { "id": "oth_entertainment", "name": "暇つぶしの物(本・雑誌・タブレット等)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "oth_charger", "name": "携帯電話・充電器", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
