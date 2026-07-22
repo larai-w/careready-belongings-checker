@@ -9,8 +9,8 @@
     { "id": "daycare_bath", "name": "デイで入浴する", "default": false }
   ],
   "locations": [
-    { "id": "shortstay", "name": "ショートステイ", "sublabel": "短期のお泊まり" },
-    { "id": "hospital", "name": "入院" },
+    { "id": "shortstay", "name": "ショートステイ", "sublabel": "短期の宿泊" },
+    { "id": "hospital", "name": "入院", "sublabel": "治療・検査" },
     { "id": "dayservice", "name": "デイサービス", "sublabel": "デイケア" },
     { "id": "facility", "name": "施設入所", "sublabel": "長期の入居" },
     { "id": "roken", "name": "老健入所", "sublabel": "リハビリ・在宅復帰" }
