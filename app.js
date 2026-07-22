@@ -1531,8 +1531,8 @@ function renderPrepChecklist() {
             title.textContent = cat.name;
             const addBtn = document.createElement('button');
             addBtn.className =
-                'text-[11px] font-bold text-gray-500 bg-white/70 hover:bg-white border border-black/10 px-2 py-0.5 rounded-full transition-colors';
-            addBtn.textContent = '+ 追加';
+                'text-xs font-bold text-white bg-teal-500 hover:bg-teal-600 border border-teal-600 px-3 py-1 rounded-full shadow-sm transition-colors';
+            addBtn.textContent = '＋ 追加';
             addBtn.addEventListener('click', () => openModal(cat.id));
             titleRow.append(title, addBtn);
             section.appendChild(titleRow);
