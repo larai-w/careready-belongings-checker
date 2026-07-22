@@ -485,7 +485,10 @@
     <!-- 施設コード入力モーダル -->
     <div id="fc-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
         <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm space-y-4">
-            <h3 class="text-lg font-bold text-blue-300">🏥 施設コードで受け取る</h3>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-blue-300">🏥 施設コードで受け取る</h3>
+                <button id="fc-modal-x" class="text-gray-400 hover:text-gray-200 text-3xl leading-none px-2 -mr-2 -mt-1" aria-label="閉じる">×</button>
+            </div>
             <p class="text-sm text-gray-400">施設から案内された6文字のコードを入力してください。</p>
             <div>
                 <label class="text-xs text-gray-400 block mb-1">施設コード <span class="text-red-400">*</span></label>
