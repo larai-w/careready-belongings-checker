@@ -1374,7 +1374,7 @@ function renderReminder() {
     const up = getUpcomingOuting();
     if (!up) { hide(); return; }
     const when = up.days === 0 ? 'きょう' : up.days === 1 ? 'あした' : `あと${up.days}日`;
-    $('reminder-text').textContent = `🎉 ${up.name} まで ${when}！そろそろ準備しませんか？`;
+    $('reminder-text').textContent = `🎒 ${up.name} まで ${when}。持ち物の準備をはじめませんか？`;
     banner.dataset.outingId = up.id;
     banner.classList.remove('hidden');
     banner.classList.add('flex');
