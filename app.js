@@ -1151,6 +1151,8 @@ function openModal(categoryId) {
     modalQty = 1;
     $('modal-qty-display').textContent = '1';
     $('modal-item-name').value = '';
+    $('modal-myitem').checked = false;
+    $('modal-loc-block').classList.remove('hidden');
 
     // カテゴリー選択肢を生成
     const catSelect = $('modal-category');
@@ -1204,11 +1206,13 @@ function handleModalSave() {
     const categoryId = $('modal-category').value;
     const cat = appData.categories.find((c) => c.id === categoryId);
 
-    const checkedLocs = [...$('modal-locations').querySelectorAll('input[type="checkbox"]:checked')].map(
-        (cb) => cb.value
-    );
+    // マイ持ち物: すべてのプリセット行き先で毎回出す
+    const isMyItem = $('modal-myitem').checked;
+    const checkedLocs = isMyItem
+        ? (appData.locations || []).map((l) => l.id)
+        : [...$('modal-locations').querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value);
     if (checkedLocs.length === 0) {
-        showToast('行き先を1つ以上選択してください');
+        showToast('行き先を1つ以上選ぶか、マイ持ち物にチェックしてください');
         return;
     }
 
@@ -1222,6 +1226,7 @@ function handleModalSave() {
         applicable_locations: checkedLocs,
         quantity: modalQty,
         isCustom: true,
+        myItem: isMyItem,
     });
     setState('customItems', items);
     closeModal();
@@ -3099,6 +3104,9 @@ $('import-ok').addEventListener('click', handleImportOk);
 $('import-cancel').addEventListener('click', dismissImport);
 $('modal-cancel').addEventListener('click', closeModal);
 $('modal-save').addEventListener('click', handleModalSave);
+$('modal-myitem').addEventListener('change', (e) => {
+    $('modal-loc-block').classList.toggle('hidden', e.target.checked);
+});
 $('modal-item-name').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') handleModalSave();
     if (e.key === 'Escape') closeModal();
