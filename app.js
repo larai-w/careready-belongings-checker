@@ -3012,6 +3012,7 @@ function showToast(message, duration = 2500, action = null) {
 // 施設コードモーダル
 $('fc-open-btn').addEventListener('click', openFcModal);
 $('fc-modal-cancel').addEventListener('click', closeFcModal);
+$('fc-modal-x').addEventListener('click', closeFcModal);
 $('fc-modal').addEventListener('click', (e) => { if (e.target === $('fc-modal')) closeFcModal(); });
 $('fc-modal-submit').addEventListener('click', handleFcModalSubmit);
 $('fc-code-input').addEventListener('keydown', (e) => {
