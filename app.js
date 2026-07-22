@@ -217,6 +217,7 @@ async function startApp() {
         renderMemo();
         renderReminder();
         renderPushToggle();
+        renderPushPrompt();
         // ⑤ 開いたときの寄り添う挨拶(名前があれば呼びかける)
         setTimeout(() => {
             const n = getPersonName();
@@ -985,6 +986,22 @@ function renderPushToggle() {
         : 'w-full flex items-center justify-center gap-2 text-sm font-bold text-pink-600 bg-pink-500/10 border border-pink-300 hover:bg-pink-500/20 rounded-xl px-5 py-2.5 transition-colors';
 }
 
+// 予定日つきのおでかけがあるのに通知OFFのとき、上部にそっと誘導(見つけやすさ対策)。
+// ONにしたら消える。予定が無ければ出さない(文脈に沿う)。
+function renderPushPrompt() {
+    const el = $('push-prompt');
+    if (!el) return;
+    const hide = () => { el.classList.add('hidden'); el.classList.remove('flex'); };
+    if (!isPushSupported() || getState('pushEnabled', false)) { hide(); return; }
+    const hasDatedOuting = getSpecialOutings().some((o) => {
+        const n = daysUntil(o.date);
+        return n !== null && n >= 0;
+    });
+    if (!hasDatedOuting) { hide(); return; }
+    el.classList.remove('hidden');
+    el.classList.add('flex');
+}
+
 async function enablePush() {
     try {
         const perm = await Notification.requestPermission();
@@ -1028,6 +1045,7 @@ async function handlePushToggle() {
     if (getState('pushEnabled', false)) await disablePush();
     else await enablePush();
     renderPushToggle();
+    renderPushPrompt();
 }
 
 async function sendFeedback() {
@@ -1424,6 +1442,7 @@ function saveSpecialOuting() {
     renderTabs();
     renderChecklist();
     renderMemo();
+    renderPushPrompt();
     showToast(`「${name}」を作りました 🎉`);
 }
 
@@ -1442,6 +1461,7 @@ function deleteSpecialOuting(id) {
     renderTabs();
     renderChecklist();
     renderMemo();
+    renderPushPrompt();
     showToast(`「${o.name}」を削除しました`);
 }
 
@@ -2958,6 +2978,11 @@ $('reminder-dismiss').addEventListener('click', () => {
     $('reminder-banner').classList.remove('flex');
 });
 $('push-toggle').addEventListener('click', handlePushToggle);
+$('push-prompt-enable').addEventListener('click', async () => {
+    await enablePush();
+    renderPushToggle();
+    renderPushPrompt();
+});
 $('feedback-btn').addEventListener('click', openFeedback);
 $('feedback-cancel').addEventListener('click', closeFeedback);
 $('feedback-send').addEventListener('click', sendFeedback);
