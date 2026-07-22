@@ -2,7 +2,7 @@
 // 方針: アプリシェルはインストール時にプリキャッシュ。
 // 以降のGETリクエストは「キャッシュ優先 + 裏でネットワーク更新」(stale-while-revalidate)。
 
-const CACHE_NAME = 'careready-v37';
+const CACHE_NAME = 'careready-v38';
 
 const PRECACHE_URLS = [
     './',
@@ -57,21 +57,23 @@ function _idbGet(key) {
     });
 }
 
+const _PRESET_NAMES = { shortstay: 'ショートステイ', facility: '施設入所', roken: '老健入所', hospital: '入院' };
+
 async function _maybeNotifyOuting() {
-    const outings = await _idbGet('specialOutings');
-    if (!Array.isArray(outings)) return;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     let best = null;
-    for (const o of outings) {
-        if (!o || !o.date) continue;
-        const d = new Date(`${o.date}T00:00:00`);
-        if (isNaN(d)) continue;
+    const consider = (name, dateStr) => {
+        if (!name || !dateStr) return;
+        const d = new Date(`${dateStr}T00:00:00`);
+        if (isNaN(d)) return;
         const days = Math.round((d - today) / 86400000);
-        if (days >= 0 && days <= 2 && (!best || days < best.days)) {
-            best = { name: o.name, days };
-        }
-    }
+        if (days >= 0 && days <= 2 && (!best || days < best.days)) best = { name, days };
+    };
+    const outings = await _idbGet('specialOutings');
+    if (Array.isArray(outings)) { for (const o of outings) { if (o) consider(o.name, o.date); } }
+    const dates = await _idbGet('locationDates');
+    if (dates && typeof dates === 'object') { for (const id of Object.keys(dates)) consider(_PRESET_NAMES[id] || id, dates[id]); }
     if (!best) return;
     const when = best.days === 0 ? 'きょう' : best.days === 1 ? 'あした' : `あと${best.days}日`;
     await self.registration.showNotification('CareReady', {
