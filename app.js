@@ -993,10 +993,10 @@ function renderPushPrompt() {
     if (!el) return;
     const hide = () => { el.classList.add('hidden'); el.classList.remove('flex'); };
     if (!isPushSupported() || getState('pushEnabled', false)) { hide(); return; }
-    const hasDatedOuting = getSpecialOutings().some((o) => {
-        const n = daysUntil(o.date);
-        return n !== null && n >= 0;
-    });
+    const dates = getLocationDates();
+    const hasDatedOuting =
+        getSpecialOutings().some((o) => { const n = daysUntil(o.date); return n !== null && n >= 0; }) ||
+        DATABLE_PRESETS.some((id) => { const n = daysUntil(dates[id]); return n !== null && n >= 0; });
     if (!hasDatedOuting) { hide(); return; }
     el.classList.remove('hidden');
     el.classList.add('flex');
@@ -1311,9 +1311,18 @@ function isSpecialOuting(id) {
     return typeof id === 'string' && id.startsWith('so_');
 }
 
+// 予定日を入れられるプリセット(泊まり・入所・入院)。デイは当日なので対象外
+const DATABLE_PRESETS = ['shortstay', 'facility', 'roken', 'hospital'];
+
+function getLocationDates() {
+    const d = getState('locationDates', {});
+    return d && typeof d === 'object' ? d : {};
+}
+
 // プリセット + 特別なおでかけ
 function getAllLocations() {
-    const presets = appData ? appData.locations : [];
+    const dates = getLocationDates();
+    const presets = (appData ? appData.locations : []).map((l) => ({ ...l, date: dates[l.id] || '' }));
     const special = getSpecialOutings().map((o) => ({ id: o.id, name: o.name, special: true, date: o.date }));
     return [...presets, ...special];
 }
@@ -1340,11 +1349,16 @@ function countdownLabel(dateStr) {
 // 予定日が今日〜7日以内で一番近い特別なおでかけ
 function getUpcomingOuting() {
     let best = null;
-    getSpecialOutings().forEach((o) => {
-        const n = daysUntil(o.date);
+    const consider = (id, name, date) => {
+        const n = daysUntil(date);
         if (n !== null && n >= 0 && n <= 7 && (!best || n < best.days)) {
-            best = { id: o.id, name: o.name, days: n };
+            best = { id, name, days: n };
         }
+    };
+    getSpecialOutings().forEach((o) => consider(o.id, o.name, o.date));
+    const dates = getLocationDates();
+    (appData ? appData.locations : []).forEach((l) => {
+        if (DATABLE_PRESETS.includes(l.id) && dates[l.id]) consider(l.id, l.name, dates[l.id]);
     });
     return best;
 }
@@ -1384,7 +1398,7 @@ function renderTabs() {
         nameEl.textContent = loc.special ? `🎉 ${loc.name}` : loc.name;
         button.appendChild(nameEl);
 
-        const sub = loc.special ? countdownLabel(loc.date) : loc.sublabel;
+        const sub = (loc.special || loc.date) ? countdownLabel(loc.date) : loc.sublabel;
         if (sub) {
             const subEl = document.createElement('span');
             subEl.className = 'text-[10px] font-normal opacity-80 ml-1';
@@ -1416,6 +1430,71 @@ function renderTabs() {
         del.addEventListener('click', () => deleteSpecialOuting(currentSubtype));
         tabsContainer.appendChild(del);
     }
+}
+
+// 選択中のプリセット(泊まり・入所・入院)に予定日を入れて「あと◯日」を出す。入院はやさしめの言葉に
+function renderPresetDate() {
+    const wrap = $('preset-date');
+    if (!wrap) return;
+    wrap.textContent = '';
+    if (returnMode || !appData || !DATABLE_PRESETS.includes(currentSubtype)) {
+        wrap.classList.add('hidden');
+        return;
+    }
+    wrap.classList.remove('hidden');
+
+    const loc = (appData.locations || []).find((l) => l.id === currentSubtype);
+    const name = loc ? loc.name : '';
+    const isHospital = currentSubtype === 'hospital';
+    const cur = getLocationDates()[currentSubtype] || '';
+
+    const card = document.createElement('div');
+    card.className = 'bg-teal-500/10 border border-teal-500/30 rounded-xl px-3 py-2';
+
+    const label = document.createElement('p');
+    label.className = 'text-xs font-bold text-teal-600 mb-1';
+    label.textContent = isHospital
+        ? '🍀 入院はいつからですか？ 少しずつ準備すれば、その日を落ち着いて迎えられます'
+        : `📅 ${name}はいつからですか？ あと何日か表示されます`;
+    card.appendChild(label);
+
+    const save = (val) => {
+        const next = { ...getLocationDates() };
+        if (val) next[currentSubtype] = val; else delete next[currentSubtype];
+        setState('locationDates', next);
+        renderTabs();
+        renderReminder();
+        renderPushPrompt();
+        renderPresetDate();
+    };
+
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2';
+    const input = document.createElement('input');
+    input.type = 'date';
+    input.value = cur;
+    input.className = 'flex-1 bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:border-teal-500';
+    input.addEventListener('change', () => save(input.value));
+    row.appendChild(input);
+    if (cur) {
+        const clear = document.createElement('button');
+        clear.className = 'text-xs text-gray-400 hover:text-red-400 underline transition-colors shrink-0';
+        clear.textContent = 'クリア';
+        clear.addEventListener('click', () => save(''));
+        row.appendChild(clear);
+    }
+    card.appendChild(row);
+
+    const cd = countdownLabel(cur);
+    if (cd) {
+        const p = document.createElement('p');
+        p.className = 'text-xs font-bold text-teal-600 mt-1';
+        p.textContent = isHospital
+            ? `入院まで ${cd}　いっしょに準備していきましょう`
+            : `${name}まで ${cd}`;
+        card.appendChild(p);
+    }
+    wrap.appendChild(card);
 }
 
 function openSpecialModal() {
@@ -1468,6 +1547,7 @@ function deleteSpecialOuting(id) {
 function renderChecklist() {
     const nameNote = $('name-note');
     if (nameNote) nameNote.classList.toggle('hidden', returnMode);
+    renderPresetDate();
     if (returnMode) {
         renderReturnChecklist();
     } else {
@@ -2764,6 +2844,7 @@ function resetAll() {
         'diary',
         'returnOthersOpen',
         'specialOutings',
+        'locationDates',
         'reminderDismissed',
         'pushEnabled',
         'viewMode',
