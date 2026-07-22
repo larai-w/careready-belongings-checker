@@ -53,14 +53,15 @@ jobs:
         if: steps.creds.outputs.configured == 'true'
         run: |
           PREFIX="${{ vars.S3_PREFIX || 'ready' }}"
-          # sw.js と index.html は即時更新させたいので短いキャッシュにする
-          aws s3 sync dist/ "s3://${{ vars.S3_BUCKET }}/${PREFIX}/" \
+          BUCKET="${{ vars.S3_BUCKET }}"
+          # 画像アイコンだけ長期キャッシュ(内容更新時はファイル追加/CACHE_NAMEで対応)
+          aws s3 sync dist/icons/ "s3://${BUCKET}/${PREFIX}/icons/" \
+            --cache-control "public,max-age=86400"
+          # アプリ本体(html/js/json/manifest/sw/admin)は no-cache で常に最新を配信
+          # (max-age を付けると SW 更新時にエッジ/ブラウザが古い app.js/data.json を掴む)
+          aws s3 sync dist/ "s3://${BUCKET}/${PREFIX}/" \
             --delete \
-            --cache-control "public,max-age=3600" \
-            --exclude "sw.js" --exclude "index.html"
-          aws s3 cp dist/sw.js "s3://${{ vars.S3_BUCKET }}/${PREFIX}/sw.js" \
-            --cache-control "no-cache"
-          aws s3 cp dist/index.html "s3://${{ vars.S3_BUCKET }}/${PREFIX}/index.html" \
+            --exclude "icons/*" \
             --cache-control "no-cache"
 
       - name: Invalidate CloudFront
