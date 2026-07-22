@@ -981,9 +981,10 @@ function renderPushToggle() {
     const on = getState('pushEnabled', false);
     const btn = $('push-toggle');
     btn.textContent = on ? '🔔 予定のお知らせ：ON中（タップでオフ）' : '🔔 予定のお知らせ：オフ（タップでオンにする）';
+    // 任意の設定なので控えめに(細い枠のピル)。主役は「準備できた！」ボタン
     btn.className = on
-        ? 'w-full flex items-center justify-center gap-2 text-sm font-bold text-white bg-pink-500 hover:bg-pink-600 rounded-xl px-5 py-2.5 transition-colors'
-        : 'w-full flex items-center justify-center gap-2 text-sm font-bold text-pink-600 bg-pink-500/10 border border-pink-300 hover:bg-pink-500/20 rounded-xl px-5 py-2.5 transition-colors';
+        ? 'w-full flex items-center justify-center gap-2 text-xs font-bold text-pink-600 bg-pink-500/10 border border-pink-300 hover:bg-pink-500/20 rounded-full px-4 py-1.5 transition-colors'
+        : 'w-full flex items-center justify-center gap-2 text-xs font-bold text-gray-400 bg-transparent border border-gray-300 hover:text-gray-300 hover:border-gray-400 rounded-full px-4 py-1.5 transition-colors';
 }
 
 // 予定日つきのおでかけがあるのに通知OFFのとき、上部にそっと誘導(見つけやすさ対策)。
@@ -3113,6 +3114,15 @@ $('modal-qty-plus').addEventListener('click', () => {
 
 // Service Worker 登録
 if ('serviceWorker' in navigator) {
+    // 新バージョンのSWが有効化されたら一度だけ自動リロード → 常に最新の内容が出る
+    // (初回インストール時は controller が無いのでリロードしない)
+    const _hadController = !!navigator.serviceWorker.controller;
+    let _swRefreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (_swRefreshing || !_hadController) return;
+        _swRefreshing = true;
+        window.location.reload();
+    });
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').catch((e) => {
             console.warn('Service Workerの登録に失敗:', e);
