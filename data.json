@@ -3,7 +3,10 @@
     { "id": "diaper", "name": "おむつを使用する", "default": true },
     { "id": "denture", "name": "入れ歯を使用する", "default": true },
     { "id": "hearingaid", "name": "補聴器を使用する", "default": true },
-    { "id": "thickener", "name": "とろみ剤を使用する", "default": true }
+    { "id": "thickener", "name": "とろみ剤を使用する", "default": true },
+    { "id": "insurance", "name": "保険証・診察券を持っていく", "default": true },
+    { "id": "certs", "name": "限度額・難病などの証書を持っていく", "default": false },
+    { "id": "daycare_bath", "name": "デイで入浴する", "default": false }
   ],
   "locations": [
     { "id": "shortstay", "name": "ショートステイ", "sublabel": "特養・老健" },
@@ -23,7 +26,8 @@
         { "id": "cloth_pajamas", "name": "パジャマ・寝間着(2〜3組)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "cloth_outer", "name": "羽織り物(カーディガン等・冷房対策)", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] },
         { "id": "cloth_slippers", "name": "室内履き(かかとのある滑りにくい物)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
-        { "id": "cloth_spare_day", "name": "着替え1組(失禁・食べこぼし時の予備)", "applicable_locations": ["dayservice"] }
+        { "id": "cloth_spare_day", "name": "着替え1組(失禁・食べこぼし時の予備)", "applicable_locations": ["dayservice"] },
+        { "id": "cloth_day_bath_change", "name": "入浴後の着替え一式", "applicable_locations": ["dayservice"], "condition": "daycare_bath" }
       ]
     },
     {
@@ -38,7 +42,8 @@
         { "id": "hyg_bathtowel", "name": "バスタオル(2〜3枚)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "hyg_shampoo", "name": "石けん・シャンプー(施設指定を確認)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] },
         { "id": "hyg_tissue", "name": "ティッシュ・ウェットティッシュ", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"], "consumable": true },
-        { "id": "hyg_plasticbag", "name": "ビニール袋(汚れ物持ち帰り用・数枚)", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"], "consumable": true }
+        { "id": "hyg_plasticbag", "name": "ビニール袋(汚れ物持ち帰り用・数枚)", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"], "consumable": true },
+        { "id": "hyg_day_towel", "name": "タオル(フェイス・バス/デイ入浴用)", "applicable_locations": ["dayservice"], "condition": "daycare_bath" }
       ]
     },
     {
@@ -57,11 +62,12 @@
       "id": "documents",
       "name": "📄 書類・貴重品",
       "items": [
-        { "id": "doc_kaigo", "name": "介護保険証", "applicable_locations": ["shortstay", "facility", "roken"] , "important": true },
-        { "id": "doc_hoken", "name": "健康保険証(マイナ保険証)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true },
-        { "id": "doc_shinsatsu", "name": "診察券", "applicable_locations": ["hospital"] , "important": true },
-        { "id": "doc_gendogaku", "name": "限度額適用認定証(入院時)", "applicable_locations": ["hospital"] },
-        { "id": "doc_futangendo", "name": "介護保険負担限度額認定証(お持ちの方)", "applicable_locations": ["shortstay", "facility", "roken"] },
+        { "id": "doc_kaigo", "name": "介護保険証", "applicable_locations": ["shortstay", "facility", "roken"] , "important": true, "condition": "insurance" },
+        { "id": "doc_hoken", "name": "健康保険証(マイナ保険証)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"] , "important": true, "condition": "insurance" },
+        { "id": "doc_shinsatsu", "name": "診察券", "applicable_locations": ["hospital"] , "important": true, "condition": "insurance" },
+        { "id": "doc_gendogaku", "name": "限度額適用認定証(入院時)", "applicable_locations": ["hospital"], "condition": "certs" },
+        { "id": "doc_futangendo", "name": "介護保険負担限度額認定証(お持ちの方)", "applicable_locations": ["shortstay", "facility", "roken"], "condition": "certs" },
+        { "id": "doc_nanbyo", "name": "特定医療費(指定難病)受給者証(お持ちの方)", "applicable_locations": ["shortstay", "facility", "roken", "hospital"], "condition": "certs" },
         { "id": "doc_contact", "name": "緊急連絡先メモ", "applicable_locations": ["shortstay", "facility", "roken", "hospital", "dayservice"] }
       ]
     },
