@@ -980,7 +980,7 @@ function renderPushToggle() {
     sec.classList.remove('hidden');
     const on = getState('pushEnabled', false);
     const btn = $('push-toggle');
-    btn.textContent = on ? '🔔 予定のお知らせ ON（タップで停止）' : '🔔 予定のお知らせを受け取る';
+    btn.textContent = on ? '🔔 予定のお知らせ：ON中（タップでオフ）' : '🔔 予定のお知らせ：オフ（タップでオンにする）';
     btn.className = on
         ? 'w-full flex items-center justify-center gap-2 text-sm font-bold text-white bg-pink-500 hover:bg-pink-600 rounded-xl px-5 py-2.5 transition-colors'
         : 'w-full flex items-center justify-center gap-2 text-sm font-bold text-pink-600 bg-pink-500/10 border border-pink-300 hover:bg-pink-500/20 rounded-xl px-5 py-2.5 transition-colors';
