@@ -374,6 +374,9 @@
             </div>
         </div>
 
+        <!-- 名前記入のやさしい注意(洗濯物・取り違え対策)。準備モードのみ表示 -->
+        <p id="name-note" class="hidden text-xs text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 mb-3">🖊️ 洗濯に出す物や、他の方と間違えやすい物（衣類・タオル・眼鏡・入れ歯など）には、お名前を書いておくと安心です。</p>
+
         <!-- チェックリスト本体 -->
         <div id="checklist-container" class="space-y-6"></div>
 
@@ -389,8 +392,8 @@
 
         <!-- A: 準備完了はユーザーが宣言する(押すとお祝い) -->
         <div id="ready-section" class="mt-6 mb-2">
-            <button id="ready-btn" class="w-full flex items-center justify-center gap-2 text-base font-bold text-white bg-teal-500 hover:bg-teal-600 active:scale-[0.98] rounded-xl px-5 py-3.5 transition-all shadow-lg">
-                🎈 準備できた！
+            <button id="ready-btn" class="w-full flex items-center justify-center gap-2 text-lg font-extrabold text-white bg-gradient-to-r from-pink-500 via-rose-500 to-amber-400 hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.97] rounded-2xl px-5 py-4 transition-all shadow-lg ring-2 ring-white/40">
+                🎉 準備できた！ ✨
             </button>
         </div>
 

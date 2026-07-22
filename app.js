@@ -1466,6 +1466,8 @@ function deleteSpecialOuting(id) {
 }
 
 function renderChecklist() {
+    const nameNote = $('name-note');
+    if (nameNote) nameNote.classList.toggle('hidden', returnMode);
     if (returnMode) {
         renderReturnChecklist();
     } else {
