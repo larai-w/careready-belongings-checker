@@ -47,6 +47,50 @@ function getCustomItems() {
     return getState('customItems', []);
 }
 
+// おでかけの定番セット(ワンタップ追加)。スマホは「マイ持ち物」で全行き先に出るのでここには入れない
+const OUTING_STARTER_SET = [
+    { name: '財布', categoryId: 'documents' },
+    { name: '家の鍵', categoryId: 'documents' },
+    { name: 'ハンカチ・ティッシュ', categoryId: 'hygiene' },
+    { name: '飲み物', categoryId: 'others' },
+    { name: '常備薬・お薬', categoryId: 'medical' },
+    { name: 'マスク', categoryId: 'hygiene' },
+];
+
+// おでかけ画面で定番セットをまとめて追加(その行き先だけに入る。重複は入れない)
+function addOutingStarterSet() {
+    if (!appData || !isSpecialOuting(currentSubtype)) return;
+    const items = getCustomItems();
+    const here = new Set(
+        items
+            .filter((i) => (i.applicable_locations || []).includes(currentSubtype))
+            .map((i) => i.name)
+    );
+    let added = 0;
+    OUTING_STARTER_SET.forEach((s, idx) => {
+        if (here.has(s.name)) return;
+        const cat = appData.categories.find((c) => c.id === s.categoryId);
+        items.push({
+            id: `custom_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`,
+            name: s.name,
+            categoryId: s.categoryId,
+            categoryName: cat ? cat.name : 'カスタム',
+            applicable_locations: [currentSubtype],
+            quantity: 1,
+            isCustom: true,
+            myItem: false,
+        });
+        added += 1;
+    });
+    if (added === 0) {
+        showToast('定番セットはもう入っています');
+        return;
+    }
+    setState('customItems', items);
+    renderChecklist();
+    showToast(`定番セットを${added}個入れました 🎉`);
+}
+
 function getCustomContainers() {
     const list = getState('customContainers', []);
     return Array.isArray(list) ? list : [];
@@ -1629,11 +1673,16 @@ function renderPrepChecklist() {
         // 特別なおでかけは自由に持ち物を追加(プリセット無し)
         if (isSpecialOuting(currentSubtype)) {
             const addWrap = document.createElement('div');
+            addWrap.className = 'flex flex-col gap-2';
+            const setBtn = document.createElement('button');
+            setBtn.className = 'w-full flex items-center justify-center gap-2 text-sm font-bold text-white bg-pink-500 hover:bg-pink-600 rounded-2xl px-5 py-3 transition-colors shadow';
+            setBtn.textContent = '🎉 定番セットを入れる';
+            setBtn.addEventListener('click', addOutingStarterSet);
             const addBtn = document.createElement('button');
             addBtn.className = 'w-full flex items-center justify-center gap-2 text-sm font-bold text-pink-600 bg-pink-50 border border-dashed border-pink-300 hover:bg-pink-100 rounded-2xl px-5 py-3 transition-colors';
             addBtn.textContent = '＋ 持ち物を追加';
             addBtn.addEventListener('click', () => openModal('others'));
-            addWrap.appendChild(addBtn);
+            addWrap.append(setBtn, addBtn);
             container.appendChild(addWrap);
         }
         // 通常カテゴリを処理
