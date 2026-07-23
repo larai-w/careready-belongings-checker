@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Reject private working material and credentials from the public repository."""
+"""Reject private working material, business strategy, and credentials from a public repo.
+
+Generic across VEAI repositories. Blocks a commit when a staged file looks private by
+path/name, carries an explicit private marker, contains secrets, OR reads like business
+strategy by content (even if the filename is neutral).
+
+Escape hatch for a reviewed false positive: put the literal token `check-public-repo: allow`
+somewhere in the file. That skips only the strategy-content check (secrets are still blocked).
+Do not use `--no-verify`; keep strategy material in docs-private/ (gitignored) instead.
+"""
 
 from __future__ import annotations
 
@@ -9,54 +18,44 @@ import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 PRIVATE_PATH_PARTS = {
     ".private",
     "private",
+    "docs-private",
     "internal",
     "confidential",
     "strategy-notes",
     "blog_drafts",
+    "blog-drafts",
 }
 
 PRIVATE_NAME_TERMS = (
     "strategy",
     "strategic",
-    "draft",
     "handoff",
+    "worklog",
     "interview-notes",
     "戦略",
     "内部",
     "機密",
-    "ドラフト",
-    "下書き",
     "引き継ぎ",
     "ヒアリング",
     "見積",
 )
-
-KNOWN_PRIVATE_PATHS = {
-    "docs/02_開発戦略.md",
-    "docs/03_マーケティング戦略.md",
-    "docs/05_開発費見積もり.md",
-    "docs/07_作業ノート_引き継ぎ.md",
-    "docs/09_CareReady_SEO記事戦略_ドラフト.md",
-    "docs/10_パイロットデモ_ヒアリングシート.md",
-    "docs/11_次の作業一覧_人間と自動化.md",
-    "docs/12_一般公開マイルストーン.md",
-}
 
 CONTENT_EXEMPTIONS = {
     "scripts/check_public_repo.py",
     "docs/PUBLIC_REPOSITORY_POLICY.md",
 }
 
+ALLOW_TOKEN = "check-public-repo: allow"
+
 PRIVATE_MARKERS = (
     re.compile(r"(?im)^\s*repo-visibility\s*:\s*private\s*$"),
     re.compile(r"(?im)^\s*(?:internal only|confidential|do not distribute)\s*$"),
-    re.compile(r"(?m)^\s*(?:社外秘|内部限定|外部共有禁止)\s*$"),
+    re.compile(r"(?m)(?:社外秘|内部限定|外部共有禁止)"),
 )
 
 SECRET_PATTERNS = (
@@ -65,23 +64,27 @@ SECRET_PATTERNS = (
     ("GitHub token", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b|\bgh[opusr]_[A-Za-z0-9]{20,}\b")),
 )
 
+# Strong, multi-word strategy phrases: a single hit blocks. These are deliberately specific so
+# they essentially never appear in code, config, blog copy, or design docs — only in the kind of
+# business/growth planning that must stay private. (Single ambiguous words like "戦略" or acronyms
+# like "cac" are intentionally NOT used: they matched cache/AGENTS/gitignore text and were useless.)
+STRATEGY_STRONG = (
+    "事業戦略", "収益モデル", "価格戦略", "料金戦略", "成長戦略", "グロース戦略", "グロース計画",
+    "マネタイズ戦略", "資金調達", "投資家向け", "売上目標", "収益目標", "市場参入戦略",
+    "go-to-market", "go to market", "revenue model", "pricing strategy",
+    "fundraising", "cap table", "unit economics", "sales pipeline", "monetization strategy",
+    "business model canvas",
+)
+
 
 def git_paths(*args: str) -> list[str]:
-    result = subprocess.run(
-        ["git", *args, "-z"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-    )
+    result = subprocess.run(["git", *args, "-z"], cwd=ROOT, check=True, capture_output=True)
     return [item.decode("utf-8") for item in result.stdout.split(b"\0") if item]
 
 
 def staged_content(path: str) -> bytes:
     return subprocess.run(
-        ["git", "show", f":{path}"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
+        ["git", "show", f":{path}"], cwd=ROOT, check=True, capture_output=True
     ).stdout
 
 
@@ -93,9 +96,6 @@ def private_path_reason(path: str) -> str | None:
     normalised = PurePosixPath(path)
     lower_parts = {part.lower() for part in normalised.parts}
     lower_name = normalised.name.lower()
-
-    if path in KNOWN_PRIVATE_PATHS or path.startswith("docs/blog_drafts/"):
-        return "known local-only document"
     if lower_parts & PRIVATE_PATH_PARTS:
         return "private path component"
     if any(term in lower_name for term in PRIVATE_NAME_TERMS):
@@ -109,8 +109,14 @@ def content_reasons(path: str, content: bytes) -> list[str]:
     if path in CONTENT_EXEMPTIONS or b"\0" in content:
         return []
     text = content.decode("utf-8", errors="replace")
-    reasons = ["private classification marker" for pattern in PRIVATE_MARKERS if pattern.search(text)]
-    reasons.extend(label for label, pattern in SECRET_PATTERNS if pattern.search(text))
+    lower = text.lower()
+    reasons = ["private classification marker" for p in PRIVATE_MARKERS if p.search(text)]
+    reasons.extend(label for label, p in SECRET_PATTERNS if p.search(text))
+
+    if ALLOW_TOKEN not in text:
+        hits = sorted({term for term in STRATEGY_STRONG if term in lower})
+        if hits:
+            reasons.append("business-strategy content (" + ", ".join(hits) + ")")
     return sorted(set(reasons))
 
 
@@ -120,9 +126,7 @@ def main() -> int:
     mode.add_argument("--staged", action="store_true", help="check files staged for commit")
     mode.add_argument("--tracked", action="store_true", help="check all tracked files")
     mode.add_argument(
-        "--working-tree",
-        action="store_true",
-        help="check tracked and untracked non-ignored files",
+        "--working-tree", action="store_true", help="check tracked and untracked non-ignored files"
     )
     args = parser.parse_args()
 
@@ -152,7 +156,12 @@ def main() -> int:
         print("Public repository policy violation:", file=sys.stderr)
         for error in errors:
             print(f"- {error}", file=sys.stderr)
-        print("Remove these files from staging or create a sanitised public summary.", file=sys.stderr)
+        print(
+            "\nMove strategy/working material into docs-private/ (gitignored), or write a "
+            "sanitised public summary. For a reviewed false positive, add the token "
+            f"'{ALLOW_TOKEN}' to the file. Do not use --no-verify.",
+            file=sys.stderr,
+        )
         return 1
 
     print(f"public repository policy OK: {len(paths)} file(s) checked")
