@@ -22,7 +22,7 @@ const CONTAINERS = [
     { id: 'box2', name: '箱 2' },
     { id: 'box3', name: '箱 3' },
     { id: 'box4', name: '箱 4' },
-    { id: 'bag', name: 'カバン' },
+    { id: 'bag', name: 'かばん' },
 ];
 
 let appData = null;
@@ -52,7 +52,7 @@ function getCustomContainers() {
     return Array.isArray(list) ? list : [];
 }
 
-// 「入れ物」の総称。箱かカバンかは行き先や期間で変わり、両方使うこともあるので中立語で固定
+// 「入れ物」の総称。箱かかばんかは行き先や期間で変わり、両方使うこともあるので中立語で固定
 function currentContainerWord() {
     return '入れ物';
 }
@@ -62,12 +62,13 @@ function getAllContainers() {
     return [...CONTAINERS, ...getCustomContainers()];
 }
 
-// 日帰りの行き先(デイ等)は箱を出さず「カバン」だけを既定にする。箱は「＋入れ物を追加」で足せる
+// 日帰りの行き先(デイ・おでかけ)は箱を出さず「かばん」だけを既定にする。箱は「＋入れ物を追加」で足せる
 const BAG_ONLY_LOCATIONS = ['dayservice'];
 
-// 選択肢として見せるコンテナ(デイでは箱1〜4を隠す。未指定・カバン・カスタムは残す)
+// 選択肢として見せるコンテナ(デイ・おでかけでは箱1〜4を隠す。未指定・かばん・カスタムは残す)
 function getSelectableContainers() {
-    if (!BAG_ONLY_LOCATIONS.includes(currentSubtype)) return getAllContainers();
+    const bagOnly = BAG_ONLY_LOCATIONS.includes(currentSubtype) || isSpecialOuting(currentSubtype);
+    if (!bagOnly) return getAllContainers();
     return getAllContainers().filter((c) => !/^box[1-4]$/.test(c.id));
 }
 
