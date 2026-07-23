@@ -52,9 +52,24 @@ function getCustomContainers() {
     return Array.isArray(list) ? list : [];
 }
 
-// 固定コンテナ + ユーザー追加コンテナ をまとめて返す
+// 現在の行き先の「容器」の呼び名(箱 / カバン ...)。data.json の location.container、既定は箱
+function currentContainerWord() {
+    const loc = (appData ? appData.locations : []).find((l) => l.id === currentSubtype);
+    return (loc && loc.container) || '箱';
+}
+
+// 容器ワードに合った絵文字(箱=📦 / それ以外=👜)
+function containerEmoji(word) {
+    return (word || currentContainerWord()) === '箱' ? '📦' : '👜';
+}
+
+// 固定コンテナ + ユーザー追加コンテナ をまとめて返す(既定の「箱 1〜4」は行き先の呼び名に合わせる)
 function getAllContainers() {
-    return [...CONTAINERS, ...getCustomContainers()];
+    const w = currentContainerWord();
+    const base = CONTAINERS.map((c) =>
+        /^box[1-4]$/.test(c.id) ? { ...c, name: c.name.replace('箱', w) } : c
+    );
+    return [...base, ...getCustomContainers()];
 }
 
 function isCustomContainer(id) {
@@ -1397,10 +1412,16 @@ function renderReminder() {
     if (getState('reminderDismissed', '') === today) { hide(); return; }
     const up = getUpcomingOuting();
     if (!up) { hide(); return; }
-    const when = up.days === 0 ? 'きょう' : up.days === 1 ? 'あした' : `あと${up.days}日`;
-    $('reminder-text').textContent = isSpecialOuting(up.id)
-        ? `🎉 ${up.name} まで ${when}！ワクワク、準備していきましょう`
-        : `🎒 ${up.name} まで ${when}。持ち物の準備をはじめませんか？`;
+    const until = up.days === 1 ? 'あした' : `あと${up.days}日`;
+    if (isSpecialOuting(up.id)) {
+        $('reminder-text').textContent = up.days === 0
+            ? `🎉 きょうは ${up.name}！ワクワク、準備していきましょう`
+            : `🎉 ${up.name} まで ${until}！ワクワク、準備していきましょう`;
+    } else {
+        $('reminder-text').textContent = up.days === 0
+            ? `🎒 ${up.name} は きょうです。持ち物の準備はできていますか？`
+            : `🎒 ${up.name} まで ${until}。持ち物の準備をはじめませんか？`;
+    }
     banner.dataset.outingId = up.id;
     banner.classList.remove('hidden');
     banner.classList.add('flex');
@@ -1516,9 +1537,15 @@ function renderPresetDate() {
     if (cd) {
         const p = document.createElement('p');
         p.className = 'text-xs font-bold text-teal-600 mt-1';
-        p.textContent = isHospital
-            ? `入院まで ${cd}　いっしょに準備していきましょう`
-            : `${name}まで ${cd}`;
+        if (daysUntil(cur) === 0) {
+            p.textContent = isHospital
+                ? '入院は きょうです。いっしょに準備していきましょう'
+                : `${name}は きょうです`;
+        } else {
+            p.textContent = isHospital
+                ? `入院まで ${cd}　いっしょに準備していきましょう`
+                : `${name}まで ${cd}`;
+        }
         card.appendChild(p);
     }
     wrap.appendChild(card);
@@ -1575,6 +1602,11 @@ function deleteSpecialOuting(id) {
 function renderChecklist() {
     const nameNote = $('name-note');
     if (nameNote) nameNote.classList.toggle('hidden', returnMode);
+    const mc = $('mode-container');
+    if (mc) {
+        const w = currentContainerWord();
+        mc.textContent = `${containerEmoji(w)} ${w}に詰める`;
+    }
     renderPresetDate();
     renderConditionToggles();
     if (returnMode) {
@@ -1828,16 +1860,17 @@ function buildPackGuide() {
 
     const title = document.createElement('p');
     title.className = 'text-sm font-bold text-teal-300 mb-1';
-    title.textContent = '💡 箱に詰めるモードの使い方';
+    const w = currentContainerWord();
+    title.textContent = `💡 ${w}に詰めるモードの使い方`;
     box.appendChild(title);
 
     const steps = document.createElement('div');
     steps.className = 'text-sm text-gray-300 space-y-0.5';
     [
-        '① 上で「いま詰めている箱」を選ぶ',
-        '② 入れる物をタップすると、その箱に入ります',
+        `① 上で「いま詰めている${w}」を選ぶ`,
+        `② 入れる物をタップすると、その${w}に入ります`,
         '③ もう一度タップすると取り出せます',
-        '④ 箱は名前の変更・追加ができます',
+        `④ ${w}は名前の変更・追加ができます`,
     ].forEach((t) => {
         const p = document.createElement('p');
         p.textContent = t;
@@ -1869,7 +1902,7 @@ function buildActiveBoxBar() {
     titleRow.className = 'flex items-center justify-between mb-2';
     const title = document.createElement('p');
     title.className = 'text-sm font-bold text-gray-300';
-    title.textContent = 'いま詰めている箱';
+    title.textContent = `いま詰めている${currentContainerWord()}`;
     const helpBtn = document.createElement('button');
     helpBtn.className =
         'shrink-0 text-xs font-bold text-teal-400 hover:text-teal-300 border border-teal-500/40 rounded-lg px-2.5 py-1 transition-colors';
@@ -1930,7 +1963,7 @@ function buildActiveBoxBar() {
     const addChip = document.createElement('button');
     addChip.className =
         'flex items-center gap-1 min-h-[48px] px-4 rounded-full font-bold text-teal-500 bg-white border-2 border-dashed border-teal-400 hover:bg-teal-50 transition-colors';
-    addChip.textContent = '＋ 箱を追加';
+    addChip.textContent = `＋ ${currentContainerWord()}を追加`;
     addChip.addEventListener('click', addContainer);
     chips.appendChild(addChip);
     card.appendChild(chips);
@@ -1964,7 +1997,7 @@ function buildActiveBoxBar() {
         const deleteBtn = document.createElement('button');
         deleteBtn.className =
             'inline-flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 rounded-lg px-3 py-2 transition-colors';
-        deleteBtn.textContent = '🗑️ この箱を削除';
+        deleteBtn.textContent = `🗑️ この${currentContainerWord()}を削除`;
         deleteBtn.addEventListener('click', () => deleteContainer(activeBox));
         actions.appendChild(deleteBtn);
     }
@@ -1986,10 +2019,10 @@ function buildBoxStampBanner() {
     head.className = 'flex items-center justify-between mb-2';
     const t = document.createElement('p');
     t.className = 'text-sm font-bold';
-    t.textContent = '🎁 詰め終わった箱';
+    t.textContent = `🎁 詰め終わった${currentContainerWord()}`;
     const c = document.createElement('p');
     c.className = 'text-sm font-bold';
-    c.textContent = `${doneCount} / ${boxes.length} 箱`;
+    c.textContent = `${doneCount} / ${boxes.length} ${currentContainerWord()}`;
     head.append(t, c);
     banner.appendChild(head);
 
@@ -2001,7 +2034,7 @@ function buildBoxStampBanner() {
         cell.className = `min-w-[44px] h-11 px-2 rounded-xl flex items-center justify-center text-lg ${
             isSealed ? 'bg-white/25' : 'bg-white/10 border-2 border-dashed border-white/40 opacity-80'
         }`;
-        cell.textContent = isSealed ? '✅' : '📦';
+        cell.textContent = isSealed ? '✅' : containerEmoji();
         cell.title = getContainerName(b.id);
         row.appendChild(cell);
     });
@@ -2409,9 +2442,10 @@ function addContainer() {
         showToast('コンテナは最大20個までです');
         return;
     }
-    const input = prompt('新しいコンテナの名前:', `箱 ${CONTAINERS.length + list.length}`);
+    const defName = `${currentContainerWord()} ${CONTAINERS.length + list.length}`;
+    const input = prompt('新しい入れ物の名前:', defName);
     if (input === null) return;
-    const name = input.trim().slice(0, 20) || `箱 ${CONTAINERS.length + list.length}`;
+    const name = input.trim().slice(0, 20) || defName;
     const id = `cc_${Date.now()}`;
     setState('customContainers', [...list, { id, name }]);
     setState('activeBox', id);
@@ -2853,7 +2887,7 @@ function resetReturnChecks() {
 
 function resetAll() {
     if (
-        !confirm('チェック・箱の割り当て・カスタムアイテムをすべて削除しますか？')
+        !confirm(`チェック・${currentContainerWord()}の割り当て・カスタムアイテムをすべて削除しますか？`)
     ) {
         return;
     }
