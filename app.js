@@ -2443,7 +2443,9 @@ function addContainer() {
         showToast('コンテナは最大20個までです');
         return;
     }
-    const defName = `${currentContainerWord()} ${CONTAINERS.length + list.length}`;
+    // 見えている入れ物の数+1で採番(おでかけ等で箱を隠しても「入れ物6」のようにズレない)
+    const visibleCount = getSelectableContainers().filter((c) => c.id !== 'none').length;
+    const defName = `${currentContainerWord()} ${visibleCount + 1}`;
     const input = prompt('新しい入れ物の名前:', defName);
     if (input === null) return;
     const name = input.trim().slice(0, 20) || defName;
