@@ -2,7 +2,7 @@
 // 方針: アプリシェルはインストール時にプリキャッシュ。
 // 以降のGETリクエストは「キャッシュ優先 + 裏でネットワーク更新」(stale-while-revalidate)。
 
-const CACHE_NAME = 'careready-v56';
+const CACHE_NAME = 'careready-v57';
 
 const PRECACHE_URLS = [
     './',
@@ -75,9 +75,11 @@ async function _maybeNotifyOuting() {
     const dates = await _idbGet('locationDates');
     if (dates && typeof dates === 'object') { for (const id of Object.keys(dates)) consider(_PRESET_NAMES[id] || id, dates[id]); }
     if (!best) return;
-    const when = best.days === 0 ? 'きょう' : best.days === 1 ? 'あした' : `あと${best.days}日`;
+    const body = best.days === 0
+        ? `${best.name} は きょうです。準備はできていますか？`
+        : `${best.name} まで ${best.days === 1 ? 'あした' : `あと${best.days}日`}。準備をはじめませんか？`;
     await self.registration.showNotification('CareReady', {
-        body: `${best.name} まで ${when}。準備をはじめませんか？`,
+        body,
         icon: './icons/icon-192.png',
         badge: './icons/icon-192.png',
         tag: 'careready-outing',
