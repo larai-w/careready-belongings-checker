@@ -194,6 +194,8 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
         // diaper 品目(紙おむつ)が出るロケーション(shortstay)を選ぶ
         const diaperLoc = ['shortstay', 'hospital'].find((id) => appData.locations.some((l) => l.id === id));
         const locIdx = appData.locations.findIndex((l) => l.id === diaperLoc);
+        // 行き先タブはチェックリストと別に描画されるため、出現を待ってからクリックする
+        await waitFor(() => doc5().querySelectorAll('#location-tabs button').length > locIdx);
         doc5().querySelectorAll('#location-tabs button')[locIdx].click();
         await waitFor(() => doc5().querySelectorAll('#checklist-container input[type=checkbox]').length >= 1);
         check('条件ON(既定)でおむつ品目が表示される',
@@ -214,8 +216,8 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
         doc5().getElementById('mode-container').click();
         check('コンテナ表示に切替できる',
             await waitFor(() => isActive('mode-container') && !isActive('mode-category')));
-        check('箱に詰める表示に切り替わり内容が描画される',
-            doc5().getElementById('checklist-container').textContent.includes('いま詰めている箱'));
+        check('入れ物に詰める表示に切り替わり内容が描画される',
+            doc5().getElementById('checklist-container').textContent.includes('いま詰めている入れ物'));
         doc5().getElementById('mode-category').click();
         check('カテゴリー表示に戻せる',
             await waitFor(() => isActive('mode-category') && !isActive('mode-container')));
