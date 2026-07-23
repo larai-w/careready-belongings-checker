@@ -22,7 +22,7 @@ const CONTAINERS = [
     { id: 'box2', name: '箱 2' },
     { id: 'box3', name: '箱 3' },
     { id: 'box4', name: '箱 4' },
-    { id: 'bag', name: '手提げバッグ' },
+    { id: 'bag', name: 'カバン' },
 ];
 
 let appData = null;
@@ -52,24 +52,14 @@ function getCustomContainers() {
     return Array.isArray(list) ? list : [];
 }
 
-// 現在の行き先の「容器」の呼び名(箱 / カバン ...)。data.json の location.container、既定は箱
+// 「入れ物」の総称。箱かカバンかは行き先や期間で変わり、両方使うこともあるので中立語で固定
 function currentContainerWord() {
-    const loc = (appData ? appData.locations : []).find((l) => l.id === currentSubtype);
-    return (loc && loc.container) || '箱';
+    return '入れ物';
 }
 
-// 容器ワードに合った絵文字(箱=📦 / それ以外=👜)
-function containerEmoji(word) {
-    return (word || currentContainerWord()) === '箱' ? '📦' : '👜';
-}
-
-// 固定コンテナ + ユーザー追加コンテナ をまとめて返す(既定の「箱 1〜4」は行き先の呼び名に合わせる)
+// 固定コンテナ + ユーザー追加コンテナ をまとめて返す(箱1〜4 と カバン を誰でも使える)
 function getAllContainers() {
-    const w = currentContainerWord();
-    const base = CONTAINERS.map((c) =>
-        /^box[1-4]$/.test(c.id) ? { ...c, name: c.name.replace('箱', w) } : c
-    );
-    return [...base, ...getCustomContainers()];
+    return [...CONTAINERS, ...getCustomContainers()];
 }
 
 function isCustomContainer(id) {
@@ -1603,10 +1593,7 @@ function renderChecklist() {
     const nameNote = $('name-note');
     if (nameNote) nameNote.classList.toggle('hidden', returnMode);
     const mc = $('mode-container');
-    if (mc) {
-        const w = currentContainerWord();
-        mc.textContent = `${containerEmoji(w)} ${w}に詰める`;
-    }
+    if (mc) mc.textContent = `📦 ${currentContainerWord()}に詰める`;
     renderPresetDate();
     renderConditionToggles();
     if (returnMode) {
@@ -2034,7 +2021,7 @@ function buildBoxStampBanner() {
         cell.className = `min-w-[44px] h-11 px-2 rounded-xl flex items-center justify-center text-lg ${
             isSealed ? 'bg-white/25' : 'bg-white/10 border-2 border-dashed border-white/40 opacity-80'
         }`;
-        cell.textContent = isSealed ? '✅' : containerEmoji();
+        cell.textContent = isSealed ? '✅' : '📦';
         cell.title = getContainerName(b.id);
         row.appendChild(cell);
     });
