@@ -51,3 +51,9 @@ grep -o 'type="checkbox"' /tmp/dom.html | wc -l   # 28以上であること
 - ルート README.md はポートフォリオ用途(英語・MSCS/PMP文脈)。スタイルを保って更新する
 - 認証情報・パスワードをリポジトリに書かない(公開リポジトリ)
 - 内部の戦略・営業・パイロット・未公開ドラフトを追跡対象に戻さない
+
+## 非公開の戦略・作業ドキュメントの置き場所
+
+- 事業・成長・ロードマップ・価格・収益・営業/パイロット・市場分析などの戦略や計画、内部の worklog / 引き継ぎは、**この公開リポにコミットしない**。private リポ **`larai-w/veai-private`**（製品別フォルダ・同期＆バックアップ済み）に置く。
+- そのMacだけの一時メモは `docs-private/`（gitignore・ローカルのみ・非同期）でよい。
+- pre-commit ガード（`scripts/check_public_repo.py` を `.githooks/` 経由で実行）が上記の内容や秘密のコミットを阻止する。`--no-verify` で回避しない。新規 clone では一度だけ `git config core.hooksPath .githooks` を実行して有効化する。
