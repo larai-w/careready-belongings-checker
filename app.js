@@ -57,9 +57,18 @@ function currentContainerWord() {
     return '入れ物';
 }
 
-// 固定コンテナ + ユーザー追加コンテナ をまとめて返す(箱1〜4 と カバン を誰でも使える)
+// 固定コンテナ + ユーザー追加コンテナ(名前解決用: 常に全部返す)
 function getAllContainers() {
     return [...CONTAINERS, ...getCustomContainers()];
+}
+
+// 日帰りの行き先(デイ等)は箱を出さず「カバン」だけを既定にする。箱は「＋入れ物を追加」で足せる
+const BAG_ONLY_LOCATIONS = ['dayservice'];
+
+// 選択肢として見せるコンテナ(デイでは箱1〜4を隠す。未指定・カバン・カスタムは残す)
+function getSelectableContainers() {
+    if (!BAG_ONLY_LOCATIONS.includes(currentSubtype)) return getAllContainers();
+    return getAllContainers().filter((c) => !/^box[1-4]$/.test(c.id));
 }
 
 function isCustomContainer(id) {
@@ -1798,13 +1807,13 @@ const BOX_PALETTE = [
 ];
 
 function getBoxColor(id) {
-    const boxes = getAllContainers().slice(1);
+    const boxes = getSelectableContainers().slice(1);
     const idx = boxes.findIndex((b) => b.id === id);
     return BOX_PALETTE[(idx >= 0 ? idx : 0) % BOX_PALETTE.length];
 }
 
 function getActiveBox() {
-    const boxes = getAllContainers().slice(1);
+    const boxes = getSelectableContainers().slice(1);
     const saved = getState('activeBox', null);
     if (saved && boxes.some((b) => b.id === saved)) return saved;
     return boxes.length ? boxes[0].id : null;
@@ -1880,7 +1889,7 @@ function buildPackGuide() {
 
 function buildActiveBoxBar() {
     const activeBox = getActiveBox();
-    const boxes = getAllContainers().slice(1);
+    const boxes = getSelectableContainers().slice(1);
 
     const card = document.createElement('div');
     card.className = 'bg-slate-800/80 border border-gray-700/60 rounded-2xl p-4';
@@ -1995,7 +2004,7 @@ function buildActiveBoxBar() {
 
 // パックモードの達成コレクション(詰め終わった箱が✅で溜まる)
 function buildBoxStampBanner() {
-    const boxes = getAllContainers().slice(1);
+    const boxes = getSelectableContainers().slice(1);
     const sealed = getSealedBoxes();
     const doneCount = boxes.filter((b) => sealed[b.id]).length;
 
@@ -2337,7 +2346,7 @@ function createItemRow(item, checked, currentBox, showCategoryBadge = false) {
     const select = document.createElement('select');
     select.className =
         'text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-teal-400 focus:ring-teal-500 focus:border-teal-500';
-    getAllContainers().forEach((b) => {
+    getSelectableContainers().forEach((b) => {
         const opt = document.createElement('option');
         opt.value = b.id;
         opt.textContent = getContainerName(b.id);
