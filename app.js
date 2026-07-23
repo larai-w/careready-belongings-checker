@@ -1646,7 +1646,8 @@ function renderPrepChecklist() {
             const myCustomItems = customItems.filter(
                 (item) =>
                     item.categoryId === cat.id &&
-                    (item.applicable_locations || []).includes(currentSubtype) &&
+                    // マイ持ち物(いつも持っていく)はおでかけ含む全行き先で出す
+                    (item.myItem || (item.applicable_locations || []).includes(currentSubtype)) &&
                     isItemVisible(item)
             );
             // 施設テンプレのアイテム(このカテゴリに属するもの)
@@ -1742,7 +1743,10 @@ function renderPrepChecklist() {
             }
         });
         customItems.forEach((item) => {
-            if ((item.applicable_locations || []).includes(currentSubtype) && isItemVisible(item)) {
+            if (
+                (item.myItem || (item.applicable_locations || []).includes(currentSubtype)) &&
+                isItemVisible(item)
+            ) {
                 allFilteredItems.push(item);
             }
         });
