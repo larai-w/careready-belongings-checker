@@ -252,9 +252,10 @@
             <div class="flex items-center justify-end gap-2">
                 <button id="theme-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="テーマ切替" aria-label="テーマ切替">🌙</button>
                 <button id="print-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="印刷する" aria-label="印刷する">🖨️</button>
-                <button id="share-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="リンクを共有" aria-label="リンクを共有">🔗</button>
-                <button id="line-share-btn" class="h-11 px-3 flex items-center gap-1 text-sm font-bold bg-[#06C755] text-white hover:bg-[#05b34c] rounded-lg transition-colors shrink-0" title="LINEで送る" aria-label="LINEで送る">💬 LINE</button>
+                <button id="share-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="この持ち物リストを家族に送る" aria-label="この持ち物リストを家族に送る">🔗</button>
+                <button id="line-share-btn" class="h-11 px-3 flex items-center gap-1 text-sm font-bold bg-[#06C755] text-white hover:bg-[#05b34c] rounded-lg transition-colors shrink-0" title="この持ち物リストをLINEで送る" aria-label="この持ち物リストをLINEで送る">💬 LINE</button>
             </div>
+            <p class="text-right text-[11px] text-gray-500 mt-1.5 leading-snug">🔗 / LINE は、この持ち物リスト(カスタム項目・箱の名前)を家族に送るボタン。チェックや写真は送られません。</p>
         </div>
 
         <!-- 予定リマインド(開いた時。予定日が近い特別なおでかけ) -->
@@ -337,7 +338,7 @@
         <div class="flex items-stretch gap-2 mb-5">
             <div id="view-mode-toggle" class="flex-1 flex bg-gray-800 rounded-xl p-1 border border-gray-700">
                 <button id="mode-container" class="flex-1 py-2.5 text-sm font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200">
-                    📦 入れ物に詰める
+                    🧳 入れ物に詰める
                 </button>
                 <button id="mode-category" class="flex-1 py-2.5 text-sm font-bold rounded-lg transition-all bg-teal-500 text-slate-900 shadow">
                     📋 持ち物リスト
@@ -351,7 +352,7 @@
         <!-- ③ 準備するもの: 見出し + 進捗 + リセット -->
         <div id="progress-section">
             <div class="flex items-end justify-between mb-2">
-                <h2 class="text-lg font-bold text-gray-200">おでかけの準備</h2>
+                <h2 id="prep-heading" class="text-lg font-bold text-gray-200">おでかけの準備</h2>
                 <div class="flex items-center gap-3 shrink-0">
                     <span class="text-sm text-gray-400"><span id="progress-text">0/0</span></span>
                     <button id="reset-checks" class="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/20">
@@ -364,6 +365,9 @@
             <div id="progress-bar" class="bg-[linear-gradient(90deg,#f472b6,#fbbf24,#34d399,#38bdf8,#a78bfa)] h-3.5 w-0 rounded-full transition-all duration-500"></div>
         </div>
         <p id="progress-msg" class="text-sm text-teal-400 mb-4 min-h-[1.25rem]"></p>
+
+        <!-- 予定が複数あるときの案内(近い予定からひとつずつ) -->
+        <p id="multi-plan-note" class="hidden text-xs text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 mb-3">📅 予定が複数あります。日にちが近いものから、ひとつずつ準備しましょう。</p>
 
         <!-- 帰宅チェック進捗バー -->
         <div id="return-progress-section" class="hidden">
@@ -380,7 +384,7 @@
                 <input id="diary-note-input" type="text" maxlength="100" placeholder="きょうのひとこと（任意・例: たくさん歩けた）"
                     class="w-full bg-white border border-gray-300 rounded-2xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-amber-500 placeholder-gray-400 mb-3">
                 <div class="flex items-center gap-2 mb-3">
-                    <input id="diary-photo-input" type="file" accept="image/*" capture="environment" class="hidden">
+                    <input id="diary-photo-input" type="file" accept="image/*" class="hidden">
                     <button id="diary-photo-btn" type="button" class="text-sm font-bold text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 hover:bg-amber-500/20 transition-colors">📸 思い出の写真（任意）</button>
                     <img id="diary-photo-preview" class="hidden w-12 h-12 rounded-lg object-cover border border-amber-200" alt="写真プレビュー">
                     <button id="diary-photo-clear" type="button" class="hidden text-xs text-gray-400 hover:text-red-400 underline">取り消す</button>
@@ -481,7 +485,7 @@
 
             <div>
                 <label class="text-xs text-gray-400 block mb-1">写真を選択 <span class="text-red-400">*</span></label>
-                <input id="ocr-file-input" type="file" accept="image/*" capture="environment"
+                <input id="ocr-file-input" type="file" accept="image/*"
                     class="w-full text-sm text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-500 file:px-3 file:py-2 file:text-sm file:font-bold file:text-slate-900 hover:file:bg-amber-400">
             </div>
 
