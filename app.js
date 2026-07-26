@@ -2393,23 +2393,26 @@ function createItemRow(item, checked, currentBox, showCategoryBadge = false) {
     label.append(checkbox, mark, textWrap);
     left.appendChild(label);
 
-    // 右: 箱セレクト + (カスタムなら削除ボタン)
+    // 右: 入っている入れ物の表示(読み取り専用) + (カスタムなら削除ボタン)
+    // 箱の割り当ては「📦 入れ物に詰める」モードだけで行う。持ち物リストでは
+    // 「どの入れ物に入っているか」が一目で分かればよい(誤操作も防ぐ)。
     const right = document.createElement('div');
     right.className = 'flex items-center gap-2 self-end sm:self-center';
 
-    const select = document.createElement('select');
-    select.className =
-        'text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-teal-400 focus:ring-teal-500 focus:border-teal-500';
-    getSelectableContainers().forEach((b) => {
-        const opt = document.createElement('option');
-        opt.value = b.id;
-        opt.textContent = getContainerName(b.id);
-        opt.selected = currentBox === b.id;
-        select.appendChild(opt);
-    });
-    select.addEventListener('change', () => setContainer(item.id, select.value));
-
-    right.append(select);
+    const boxBadge = document.createElement('span');
+    const assigned = currentBox && currentBox !== 'none';
+    if (assigned) {
+        // 「入れ物に詰める」モードと同じ色(getBoxColor)で表示し、2画面で「どの箱か」を色でそろえる
+        const icon = currentBox === 'bag' ? '👜' : '📦';
+        const color = getBoxColor(currentBox);
+        boxBadge.className =
+            `text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border ${color.pale}`;
+        boxBadge.textContent = `${icon} ${getContainerName(currentBox)}`;
+    } else {
+        boxBadge.className = 'text-[11px] text-gray-500 whitespace-nowrap';
+        boxBadge.textContent = '未指定';
+    }
+    right.append(boxBadge);
 
     if (item.isCustom) {
         const delBtn = document.createElement('button');
@@ -2465,14 +2468,6 @@ function setReturnChecked(itemId, isChecked) {
             showToast('大事なものはOK！🎉');
         }
     }
-}
-
-function setContainer(itemId, boxId) {
-    const containers = getState('containers', {});
-    if (boxId === 'none') delete containers[itemId];
-    else containers[itemId] = boxId;
-    setState('containers', containers);
-    if (viewMode === 'container') renderChecklist();
 }
 
 function deleteCustomItem(itemId) {
