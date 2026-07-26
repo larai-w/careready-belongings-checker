@@ -17,7 +17,7 @@ const OCR_MAX_IMAGE_SIDE = 1800;
 const OCR_JPEG_QUALITY = 0.85;
 
 const CONTAINERS = [
-    { id: 'none', name: '未指定 📦' },
+    { id: 'none', name: '未指定' },
     { id: 'box1', name: '箱 1' },
     { id: 'box2', name: '箱 2' },
     { id: 'box3', name: '箱 3' },
@@ -1643,13 +1643,57 @@ function deleteSpecialOuting(id) {
     showToast(`「${o.name}」を削除しました`);
 }
 
+// 予定日が今日以降で入っている「準備待ちの予定」の数(特別なおでかけ + 日付つきプリセット)
+function upcomingDatedPlanCount() {
+    let n = 0;
+    getSpecialOutings().forEach((o) => {
+        const d = daysUntil(o.date);
+        if (d !== null && d >= 0) n++;
+    });
+    const dates = getLocationDates();
+    (appData ? appData.locations : []).forEach((l) => {
+        if (DATABLE_PRESETS.includes(l.id) && dates[l.id]) {
+            const d = daysUntil(dates[l.id]);
+            if (d !== null && d >= 0) n++;
+        }
+    });
+    return n;
+}
+
+// 準備画面の見出しに「今どの予定の準備か(行き先＋日付)」を出す。
+// 予定が複数あるときは「近い予定からひとつずつ」の案内も出して混乱を防ぐ。
+function renderPrepHeading() {
+    const h = $('prep-heading');
+    if (!h) return;
+    const note = $('multi-plan-note');
+    if (returnMode) {
+        h.textContent = 'おかえりチェック';
+        if (note) note.classList.add('hidden');
+        return;
+    }
+    let name = 'おでかけ';
+    let dateStr = '';
+    if (isSpecialOuting(currentSubtype)) {
+        const o = getSpecialOutings().find((x) => x.id === currentSubtype);
+        if (o) { name = o.name || name; dateStr = o.date || ''; }
+    } else {
+        const loc = getAllLocations().find((l) => l.id === currentSubtype);
+        if (loc) name = loc.name || name;
+        if (DATABLE_PRESETS.includes(currentSubtype)) dateStr = getLocationDates()[currentSubtype] || '';
+    }
+    const cd = countdownLabel(dateStr);
+    h.textContent = cd ? `🧳 ${name} の準備・${cd}` : `🧳 ${name} の準備`;
+    if (note) note.classList.toggle('hidden', upcomingDatedPlanCount() < 2);
+}
+
 function renderChecklist() {
     const nameNote = $('name-note');
     if (nameNote) nameNote.classList.toggle('hidden', returnMode);
     const mc = $('mode-container');
-    if (mc) mc.textContent = `📦 ${currentContainerWord()}に詰める`;
+    if (mc) mc.textContent = `🧳 ${currentContainerWord()}に詰める`;
     renderPresetDate();
     renderConditionToggles();
+    renderPrepHeading();
     if (returnMode) {
         renderReturnChecklist();
     } else {
@@ -2084,7 +2128,7 @@ function buildBoxStampBanner() {
         cell.className = `min-w-[44px] h-11 px-2 rounded-xl flex items-center justify-center text-lg ${
             isSealed ? 'bg-white/25' : 'bg-white/10 border-2 border-dashed border-white/40 opacity-80'
         }`;
-        cell.textContent = isSealed ? '✅' : '📦';
+        cell.textContent = isSealed ? '✅' : '🧳';
         cell.title = getContainerName(b.id);
         row.appendChild(cell);
     });
@@ -2304,7 +2348,7 @@ function createReturnItemRow(item, returnChecked, currentBox) {
     if (boxId) {
         const boxBadge = document.createElement('span');
         boxBadge.className = 'text-[10px] text-gray-500 mt-0.5';
-        boxBadge.textContent = `📦 ${getContainerName(boxId)}`;
+        boxBadge.textContent = `🧳 ${getContainerName(boxId)}`;
         textWrap.appendChild(boxBadge);
     }
 
@@ -2394,7 +2438,7 @@ function createItemRow(item, checked, currentBox, showCategoryBadge = false) {
     left.appendChild(label);
 
     // 右: 入っている入れ物の表示(読み取り専用) + (カスタムなら削除ボタン)
-    // 箱の割り当ては「📦 入れ物に詰める」モードだけで行う。持ち物リストでは
+    // 箱の割り当ては「🧳 入れ物に詰める」モードだけで行う。持ち物リストでは
     // 「どの入れ物に入っているか」が一目で分かればよい(誤操作も防ぐ)。
     const right = document.createElement('div');
     right.className = 'flex items-center gap-2 self-end sm:self-center';
@@ -2403,7 +2447,7 @@ function createItemRow(item, checked, currentBox, showCategoryBadge = false) {
     const assigned = currentBox && currentBox !== 'none';
     if (assigned) {
         // 「入れ物に詰める」モードと同じ色(getBoxColor)で表示し、2画面で「どの箱か」を色でそろえる
-        const icon = currentBox === 'bag' ? '👜' : '📦';
+        const icon = currentBox === 'bag' ? '👜' : '🧳';
         const color = getBoxColor(currentBox);
         boxBadge.className =
             `text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border ${color.pale}`;
@@ -3073,7 +3117,7 @@ function handlePrint() {
             if (boxId && boxId !== 'none') {
                 const box = document.createElement('span');
                 box.className = 'print-box';
-                box.textContent = `📦 ${getContainerName(boxId)}`;
+                box.textContent = `🧳 ${getContainerName(boxId)}`;
                 row.appendChild(box);
             }
 
