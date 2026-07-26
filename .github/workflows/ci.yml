@@ -55,7 +55,8 @@ jobs:
             exit 1
           fi
 
-          for LABEL in "おかえり" "どこへ" "箱に詰める" "おでかけの準備"; do
+          # 準備画面の見出しは「🧳 ◯◯ の準備・…」と動的表示になったため "の準備" で確認
+          for LABEL in "おかえり" "どこへ" "箱に詰める" "の準備"; do
             if ! grep -q "$LABEL" dom.html; then
               echo "::error::UI要素が見つかりません: $LABEL"
               exit 1
