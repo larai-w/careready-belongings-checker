@@ -2446,11 +2446,12 @@ function createItemRow(item, checked, currentBox, showCategoryBadge = false) {
     const boxBadge = document.createElement('span');
     const assigned = currentBox && currentBox !== 'none';
     if (assigned) {
-        // 「入れ物に詰める」モードと同じ色(getBoxColor)で表示し、2画面で「どの箱か」を色でそろえる
+        // 「入れ物に詰める」モードと同じ色(getBoxColor)で「どの箱か」を色でそろえる。
+        // 淡色(pale)だと緑などのカテゴリカードに埋もれるため、濃色(badge)+白文字で必ず読めるようにする。
         const icon = currentBox === 'bag' ? '👜' : '🧳';
         const color = getBoxColor(currentBox);
         boxBadge.className =
-            `text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border ${color.pale}`;
+            `text-[11px] font-bold text-white px-2 py-0.5 rounded-full whitespace-nowrap ${color.badge}`;
         boxBadge.textContent = `${icon} ${getContainerName(currentBox)}`;
     } else {
         boxBadge.className = 'text-[11px] text-gray-500 whitespace-nowrap';
