@@ -2,7 +2,7 @@
 // 方針: アプリシェルはインストール時にプリキャッシュ。
 // 以降のGETリクエストは「キャッシュ優先 + 裏でネットワーク更新」(stale-while-revalidate)。
 
-const CACHE_NAME = 'careready-v65';
+const CACHE_NAME = 'careready-v66';
 
 const PRECACHE_URLS = [
     './',
