@@ -34,6 +34,8 @@ _CODE_LENGTH = 6
 
 # バリデーション上限
 _MAX_NAME_LEN = 100
+_MAX_PHONE_LEN = 20
+_MAX_ADDRESS_LEN = 200
 _MAX_ITEMS = 200
 _MAX_OCR_ITEMS = 50
 
@@ -480,6 +482,29 @@ def _validate_template(body):
     return name, items, overrides
 
 
+# 施設連絡先(名前・電話・住所)はすべて任意。キー未指定なら既存値を保持(更新時)。
+def _facility_field(body, key, max_len, existing=None):
+    if key not in body:
+        return existing.get(key) if existing else None
+    val = body.get(key)
+    if val is None or val == "":
+        return None
+    if not isinstance(val, str):
+        raise _BadRequest(f"{key} must be a string")
+    val = val.strip()
+    if len(val) > max_len:
+        raise _BadRequest(f"{key} must be <= {max_len} chars")
+    return val or None
+
+
+def _facility_fields(body, existing=None):
+    return {
+        "facilityName": _facility_field(body, "facilityName", _MAX_NAME_LEN, existing),
+        "facilityPhone": _facility_field(body, "facilityPhone", _MAX_PHONE_LEN, existing),
+        "facilityAddress": _facility_field(body, "facilityAddress", _MAX_ADDRESS_LEN, existing),
+    }
+
+
 # --- ハンドラ本体 ---------------------------------------------------------
 
 def redeem(event):
@@ -508,6 +533,8 @@ def redeem(event):
             "items": tpl.get("items", []),
             "overrides": tpl.get("overrides", {}),
             "facilityName": tpl.get("facilityName"),
+            "facilityPhone": tpl.get("facilityPhone"),
+            "facilityAddress": tpl.get("facilityAddress"),
             "shareCode": tpl.get("shareCode"),
         },
     )
@@ -519,6 +546,9 @@ def _tpl_view(item):
         "name": item.get("name"),
         "items": item.get("items", []),
         "overrides": item.get("overrides", {}),
+        "facilityName": item.get("facilityName"),
+        "facilityPhone": item.get("facilityPhone"),
+        "facilityAddress": item.get("facilityAddress"),
         "shareCode": item.get("shareCode"),
         "updatedAt": item.get("updatedAt"),
     }
@@ -545,7 +575,7 @@ def create_template(event):
     tpl_id = uuid.uuid4().hex
     share_code = _gen_share_code()
     now = int(time.time())
-    facility_name = body.get("facilityName")
+    facility = _facility_fields(body)
 
     item = {
         "PK": f"FAC#{fac}",
@@ -556,7 +586,9 @@ def create_template(event):
         "items": items,
         "overrides": overrides,
         "shareCode": share_code,
-        "facilityName": facility_name,
+        "facilityName": facility["facilityName"],
+        "facilityPhone": facility["facilityPhone"],
+        "facilityAddress": facility["facilityAddress"],
         "updatedAt": now,
     }
     _table().put_item(Item=item)
@@ -583,20 +615,23 @@ def update_template(event, tpl_id):
         return _error(404, "template not found")
 
     now = int(time.time())
-    facility_name = body.get("facilityName", existing.get("facilityName"))
+    facility = _facility_fields(body, existing)
     try:
         _table().update_item(
             Key=key,
             UpdateExpression=(
                 "SET #n = :n, #items = :items, overrides = :ov, "
-                "facilityName = :fn, updatedAt = :ua"
+                "facilityName = :fn, facilityPhone = :fp, "
+                "facilityAddress = :fa, updatedAt = :ua"
             ),
             ExpressionAttributeNames={"#n": "name", "#items": "items"},
             ExpressionAttributeValues={
                 ":n": name,
                 ":items": items,
                 ":ov": overrides,
-                ":fn": facility_name,
+                ":fn": facility["facilityName"],
+                ":fp": facility["facilityPhone"],
+                ":fa": facility["facilityAddress"],
                 ":ua": now,
             },
             ConditionExpression="attribute_exists(PK)",
