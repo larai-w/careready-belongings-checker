@@ -2778,6 +2778,77 @@ function clearDiaryPhoto() {
     $('diary-photo-clear').classList.add('hidden');
 }
 
+// ---- 日記モーダルから直接 思い出を追加 (おかえりフローとは独立) ----
+let pendingDiaryModalPhoto = '';
+let diaryModalMood = -1;
+
+function renderDiaryAddMood() {
+    const row = $('diaryAdd-mood-row');
+    if (!row) return;
+    row.textContent = '';
+    MOODS.forEach((face, i) => {
+        const b = document.createElement('button');
+        const on = i === diaryModalMood;
+        b.className = `w-11 h-11 rounded-full text-2xl flex items-center justify-center transition-all border-2 ${
+            on ? 'bg-amber-100 border-amber-400 scale-110' : 'bg-white border-transparent hover:bg-amber-50'
+        }`;
+        b.textContent = face;
+        b.setAttribute('aria-label', `調子 ${i + 1}`);
+        b.addEventListener('click', () => { diaryModalMood = i; renderDiaryAddMood(); });
+        row.appendChild(b);
+    });
+}
+
+async function handleDiaryModalPhoto(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+        pendingDiaryModalPhoto = await resizeToDataUrl(file, 480, 0.7);
+        const prev = $('diaryAdd-photo-preview');
+        prev.src = pendingDiaryModalPhoto;
+        prev.classList.remove('hidden');
+        $('diaryAdd-photo-clear').classList.remove('hidden');
+    } catch (err) {
+        showToast('写真を読み込めませんでした');
+    }
+}
+
+function clearDiaryModalPhoto() {
+    pendingDiaryModalPhoto = '';
+    $('diaryAdd-photo-input').value = '';
+    $('diaryAdd-photo-preview').classList.add('hidden');
+    $('diaryAdd-photo-clear').classList.add('hidden');
+}
+
+function resetDiaryAddForm() {
+    diaryModalMood = -1;
+    const noteEl = $('diaryAdd-note');
+    if (noteEl) noteEl.value = '';
+    clearDiaryModalPhoto();
+    renderDiaryAddMood();
+}
+
+function saveDiaryFromModal() {
+    const noteEl = $('diaryAdd-note');
+    const note = noteEl ? noteEl.value.trim().slice(0, 100) : '';
+    if (!note && !pendingDiaryModalPhoto && diaryModalMood < 0) {
+        showToast('写真・ひとこと・調子のどれかを入れてください');
+        return;
+    }
+    const dest = (getAllLocations().find((l) => l.id === currentSubtype) || {}).name || 'おでかけ';
+    setState('diary', [...getDiary(), {
+        date: new Date().toISOString().slice(0, 10),
+        dest,
+        mood: diaryModalMood,
+        note,
+        photo: pendingDiaryModalPhoto || '',
+    }]);
+    resetDiaryAddForm();
+    renderDiary();
+    showToast('日記に記録しました 🍀');
+    if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e) { /* noop */ } }
+}
+
 function handleTadaima() {
     // ① 日記エントリを記録
     const dest = (getAllLocations().find((l) => l.id === currentSubtype) || {}).name || 'おでかけ';
@@ -2812,6 +2883,7 @@ function getDiary() {
 }
 
 function openDiary() {
+    resetDiaryAddForm();
     renderDiary();
     const m = $('diary-modal');
     m.classList.remove('hidden');
@@ -3233,6 +3305,10 @@ $('special-modal').addEventListener('click', (e) => { if (e.target === $('specia
 $('special-name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveSpecialOuting(); });
 $('diary-btn').addEventListener('click', openDiary);
 $('diary-close').addEventListener('click', closeDiary);
+$('diaryAdd-photo-btn').addEventListener('click', () => $('diaryAdd-photo-input').click());
+$('diaryAdd-photo-input').addEventListener('change', handleDiaryModalPhoto);
+$('diaryAdd-photo-clear').addEventListener('click', clearDiaryModalPhoto);
+$('diaryAdd-save').addEventListener('click', saveDiaryFromModal);
 $('diary-modal').addEventListener('click', (e) => { if (e.target === $('diary-modal')) closeDiary(); });
 $('reset-checks').addEventListener('click', resetChecks);
 $('reset-return-checks').addEventListener('click', resetReturnChecks);
