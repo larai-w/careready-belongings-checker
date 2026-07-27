@@ -185,6 +185,23 @@ function updateFacilityBanner() {
         banner.classList.remove('hidden');
         banner.classList.add('flex');
 
+        const phoneEl = $('facility-banner-phone');
+        if (tpl.facilityPhone) {
+            phoneEl.textContent = '📞 ' + tpl.facilityPhone;
+            phoneEl.href = 'tel:' + tpl.facilityPhone.replace(/[^0-9+]/g, '');
+            phoneEl.classList.remove('hidden');
+        } else {
+            phoneEl.classList.add('hidden');
+            phoneEl.removeAttribute('href');
+        }
+        const addrEl = $('facility-banner-address');
+        if (tpl.facilityAddress) {
+            addrEl.textContent = '📍 ' + tpl.facilityAddress;
+            addrEl.classList.remove('hidden');
+        } else {
+            addrEl.classList.add('hidden');
+        }
+
         if (tpl.overrides && tpl.overrides.note) {
             const noteText = $('facility-note-text');
             noteText.textContent = tpl.overrides.note;
@@ -277,8 +294,10 @@ async function startApp() {
         renderReminder();
         renderPushToggle();
         renderPushPrompt();
-        // ⑤ 開いたときの寄り添う挨拶(名前があれば呼びかける)
+        // ⑤ 開いたときの寄り添う挨拶(名前があれば呼びかける)。初回は使い方カードを優先し挨拶は出さない
+        const shownOnboarding = maybeShowOnboarding();
         setTimeout(() => {
+            if (shownOnboarding) return;
             const n = getPersonName();
             showToast(`${n ? n + 'さん、' : ''}きょうも いっしょに準備していきましょう！`, 3500);
         }, 400);
@@ -409,6 +428,8 @@ function checkFacilityCodeParam() {
             items: tpl.items || [],
             overrides: tpl.overrides || {},
             facilityName: tpl.facilityName || '',
+            facilityPhone: tpl.facilityPhone || '',
+            facilityAddress: tpl.facilityAddress || '',
             shareCode: tpl.shareCode || fc.toUpperCase(),
             redeemedAt: new Date().toISOString(),
         };
@@ -457,6 +478,8 @@ async function handleFcModalSubmit() {
             items: fcRedeemState.items || [],
             overrides: fcRedeemState.overrides || {},
             facilityName: fcRedeemState.facilityName || '',
+            facilityPhone: fcRedeemState.facilityPhone || '',
+            facilityAddress: fcRedeemState.facilityAddress || '',
             shareCode: fcRedeemState.shareCode || fcRedeemState.code,
             redeemedAt: new Date().toISOString(),
         };
@@ -492,6 +515,8 @@ async function handleFcModalSubmit() {
             items: tpl.items || [],
             overrides: tpl.overrides || {},
             facilityName: tpl.facilityName || '',
+            facilityPhone: tpl.facilityPhone || '',
+            facilityAddress: tpl.facilityAddress || '',
             shareCode: tpl.shareCode || code,
         };
         // 確認UI表示
@@ -2778,6 +2803,77 @@ function clearDiaryPhoto() {
     $('diary-photo-clear').classList.add('hidden');
 }
 
+// ---- 日記モーダルから直接 思い出を追加 (おかえりフローとは独立) ----
+let pendingDiaryModalPhoto = '';
+let diaryModalMood = -1;
+
+function renderDiaryAddMood() {
+    const row = $('diaryAdd-mood-row');
+    if (!row) return;
+    row.textContent = '';
+    MOODS.forEach((face, i) => {
+        const b = document.createElement('button');
+        const on = i === diaryModalMood;
+        b.className = `w-11 h-11 rounded-full text-2xl flex items-center justify-center transition-all border-2 ${
+            on ? 'bg-amber-100 border-amber-400 scale-110' : 'bg-white border-transparent hover:bg-amber-50'
+        }`;
+        b.textContent = face;
+        b.setAttribute('aria-label', `調子 ${i + 1}`);
+        b.addEventListener('click', () => { diaryModalMood = i; renderDiaryAddMood(); });
+        row.appendChild(b);
+    });
+}
+
+async function handleDiaryModalPhoto(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+        pendingDiaryModalPhoto = await resizeToDataUrl(file, 480, 0.7);
+        const prev = $('diaryAdd-photo-preview');
+        prev.src = pendingDiaryModalPhoto;
+        prev.classList.remove('hidden');
+        $('diaryAdd-photo-clear').classList.remove('hidden');
+    } catch (err) {
+        showToast('写真を読み込めませんでした');
+    }
+}
+
+function clearDiaryModalPhoto() {
+    pendingDiaryModalPhoto = '';
+    $('diaryAdd-photo-input').value = '';
+    $('diaryAdd-photo-preview').classList.add('hidden');
+    $('diaryAdd-photo-clear').classList.add('hidden');
+}
+
+function resetDiaryAddForm() {
+    diaryModalMood = -1;
+    const noteEl = $('diaryAdd-note');
+    if (noteEl) noteEl.value = '';
+    clearDiaryModalPhoto();
+    renderDiaryAddMood();
+}
+
+function saveDiaryFromModal() {
+    const noteEl = $('diaryAdd-note');
+    const note = noteEl ? noteEl.value.trim().slice(0, 100) : '';
+    if (!note && !pendingDiaryModalPhoto && diaryModalMood < 0) {
+        showToast('写真・ひとこと・調子のどれかを入れてください');
+        return;
+    }
+    const dest = (getAllLocations().find((l) => l.id === currentSubtype) || {}).name || 'おでかけ';
+    setState('diary', [...getDiary(), {
+        date: new Date().toISOString().slice(0, 10),
+        dest,
+        mood: diaryModalMood,
+        note,
+        photo: pendingDiaryModalPhoto || '',
+    }]);
+    resetDiaryAddForm();
+    renderDiary();
+    showToast('日記に記録しました 🍀');
+    if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e) { /* noop */ } }
+}
+
 function handleTadaima() {
     // ① 日記エントリを記録
     const dest = (getAllLocations().find((l) => l.id === currentSubtype) || {}).name || 'おでかけ';
@@ -2812,6 +2908,7 @@ function getDiary() {
 }
 
 function openDiary() {
+    resetDiaryAddForm();
     renderDiary();
     const m = $('diary-modal');
     m.classList.remove('hidden');
@@ -2925,6 +3022,78 @@ function showCelebrationOverlay(emojiChar, titleText, subText, titleColor) {
         overlay.style.opacity = '0';
         setTimeout(() => overlay.remove(), 400);
     }, 3600);
+}
+
+// 初回だけ・スキップ可の使い方カード(①行き先 ②準備 ③おかえり)。localStorageで既読管理。
+function maybeShowOnboarding() {
+    if (getState('onboarded', false)) return false;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 z-[80] flex items-center justify-center p-5 bg-black/50';
+
+    const card = document.createElement('div');
+    card.className = 'bg-white rounded-3xl shadow-2xl p-6 max-w-sm w-full';
+
+    const h = document.createElement('p');
+    h.className = 'text-xl font-bold text-teal-600 mb-1';
+    h.textContent = 'ようこそ CareReady へ';
+    const lead = document.createElement('p');
+    lead.className = 'text-sm text-gray-500 mb-4';
+    lead.textContent = '持ちものを、わすれずに。3つのステップで準備できます。';
+
+    const steps = [
+        ['①', '🍀 いく先をえらぶ', 'きょうの行き先をタップします。'],
+        ['②', '🧳 準備する', '「入れ物に詰める」か「持ち物リスト」で、チェックしながら準備。どちらでもOKです。'],
+        ['③', '🏠 おかえりを記録', '帰ったら「おかえりチェック」で、写真やひとことを日記に残せます。'],
+    ];
+    const list = document.createElement('div');
+    list.className = 'space-y-3 mb-5';
+    steps.forEach(([num, title, desc]) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-start gap-3';
+        const badge = document.createElement('div');
+        badge.className = 'shrink-0 w-8 h-8 rounded-full bg-teal-500/10 text-teal-600 font-bold flex items-center justify-center';
+        badge.textContent = num;
+        const body = document.createElement('div');
+        body.className = 'min-w-0';
+        const t = document.createElement('p');
+        t.className = 'text-sm font-bold text-gray-800';
+        t.textContent = title;
+        const d = document.createElement('p');
+        d.className = 'text-xs text-gray-500 mt-0.5 leading-snug';
+        d.textContent = desc;
+        body.append(t, d);
+        row.append(badge, body);
+        list.appendChild(row);
+    });
+
+    const startBtn = document.createElement('button');
+    startBtn.className = 'w-full text-base font-bold text-white bg-teal-500 hover:bg-teal-600 active:scale-[0.98] rounded-2xl px-4 py-3 shadow-lg transition-all';
+    startBtn.textContent = 'はじめる';
+    const skip = document.createElement('button');
+    skip.className = 'w-full text-xs text-gray-400 hover:text-gray-600 mt-2 py-1';
+    skip.textContent = 'あとで見る（スキップ）';
+
+    function dismiss() {
+        setState('onboarded', true);
+        overlay.style.transition = 'opacity .3s';
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 300);
+    }
+    startBtn.addEventListener('click', dismiss);
+    skip.addEventListener('click', dismiss);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) dismiss(); });
+
+    card.append(h, lead, list, startBtn, skip);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    try {
+        card.animate(
+            [{ transform: 'scale(0.9)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }],
+            { duration: 250, easing: 'ease-out' }
+        );
+    } catch (e) { /* noop */ }
+    return true;
 }
 
 // C: 箱を詰め終わったとき(小さなお祝い + ✅を記録)
@@ -3233,6 +3402,10 @@ $('special-modal').addEventListener('click', (e) => { if (e.target === $('specia
 $('special-name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveSpecialOuting(); });
 $('diary-btn').addEventListener('click', openDiary);
 $('diary-close').addEventListener('click', closeDiary);
+$('diaryAdd-photo-btn').addEventListener('click', () => $('diaryAdd-photo-input').click());
+$('diaryAdd-photo-input').addEventListener('change', handleDiaryModalPhoto);
+$('diaryAdd-photo-clear').addEventListener('click', clearDiaryModalPhoto);
+$('diaryAdd-save').addEventListener('click', saveDiaryFromModal);
 $('diary-modal').addEventListener('click', (e) => { if (e.target === $('diary-modal')) closeDiary(); });
 $('reset-checks').addEventListener('click', resetChecks);
 $('reset-return-checks').addEventListener('click', resetReturnChecks);

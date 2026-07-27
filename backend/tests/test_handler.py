@@ -111,6 +111,73 @@ def test_redeem_not_found_returns_404(dynamodb_table):
     assert "error" in _body(resp)
 
 
+def test_facility_fields_persist_get_and_redeem(dynamodb_table):
+    handler = dynamodb_table
+    created = _body(handler.lambda_handler(make_event(
+        "POST", "/v1/facility/templates",
+        body={
+            "name": "入院準備リスト",
+            "items": [{"name": "パジャマ"}],
+            "facilityName": "○○介護老人福祉施設",
+            "facilityPhone": "000-000-0000",
+            "facilityAddress": "○○県○○市○○町1-2-3",
+        },
+        facility_id=FAC,
+    )))
+    assert created["facilityName"] == "○○介護老人福祉施設"
+    assert created["facilityPhone"] == "000-000-0000"
+    assert created["facilityAddress"] == "○○県○○市○○町1-2-3"
+
+    # 編集で開き直したとき(GET)も連絡先が返る
+    got = _body(handler.lambda_handler(
+        make_event("GET", "/x", tpl_id=created["tplId"], facility_id=FAC)
+    ))
+    assert got["facilityPhone"] == "000-000-0000"
+    assert got["facilityAddress"] == "○○県○○市○○町1-2-3"
+
+    # 家族が受け取る redeem 経路でも露出する
+    redeemed = _body(handler.lambda_handler(make_event(
+        "POST", "/v1/templates/redeem", body={"code": created["shareCode"]}
+    )))
+    assert redeemed["facilityName"] == "○○介護老人福祉施設"
+    assert redeemed["facilityPhone"] == "000-000-0000"
+    assert redeemed["facilityAddress"] == "○○県○○市○○町1-2-3"
+
+
+def test_facility_phone_preserved_when_key_omitted_on_update(dynamodb_table):
+    handler = dynamodb_table
+    created = _body(handler.lambda_handler(make_event(
+        "POST", "/v1/facility/templates",
+        body={
+            "name": "入院準備リスト",
+            "items": [{"name": "パジャマ"}],
+            "facilityPhone": "000-000-0000",
+        },
+        facility_id=FAC,
+    )))
+    # facilityPhone を送らずに更新 → 既存値を保持
+    updated = _body(handler.lambda_handler(make_event(
+        "PUT", "/x",
+        body={"name": "更新後", "items": [{"name": "タオル"}]},
+        tpl_id=created["tplId"], facility_id=FAC,
+    )))
+    assert updated["facilityPhone"] == "000-000-0000"
+
+
+def test_create_rejects_long_facility_phone(dynamodb_table):
+    handler = dynamodb_table
+    resp = handler.lambda_handler(make_event(
+        "POST", "/v1/facility/templates",
+        body={
+            "name": "x",
+            "items": [{"name": "パジャマ"}],
+            "facilityPhone": "0" * 21,
+        },
+        facility_id=FAC,
+    ))
+    assert resp["statusCode"] == 400
+
+
 # --- OCR ---------------------------------------------------------------
 
 def test_ocr_items_extracts_candidates(dynamodb_table, monkeypatch):

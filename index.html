@@ -292,6 +292,8 @@
             <div class="flex-1">
                 <p class="text-xs text-blue-400 font-bold">🏥 施設テンプレ取込中</p>
                 <p id="facility-banner-name" class="text-sm text-blue-300 mt-0.5"></p>
+                <a id="facility-banner-phone" class="hidden text-sm text-blue-300 mt-0.5 underline hover:text-blue-200"></a>
+                <p id="facility-banner-address" class="hidden text-xs text-blue-400/80 mt-0.5"></p>
             </div>
             <button id="facility-revoke" class="text-xs text-gray-500 hover:text-red-400 px-3 py-1 rounded border border-gray-700 transition-colors shrink-0">解除</button>
         </div>
@@ -632,6 +634,22 @@
             <div class="flex items-center justify-between">
                 <h3 class="text-lg font-bold text-amber-700">📔 おでかけ日記</h3>
                 <button id="diary-close" class="w-9 h-9 rounded-lg text-gray-400 hover:text-gray-600 text-2xl leading-none flex items-center justify-center">×</button>
+            </div>
+            <!-- 思い出を追加 (日記モーダルから直接) -->
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+                <p class="text-sm font-bold text-amber-700">📸 きょうの思い出を追加</p>
+                <div id="diaryAdd-mood-row" class="flex justify-center gap-2"></div>
+                <input id="diaryAdd-note" type="text" maxlength="100" placeholder="ひとこと（任意・例: たくさん歩けた）"
+                    class="w-full bg-white border border-gray-300 rounded-2xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-amber-500 placeholder-gray-400">
+                <div class="flex items-center gap-2">
+                    <input id="diaryAdd-photo-input" type="file" accept="image/*" class="hidden">
+                    <button id="diaryAdd-photo-btn" type="button" class="text-sm font-bold text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 hover:bg-amber-500/20 transition-colors">📸 写真をえらぶ（任意）</button>
+                    <img id="diaryAdd-photo-preview" class="hidden w-12 h-12 rounded-lg object-cover border border-amber-200" alt="写真プレビュー">
+                    <button id="diaryAdd-photo-clear" type="button" class="hidden text-xs text-gray-400 hover:text-red-400 underline">取り消す</button>
+                </div>
+                <button id="diaryAdd-save" class="w-full flex items-center justify-center gap-2 text-base font-bold text-white bg-amber-500 hover:bg-amber-600 active:scale-[0.98] rounded-2xl px-4 py-3 shadow-lg transition-all">
+                    📔 日記に記録する
+                </button>
             </div>
             <div id="diary-graph"></div>
             <div id="diary-list" class="space-y-2"></div>
