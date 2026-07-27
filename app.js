@@ -185,6 +185,23 @@ function updateFacilityBanner() {
         banner.classList.remove('hidden');
         banner.classList.add('flex');
 
+        const phoneEl = $('facility-banner-phone');
+        if (tpl.facilityPhone) {
+            phoneEl.textContent = '📞 ' + tpl.facilityPhone;
+            phoneEl.href = 'tel:' + tpl.facilityPhone.replace(/[^0-9+]/g, '');
+            phoneEl.classList.remove('hidden');
+        } else {
+            phoneEl.classList.add('hidden');
+            phoneEl.removeAttribute('href');
+        }
+        const addrEl = $('facility-banner-address');
+        if (tpl.facilityAddress) {
+            addrEl.textContent = '📍 ' + tpl.facilityAddress;
+            addrEl.classList.remove('hidden');
+        } else {
+            addrEl.classList.add('hidden');
+        }
+
         if (tpl.overrides && tpl.overrides.note) {
             const noteText = $('facility-note-text');
             noteText.textContent = tpl.overrides.note;
@@ -411,6 +428,8 @@ function checkFacilityCodeParam() {
             items: tpl.items || [],
             overrides: tpl.overrides || {},
             facilityName: tpl.facilityName || '',
+            facilityPhone: tpl.facilityPhone || '',
+            facilityAddress: tpl.facilityAddress || '',
             shareCode: tpl.shareCode || fc.toUpperCase(),
             redeemedAt: new Date().toISOString(),
         };
@@ -459,6 +478,8 @@ async function handleFcModalSubmit() {
             items: fcRedeemState.items || [],
             overrides: fcRedeemState.overrides || {},
             facilityName: fcRedeemState.facilityName || '',
+            facilityPhone: fcRedeemState.facilityPhone || '',
+            facilityAddress: fcRedeemState.facilityAddress || '',
             shareCode: fcRedeemState.shareCode || fcRedeemState.code,
             redeemedAt: new Date().toISOString(),
         };
@@ -494,6 +515,8 @@ async function handleFcModalSubmit() {
             items: tpl.items || [],
             overrides: tpl.overrides || {},
             facilityName: tpl.facilityName || '',
+            facilityPhone: tpl.facilityPhone || '',
+            facilityAddress: tpl.facilityAddress || '',
             shareCode: tpl.shareCode || code,
         };
         // 確認UI表示

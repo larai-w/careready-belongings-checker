@@ -44,6 +44,42 @@
     el._t = setTimeout(function () { el.classList.add("hidden"); }, 3500);
   }
 
+  // ---- ヘルプツールチップ -------------------------------------------------
+  function initHelpTips() {
+    document.querySelectorAll(".help-tip").forEach(function (el) {
+      var tipText = el.getAttribute("data-help") || "";
+      if (!tipText) return;
+
+      // tooltip 要素を作成
+      var tip = document.createElement("span");
+      tip.className = "help-tip-tooltip";
+      tip.textContent = tipText;
+      tip.style.cssText =
+        "display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);" +
+        "background:#1e2b45;color:#e5e7eb;font-size:11px;padding:6px 10px;border-radius:6px;" +
+        "white-space:nowrap;max-width:280px;white-space:normal;z-index:100;" +
+        "border:1px solid #29406b;box-shadow:0 4px 12px rgba(0,0,0,.3);" +
+        "font-weight:normal;line-height:1.4;";
+
+      // 親要素を relative に
+      var parent = el.parentElement;
+      if (parent) parent.style.position = "relative";
+
+      el.style.cssText =
+        "display:inline-flex;align-items:center;justify-content:center;" +
+        "width:16px;height:16px;border-radius:50%;background:#29406b;color:#94a3b8;" +
+        "font-size:10px;font-weight:bold;cursor:help;margin-left:4px;vertical-align:middle;" +
+        "transition:background .15s;";
+
+      el.appendChild(tip);
+
+      el.addEventListener("mouseenter", function () { tip.style.display = "block"; });
+      el.addEventListener("mouseleave", function () { tip.style.display = "none"; });
+      el.addEventListener("focus", function () { tip.style.display = "block"; });
+      el.addEventListener("blur", function () { tip.style.display = "none"; });
+    });
+  }
+
   // ---- 認証 -------------------------------------------------------------
   function saveSession(idToken, email) {
     state.idToken = idToken;
@@ -87,7 +123,6 @@
     }).then(function (res) {
       return res.json().then(function (data) {
         if (!res.ok) {
-          // Cognito のエラー種別を日本語に変換
           var type = (data.__type || "").split("#").pop();
           var msg = "ログインに失敗しました。";
           if (type === "NotAuthorizedException") msg = "メールアドレスまたはパスワードが違います。";
@@ -124,7 +159,7 @@
       { authorization: state.idToken || "" },
       options.headers || {}
     );
-    if (options.body) headers["content-type"] = "application/json";
+    if (options.body) headers["Content-Type"] = "application/json";
     return fetch(API_BASE + path, {
       method: options.method || "GET",
       headers: headers,
@@ -284,7 +319,6 @@
       var line = document.createElement("div");
       line.className = "grid grid-cols-12 gap-2 items-center";
 
-      // 名前
       var nameCol = document.createElement("div");
       nameCol.className = "col-span-5";
       var nameInput = document.createElement("input");
@@ -296,7 +330,6 @@
       nameInput.addEventListener("input", function () { row.name = nameInput.value; });
       nameCol.appendChild(nameInput);
 
-      // 数量
       var qtyCol = document.createElement("div");
       qtyCol.className = "col-span-2";
       var qtyInput = document.createElement("input");
@@ -308,7 +341,6 @@
       qtyInput.addEventListener("input", function () { row.quantity = qtyInput.value; });
       qtyCol.appendChild(qtyInput);
 
-      // 行き先
       var locCol = document.createElement("div");
       locCol.className = "col-span-4 flex flex-wrap gap-x-3 gap-y-1";
       locs.forEach(function (loc) {
@@ -328,7 +360,6 @@
         locCol.appendChild(lbl);
       });
 
-      // 削除
       var delCol = document.createElement("div");
       delCol.className = "col-span-1 flex justify-end";
       var rm = document.createElement("button");
@@ -362,7 +393,7 @@
   }
 
   // ---- 標準アイテムの持込設定 (overrides.hide) -------------------------
-  var hideCheckboxes = {}; // itemId -> checkbox 要素
+  var hideCheckboxes = {};
 
   function renderStdItems(hiddenSet) {
     hideCheckboxes = {};
@@ -412,6 +443,9 @@
   // ---- 編集フォーム -----------------------------------------------------
   function resetEditForm() {
     $("tplName").value = "";
+    $("tplFacilityName").value = "";
+    $("tplFacilityPhone").value = "";
+    $("tplFacilityAddress").value = "";
     $("tplNote").value = "";
     state.facRows = [];
     state.editingTplId = null;
@@ -419,6 +453,9 @@
 
   function populateForm(tpl) {
     $("tplName").value = tpl.name || "";
+    $("tplFacilityName").value = tpl.facilityName || "";
+    $("tplFacilityPhone").value = tpl.facilityPhone || "";
+    $("tplFacilityAddress").value = tpl.facilityAddress || "";
     var overrides = tpl.overrides || {};
     $("tplNote").value = overrides.note || "";
     renderStdItems(new Set(overrides.hide || []));
@@ -439,14 +476,12 @@
     loadCatalog().then(function () {
       resetEditForm();
       if (!tplId) {
-        // 新規
         $("editTitle").textContent = "リストを作成";
         renderStdItems(new Set());
         renderFacRows();
         show("editView");
         return;
       }
-      // 既存 -> 取得
       $("editTitle").textContent = "リストを編集";
       show("editView");
       $("saveStatus").textContent = "読み込み中...";
@@ -465,13 +500,16 @@
 
   function buildPayload() {
     var name = $("tplName").value.trim();
+    var facilityName = $("tplFacilityName").value.trim();
+    var facilityPhone = $("tplFacilityPhone").value.trim();
+    var facilityAddress = $("tplFacilityAddress").value.trim();
     var note = $("tplNote").value.trim();
 
     var items = [];
     for (var i = 0; i < state.facRows.length; i++) {
       var r = state.facRows[i];
       var n = (r.name || "").trim();
-      if (!n) continue; // 空行はスキップ
+      if (!n) continue;
       items.push({
         id: r.id,
         name: n,
@@ -483,7 +521,11 @@
     var overrides = { hide: collectHidden() };
     if (note) overrides.note = note;
 
-    return { name: name, items: items, overrides: overrides };
+    var payload = { name: name, items: items, overrides: overrides };
+    if (facilityName) payload.facilityName = facilityName;
+    if (facilityPhone) payload.facilityPhone = facilityPhone;
+    if (facilityAddress) payload.facilityAddress = facilityAddress;
+    return payload;
   }
 
   function saveTemplate() {
@@ -528,7 +570,8 @@
     var url = shareUrlFor(code);
     $("shareUrl").textContent = url;
 
-    // 編集への導線用に tplId を保持
+    // プレビューボタン用にコードを保持
+    $("previewFamilyBtn").dataset.fc = code;
     $("editFromShareBtn").dataset.tplId = tpl.tplId || "";
 
     var canvas = $("qrCanvas");
@@ -546,7 +589,6 @@
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(url).then(done, fail);
     } else {
-      // フォールバック
       try {
         var ta = document.createElement("textarea");
         ta.value = url;
@@ -557,6 +599,16 @@
         done();
       } catch (e) { fail(); }
     }
+  }
+
+  function openFamilyPreview() {
+    var fc = $("previewFamilyBtn").dataset.fc;
+    if (!fc) {
+      toast("共有コードがありません。", true);
+      return;
+    }
+    var url = shareUrlFor(fc);
+    window.open(url, "_blank", "noopener");
   }
 
   // ---- イベント配線 -----------------------------------------------------
@@ -606,11 +658,13 @@
       var id = $("editFromShareBtn").dataset.tplId;
       if (id) openEdit(id);
     });
+    $("previewFamilyBtn").addEventListener("click", openFamilyPreview);
   }
 
   // ---- 起動 -------------------------------------------------------------
   function init() {
     wire();
+    initHelpTips(); // ヘルプツールチップ初期化
     if (restoreSession()) {
       $("userLabel").textContent = state.email || "";
       loadList();

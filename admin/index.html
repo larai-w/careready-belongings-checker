@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data:; connect-src 'self' https://6r6n0fjn4d.execute-api.ap-northeast-1.amazonaws.com https://cognito-idp.ap-northeast-1.amazonaws.com;">
   <title>CareReady 施設管理画面</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js"></script>
@@ -109,11 +110,38 @@
         <!-- 基本情報 -->
         <div class="cr-card rounded-xl p-6 space-y-4">
           <div>
-            <label for="tplName" class="block text-sm text-slate-300 mb-1">リスト名<span class="text-red-400">*</span></label>
+            <label for="tplName" class="block text-sm text-slate-300 mb-1">
+              リスト名<span class="text-red-400">*</span>
+              <span class="help-tip" data-help="このリストの名前です。施設名や行き先を含めると分かりやすくなります。例: 「○○施設 ショートステイ持ち物リスト」">?</span>
+            </label>
             <input id="tplName" type="text" class="cr-input" maxlength="100" placeholder="例: 当施設 ショートステイ持ち物リスト" />
           </div>
           <div>
-            <label for="tplNote" class="block text-sm text-slate-300 mb-1">施設からのお知らせ（任意）</label>
+            <label for="tplFacilityName" class="block text-sm text-slate-300 mb-1">
+              施設名（任意）
+              <span class="help-tip" data-help="施設名を設定すると、利用者さんの画面上部に表示されます。">?</span>
+            </label>
+            <input id="tplFacilityName" type="text" class="cr-input" maxlength="100" placeholder="例: ○○介護老人福祉施設" />
+          </div>
+          <div>
+            <label for="tplFacilityPhone" class="block text-sm text-slate-300 mb-1">
+              施設電話番号（任意）
+              <span class="help-tip" data-help="記載しておくと、持ち物の問い合わせがあるときに利用者さんが電話できます。">?</span>
+            </label>
+            <input id="tplFacilityPhone" type="text" class="cr-input" maxlength="20" placeholder="例: 000-000-0000" />
+          </div>
+          <div>
+            <label for="tplFacilityAddress" class="block text-sm text-slate-300 mb-1">
+              施設住所（任意）
+              <span class="help-tip" data-help="郵送が必要な場合などに備えて記載しておけます。">?</span>
+            </label>
+            <input id="tplFacilityAddress" type="text" class="cr-input" maxlength="200" placeholder="例: ○○県○○市○○町1-2-3" />
+          </div>
+          <div>
+            <label for="tplNote" class="block text-sm text-slate-300 mb-1">
+              施設からのお知らせ（任意）
+              <span class="help-tip" data-help="持ち物に関する注意書きを入力してください。利用者さんのリスト上部に表示されます。">?</span>
+            </label>
             <textarea id="tplNote" rows="3" class="cr-input" placeholder="例: 全ての持ち物にお名前をご記入ください。シャンプー・石けんは施設に備え付けがあります。"></textarea>
             <p class="text-slate-500 text-xs mt-1">ご家族のリスト上部に表示されます。</p>
           </div>
@@ -176,13 +204,14 @@
         <p class="text-slate-300 print-text text-sm mb-1">スマホでQRコードを読み取るか、下のURLからアクセスしてください。</p>
         <p id="shareUrl" class="text-cyan-400 print-text break-all text-sm mb-4"></p>
 
-        <div class="no-print flex items-center justify-center gap-3">
+        <div class="no-print flex items-center justify-center gap-3 flex-wrap">
+          <button id="previewFamilyBtn" class="cr-btn cr-btn-ghost text-sm">👀 家族の画面を確認</button>
           <button id="copyUrlBtn" class="cr-btn cr-btn-ghost text-sm">URLをコピー</button>
           <button id="printBtn" class="cr-btn cr-btn-primary text-sm">印刷して掲示する</button>
         </div>
       </div>
 
-      <div class="text-center mt-6 no-print">
+      <div class="text-center mt-6 no-print flex items-center justify-center gap-3">
         <button id="editFromShareBtn" class="cr-btn cr-btn-ghost text-sm">このリストを編集する</button>
       </div>
     </section>
