@@ -1,0 +1,125 @@
+{
+	"$schema": "https://raw.githubusercontent.com/larai-w/veai-jp-web/main/schemas/product.schema.json",
+	"schemaVersion": 1,
+	"slug": "careready",
+	"name": "CareReady",
+	"portfolioRole": "care-transition-workflow",
+	"audiences": [
+		"family-caregiver",
+		"care-recipient",
+		"facility-staff",
+		"technical-reviewer"
+	],
+	"availability": {
+		"stage": "in-development",
+		"access": "public",
+		"summary": {
+			"en": "The family checklist is publicly accessible; facility administration and the complete facility-to-family workflow remain in bounded validation.",
+			"ja": "家族向けチェックリストは公開中です。施設管理画面と施設から家族までの一連の流れは限定的な検証段階です。"
+		},
+		"liveUrl": "https://veai.jp/ready/"
+	},
+	"evidenceLevel": "implemented",
+	"canonicalRepository": "https://github.com/larai-w/careready-belongings-checker",
+	"publicUrls": {
+		"productPage": "https://veai.jp/apps/careready/",
+		"project": "https://github.com/users/larai-w/projects/2",
+		"app": "https://veai.jp/ready/"
+	},
+	"lastVerified": "2026-07-31",
+	"site": {
+		"status": "in-development",
+		"order": 3,
+		"icon": "🎒",
+		"themeColor": "#fdeed3",
+		"techStack": [
+			"PWA",
+			"IndexedDB",
+			"AWS Lambda",
+			"Amazon DynamoDB",
+			"Amazon Cognito",
+			"AWS CDK"
+		],
+		"liveUrl": "https://veai.jp/ready/",
+		"en": {
+			"name": "CareReady",
+			"tagline": "Offline belongings checks for care transitions",
+			"description": "A public offline-first family checklist for hospital, short-stay, facility, and day-service transitions. Facility templates and administration exist but the complete staff-to-family workflow is still being validated."
+		},
+		"ja": {
+			"name": "CareReady",
+			"kana": "ケアレディ",
+			"tagline": "入院・ショートステイ・施設利用の持ち物確認を、オフラインでも",
+			"description": "入院、ショートステイ、施設入所、デイサービスなどの持ち物を家族が確認できる公開PWAです。施設テンプレートと管理機能はありますが、一連の運用は検証中です。"
+		}
+	},
+	"capabilities": [
+		{
+			"id": "offline-family-checklist",
+			"label": {
+				"en": "Offline-first family belongings checklist",
+				"ja": "オフライン優先の家族向け持ち物チェック"
+			},
+			"status": "implemented",
+			"evidenceUrls": [
+				"https://github.com/larai-w/careready-belongings-checker/blob/main/docs/DEVELOPMENT.md"
+			]
+		},
+		{
+			"id": "return-check",
+			"label": {
+				"en": "Return-check workflow",
+				"ja": "返却確認フロー"
+			},
+			"status": "implemented",
+			"evidenceUrls": [
+				"https://github.com/larai-w/careready-belongings-checker#status--limitations"
+			]
+		},
+		{
+			"id": "facility-template-api",
+			"label": {
+				"en": "Authenticated facility template API and public code redemption",
+				"ja": "認証付き施設テンプレートAPIと公開コード引き換え"
+			},
+			"status": "implemented",
+			"evidenceUrls": [
+				"https://github.com/larai-w/careready-belongings-checker/tree/main/backend"
+			]
+		},
+		{
+			"id": "facility-admin-portal",
+			"label": {
+				"en": "Facility administration portal",
+				"ja": "施設管理ポータル"
+			},
+			"status": "prototype",
+			"evidenceUrls": [
+				"https://github.com/larai-w/careready-belongings-checker/tree/main/admin"
+			]
+		},
+		{
+			"id": "real-device-e2e",
+			"label": {
+				"en": "Real-device facility-to-family end-to-end verification",
+				"ja": "実機による施設から家族までのE2E確認"
+			},
+			"status": "planned",
+			"evidenceUrls": [
+				"https://github.com/larai-w/careready-belongings-checker/issues/6"
+			]
+		}
+	],
+	"boundaries": {
+		"en": [
+			"CareReady is condition-agnostic and does not make clinical recommendations.",
+			"The public family checklist does not mean facility onboarding and support are generally available.",
+			"Pilot identities, facility details, and raw findings remain outside the public repository."
+		],
+		"ja": [
+			"CareReadyは特定疾患に限定せず、臨床的な推奨を行いません。",
+			"家族向け画面の公開は、施設導入やサポートの一般提供を意味しません。",
+			"パイロット参加者、施設情報、生の検証結果は公開リポジトリに置きません。"
+		]
+	}
+}
