@@ -2,3 +2,26 @@
 set -eu
 
 python3 scripts/check_public_repo.py --staged
+
+# Locate gitleaks (PATH or ~/bin)
+GL="$(command -v gitleaks || true)"
+if [ -z "$GL" ] && [ -x "$HOME/bin/gitleaks" ]; then
+  GL="$HOME/bin/gitleaks"
+fi
+if [ -n "$GL" ]; then
+  run_gitleaks() {
+    if "$GL" git --help >/dev/null 2>&1; then
+      "$GL" git --pre-commit --redact --staged --verbose
+    else
+      "$GL" protect --staged --redact --verbose
+    fi
+  }
+  if ! run_gitleaks; then
+    echo ""
+    echo "❌ pre-commit blocked: secret detected in staged changes."
+    echo "   Remove the secret, or allowlist it in .gitleaks.toml. Do NOT use --no-verify."
+    exit 1
+  fi
+else
+  echo "⚠️  gitleaks not found (PATH or ~/bin) — secret scan skipped."
+fi
