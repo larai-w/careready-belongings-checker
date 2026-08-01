@@ -62,7 +62,7 @@ aws cognito-idp initiate-auth \
 # => AuthenticationResult(IdToken 等)が返れば成功。
 ```
 
-- CLI 認証が通ったら、**実ブラウザ `https://veai.jp/ready/` でも同じメール+新パスワードでサインインできる**ことを確認する(実機 E2E は [15_実機E2Eウォークスルー.md](15_実機E2Eウォークスルー.md) の手順1と同一)。
+- CLI 認証が通ったら、**実ブラウザ `https://veai.jp/ready/admin/` でも同じメール+新パスワードでサインインできる**ことを確認する(実機 E2E は [15_実機E2Eウォークスルー.md](15_実機E2Eウォークスルー.md) の手順1と同一)。
 - HTTP API の Cognito オーソライザーは既定で **ID トークン**を検証する点に注意([backend/README.md](../backend/README.md))。
 
 ## 復旧(トラブル時)

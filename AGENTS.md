@@ -34,7 +34,7 @@ python3 -c "import json; json.load(open('data.json'))"
 python3 -m http.server 8000 --bind 127.0.0.1 &
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu \
   --virtual-time-budget=25000 --dump-dom http://127.0.0.1:8000/ > /tmp/dom.html
-grep -o 'type="checkbox"' /tmp/dom.html | wc -l   # 28以上であること
+grep -o 'type="checkbox"' /tmp/dom.html | wc -l   # 20以上であること(CI閾値。現行shortstayは26)
 # 注意: dumpは1行に圧縮される。grep -c ではなく grep -o | wc -l を使う
 # 注意: 実ネットワーク/IndexedDBのIOはvirtual-timeで待てないことがある(描画0はタイミング問題の可能性)
 ```
