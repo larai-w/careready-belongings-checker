@@ -45,7 +45,7 @@ jobs:
         if: steps.creds.outputs.configured == 'true'
         run: |
           mkdir -p dist
-          cp index.html app.js storage.js sw.js data.json manifest.webmanifest dist/
+          cp index.html privacy.html app.js storage.js sw.js data.json manifest.webmanifest dist/
           cp -r icons dist/
           [ -d admin ] && cp -r admin dist/ || true
 

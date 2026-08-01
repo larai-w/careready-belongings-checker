@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: CareReady support
+    url: https://line.me/R/ti/p/@775deusn
+    about: Ask about using CareReady. Do not send personal, facility, health, credential, or share-code information.
   - name: Security report
     url: https://github.com/larai-w/careready-belongings-checker/security/advisories/new
     about: Report security concerns privately. Do not include personal or health information in a public issue.
