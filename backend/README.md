@@ -23,7 +23,8 @@ backend/
 ```
 
 - **DynamoDB** `careready-main`: PK/SK(文字列)、GSI1(`GSI1PK`= `CODE#<shareCode>`、shareCode 解決用)、オンデマンド課金、`RemovalPolicy.RETAIN`
-- **Lambda**: Python 3.12 単一関数。外部依存は boto3(Lambda ランタイム同梱)のみなのでバンドル不要
+- **Lambda**: Python 3.12 単一関数。API Gateway は保持対象の発行済みバージョンを `prod` Alias 経由で呼び出す
+- **監視**: API Lambda と予定リマインド Lambda のエラーを CloudWatch Alarm で検知し、既存の運用通知 SNS へ送る
 - **API Gateway (HTTP API)**:
   - `POST /v1/templates/redeem`(公開)
   - `POST /v1/ocr/items`(公開、写真1枚のOCR候補抽出)
@@ -52,7 +53,7 @@ pip install --prefer-binary aws-cdk-lib constructs pytest moto boto3
 backend/.venv/bin/python -m pytest backend/tests/ -q
 ```
 
-redeem のハッピーパス/404、施設テンプレ CRUD、入力バリデーション、facilityId フォールバックを検証(9 ケース)。
+redeem のハッピーパス/404、施設テンプレ CRUD、入力バリデーション、facilityId フォールバックなどを検証する。
 
 ## デプロイ
 
@@ -66,6 +67,7 @@ source ../.venv/bin/activate
 cdk synth --quiet
 # または CDK CLI をローカルに入れていない場合
 npx --yes aws-cdk@2 synth --quiet
+python3 validate_template.py cdk.out/CareReadyBackendStack.template.json
 
 # 初回のみ(アカウント×リージョンのブートストラップ)
 cdk bootstrap aws://<ACCOUNT_ID>/ap-northeast-1
@@ -77,11 +79,45 @@ cdk deploy
 デプロイ後、Outputs に以下が出力される:
 
 - `ApiUrl` — API のエンドポイント URL
+- `ApiLambdaAliasArn` — API Gateway が呼び出す `prod` Alias の ARN
 - `UserPoolId` — Cognito ユーザープール ID
 - `UserPoolClientId` — アプリクライアント ID
 - `TableName` — DynamoDB テーブル名(`careready-main`)
 
 > 注意: 本番 AWS アカウントで運用中のため、`cdk deploy` の実行は事業側の判断で行うこと。
+
+## Lambda の確認と緊急ロールバック
+
+通常のリリースは CDK で新しい API Lambda バージョンを発行し、`prod` Alias をそのバージョンへ更新する。発行済みバージョンは保持される。
+
+```bash
+# 現在 prod が指すバージョンを確認
+aws lambda get-alias \
+  --function-name careready-api \
+  --name prod \
+  --query FunctionVersion \
+  --output text \
+  --region ap-northeast-1
+
+# 発行済みバージョンを確認
+aws lambda list-versions-by-function \
+  --function-name careready-api \
+  --query 'Versions[].Version' \
+  --output table \
+  --region ap-northeast-1
+```
+
+障害時は、直前に正常動作を確認した数値バージョンへ Alias を一時的に戻せる。実行前に担当者の承認を得て、対象バージョンの動作記録を確認する。
+
+```bash
+aws lambda update-alias \
+  --function-name careready-api \
+  --name prod \
+  --function-version <PREVIOUS_VERSION> \
+  --region ap-northeast-1
+```
+
+手動変更は CloudFormation の管理状態との差分になるため、復旧後は正常なコミットから CDK を再デプロイし、Alias とコードの対応を一致させる。DynamoDB と Cognito はロールバック操作の対象にしない。
 
 ## 施設ユーザーの作成(管理者操作)
 
