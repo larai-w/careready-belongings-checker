@@ -1,6 +1,13 @@
 .DS_Store
 node_modules/
 
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+*.pem
+secret_key.txt
+
 # backend
 backend/.venv/
 backend/infra/cdk.out/
