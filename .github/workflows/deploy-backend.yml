@@ -59,6 +59,7 @@ jobs:
         working-directory: backend/infra
         run: |
           npx --yes aws-cdk@2 synth
+          python3 validate_template.py cdk.out/CareReadyBackendStack.template.json
           npx --yes aws-cdk@2 diff || true
 
   deploy:
@@ -94,4 +95,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
       - name: CDK deploy
         working-directory: backend/infra
-        run: npx --yes aws-cdk@2 deploy --require-approval never
+        run: |
+          npx --yes aws-cdk@2 synth
+          python3 validate_template.py cdk.out/CareReadyBackendStack.template.json
+          npx --yes aws-cdk@2 deploy --require-approval never
