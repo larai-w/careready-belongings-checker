@@ -10,6 +10,8 @@ from aws_cdk import (
 from aws_cdk import aws_apigatewayv2 as apigwv2
 from aws_cdk import aws_apigatewayv2_authorizers as apigwv2_auth
 from aws_cdk import aws_apigatewayv2_integrations as apigwv2_int
+from aws_cdk import aws_cloudwatch as cloudwatch
+from aws_cdk import aws_cloudwatch_actions as cloudwatch_actions
 from aws_cdk import aws_cognito as cognito
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_events as events
@@ -135,6 +137,17 @@ class CareReadyBackendStack(Stack):
         fn.add_environment("FEEDBACK_TOPIC_ARN", feedback_topic.topic_arn)
         CfnOutput(self, "FeedbackTopicArn", value=feedback_topic.topic_arn)
 
+        # API Gateway は $LATEST ではなく固定バージョンを指す prod Alias を呼ぶ。
+        # 旧バージョンを保持し、障害時に Alias の付け替えで復旧できるようにする。
+        api_version = fn.current_version
+        api_version.apply_removal_policy(RemovalPolicy.RETAIN)
+        api_alias = lambda_.Alias(
+            self,
+            "ApiProdAlias",
+            alias_name="prod",
+            version=api_version,
+        )
+
         # --- 予定リマインドの送信(毎日・Web Push) ---
         vapid_secret = secretsmanager.Secret.from_secret_name_v2(
             self, "VapidPrivateKey", "careready/vapid-private-key"
@@ -174,6 +187,43 @@ class CareReadyBackendStack(Stack):
             targets=[targets.LambdaFunction(push_sender)],
         )
 
+        alarm_action = cloudwatch_actions.SnsAction(feedback_topic)
+        api_error_alarm = cloudwatch.Alarm(
+            self,
+            "ApiErrorAlarm",
+            alarm_name="CareReady-ApiLambda-Errors",
+            alarm_description="CareReady API Lambda returned one or more errors.",
+            metric=fn.metric_errors(
+                period=Duration.minutes(5),
+                statistic="Sum",
+            ),
+            threshold=1,
+            evaluation_periods=1,
+            comparison_operator=(
+                cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD
+            ),
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+        )
+        api_error_alarm.add_alarm_action(alarm_action)
+
+        push_error_alarm = cloudwatch.Alarm(
+            self,
+            "PushSenderErrorAlarm",
+            alarm_name="CareReady-PushSender-Errors",
+            alarm_description="CareReady scheduled push Lambda returned an error.",
+            metric=push_sender.metric_errors(
+                period=Duration.minutes(5),
+                statistic="Sum",
+            ),
+            threshold=1,
+            evaluation_periods=1,
+            comparison_operator=(
+                cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD
+            ),
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+        )
+        push_error_alarm.add_alarm_action(alarm_action)
+
         # --- API Gateway (HTTP API) ---
         cors = apigwv2.CorsPreflightOptions(
             allow_origins=["https://veai.jp", "http://localhost:8000"],
@@ -188,7 +238,9 @@ class CareReadyBackendStack(Stack):
             cors_preflight=cors,
         )
 
-        integration = apigwv2_int.HttpLambdaIntegration("ApiIntegration", fn)
+        integration = apigwv2_int.HttpLambdaIntegration(
+            "ApiIntegration", api_alias
+        )
 
         jwt_authorizer = apigwv2_auth.HttpUserPoolAuthorizer(
             "CognitoAuthorizer",
@@ -245,6 +297,7 @@ class CareReadyBackendStack(Stack):
 
         # --- Outputs ---
         CfnOutput(self, "ApiUrl", value=http_api.api_endpoint)
+        CfnOutput(self, "ApiLambdaAliasArn", value=api_alias.function_arn)
         CfnOutput(self, "UserPoolId", value=user_pool.user_pool_id)
         CfnOutput(
             self, "UserPoolClientId", value=user_pool_client.user_pool_client_id
