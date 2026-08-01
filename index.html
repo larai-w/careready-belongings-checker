@@ -464,8 +464,12 @@
                 </a>
                 <button id="feedback-btn"
                    class="flex items-center justify-center gap-2 text-sm font-bold text-teal-400 bg-teal-500/10 border border-teal-500/30 hover:bg-teal-500/20 hover:border-teal-500/60 rounded-xl px-5 py-2.5 transition-colors">
-                    📝 ご意見・ほしい機能を送る
+                    📝 困ったこと・ご意見を送る
                 </button>
+                <a href="./privacy.html"
+                   class="flex items-center justify-center min-h-11 text-sm font-bold text-gray-400 hover:text-teal-400 underline underline-offset-4 px-3">
+                    データの取り扱いとお問い合わせ先
+                </a>
             </div>
         </div>
 
@@ -540,8 +544,8 @@
     <!-- ご意見フォーム -->
     <div id="feedback-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm space-y-4">
-            <h3 class="text-lg font-bold text-teal-700">📝 ご意見・ご要望</h3>
-            <p class="text-xs text-gray-500">CareReady開発チームに直接届きます。よかった点・困った点・ほしい機能など、気軽にどうぞ。</p>
+            <h3 class="text-lg font-bold text-teal-700">📝 お問い合わせ・ご意見</h3>
+            <p class="text-sm text-gray-600">CareReady運営に届きます。使い方で困ったこと、不具合、よかった点などを送れます。</p>
             <div>
                 <label class="text-xs text-gray-500 block mb-1">メッセージ <span class="text-red-400">*</span></label>
                 <textarea id="feedback-message" rows="4" maxlength="2000" placeholder="例: 箱に詰めるのが楽しいです。◯◯があると助かります。"
@@ -552,6 +556,9 @@
                 <input id="feedback-contact" type="text" maxlength="200" placeholder="メール や LINE ID など"
                     class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-teal-500 placeholder-gray-400">
             </div>
+            <p id="feedback-privacy-note" class="text-xs leading-relaxed text-gray-600 bg-amber-50 border-l-4 border-amber-400 px-3 py-2">
+                送信内容、任意の連絡先、接続元IPアドレスをサーバーに保存します。氏名・病歴・施設名・共有コードは入力しないでください。
+            </p>
             <p id="feedback-error" class="hidden text-xs text-red-500"></p>
             <div class="flex gap-2 pt-1">
                 <button id="feedback-cancel" class="flex-1 py-2.5 rounded-xl text-sm text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">キャンセル</button>
