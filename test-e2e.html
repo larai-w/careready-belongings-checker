@@ -58,6 +58,28 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
         check('既定チェックリストが描画される (>=10)', rendered);
         if (!rendered) throw new Error('checklist did not render');
 
+        const privacyLink = doc().querySelector('a[href="./privacy.html"]');
+        check('データ取扱いページへの導線がある', !!privacyLink);
+        doc().getElementById('feedback-btn').click();
+        check('問い合わせフォームが開く',
+            await waitFor(() => !doc().getElementById('feedback-modal').classList.contains('hidden')));
+        check('問い合わせ前に保存情報と入力禁止情報が表示される',
+            doc().getElementById('feedback-privacy-note').textContent.includes('接続元IPアドレス') &&
+            doc().getElementById('feedback-privacy-note').textContent.includes('共有コード'));
+        doc().getElementById('feedback-cancel').click();
+
+        const privacyResponse = await fetch('./privacy.html');
+        const privacyText = await privacyResponse.text();
+        check('データ取扱いページを配信できる',
+            privacyResponse.ok && privacyText.includes('端末内に保存されるデータ') &&
+            privacyText.includes('CareReadyは、医療判断や緊急対応を行うサービスではありません'));
+
+        const adminResponse = await fetch('./admin/');
+        const adminText = await adminResponse.text();
+        check('施設画面にも問い合わせとデータ取扱いの導線がある',
+            adminResponse.ok && adminText.includes('veai公式LINE・運用問い合わせ') &&
+            adminText.includes('../privacy.html'));
+
         const progText = () => doc().getElementById('progress-text').textContent.trim();
         const before = progText();
         const unchecked = Array.from(boxes()).filter((cb) => !cb.checked).slice(0, 3);

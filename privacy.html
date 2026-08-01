@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#f7faf8">
+    <title>データの取り扱いとお問い合わせ | CareReady</title>
+    <link rel="icon" type="image/svg+xml" href="./icons/careready-logo.svg">
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #1f2933;
+            --muted: #52606d;
+            --line: #cbd5d1;
+            --surface: #f7faf8;
+            --white: #ffffff;
+            --teal: #087f75;
+            --teal-dark: #075f57;
+            --amber-bg: #fff8e6;
+            --amber-line: #d89b15;
+            --red: #9b2c2c;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--surface);
+            color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+            font-size: 18px;
+            line-height: 1.75;
+            letter-spacing: 0;
+        }
+        h1, h2, h3, p, a { overflow-wrap: anywhere; }
+        a { color: var(--teal-dark); text-underline-offset: 3px; }
+        a:focus-visible, button:focus-visible { outline: 3px solid #f2b134; outline-offset: 3px; }
+        header {
+            background: var(--white);
+            border-bottom: 1px solid var(--line);
+        }
+        .header-inner, main, footer {
+            width: calc(100% - 32px);
+            max-width: 780px;
+            margin: 0 auto;
+        }
+        .header-inner { padding: 22px 0 20px; }
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--ink);
+            font-size: 1.1rem;
+            font-weight: 800;
+            text-decoration: none;
+        }
+        .brand img { width: 44px; height: 44px; }
+        main { padding: 38px 0 56px; }
+        h1 {
+            margin: 0 0 8px;
+            font-size: 2.15rem;
+            line-height: 1.3;
+        }
+        h2 { margin: 0 0 14px; font-size: 1.35rem; line-height: 1.45; }
+        h3 { margin: 0 0 6px; font-size: 1.05rem; }
+        p { margin: 0 0 14px; }
+        .updated { color: var(--muted); font-size: 0.9rem; }
+        .notice {
+            margin: 28px 0 8px;
+            padding: 18px 20px;
+            background: var(--amber-bg);
+            border-left: 5px solid var(--amber-line);
+            border-radius: 4px;
+        }
+        .notice strong { color: var(--red); }
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 18px;
+            margin: 28px 0 6px;
+            padding: 18px 0;
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+        nav a { min-height: 44px; display: inline-flex; align-items: center; font-weight: 700; }
+        section { padding: 34px 0; border-bottom: 1px solid var(--line); }
+        .data-row {
+            display: grid;
+            grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1.7fr);
+            gap: 16px 28px;
+            padding: 18px 0;
+            border-top: 1px solid #dde5e1;
+        }
+        .data-row:first-of-type { border-top: 0; }
+        .data-row p { color: var(--muted); margin: 0; }
+        ul { margin: 10px 0 0; padding-left: 1.3em; }
+        li { margin: 8px 0; }
+        .support-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            margin: 8px 10px 8px 0;
+            padding: 9px 16px;
+            color: var(--white);
+            background: var(--teal);
+            border-radius: 6px;
+            font-weight: 800;
+            text-decoration: none;
+            text-align: center;
+        }
+        .support-link:hover { background: var(--teal-dark); }
+        .secondary-link {
+            color: var(--teal-dark);
+            background: var(--white);
+            border: 1px solid var(--teal);
+        }
+        footer { padding: 26px 0 42px; color: var(--muted); font-size: 0.9rem; }
+        footer a { display: inline-flex; min-height: 44px; align-items: center; }
+        @media (max-width: 620px) {
+            body { font-size: 17px; }
+            h1 { font-size: 1.8rem; }
+            .data-row { grid-template-columns: 1fr; gap: 4px; }
+            .support-link { display: flex; width: 100%; margin-right: 0; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <a class="brand" href="./" aria-label="CareReadyに戻る">
+                <img src="./icons/careready-logo.svg" alt="">
+                <span>CareReady</span>
+            </a>
+        </div>
+    </header>
+
+    <main>
+        <h1>データの取り扱いとお問い合わせ</h1>
+        <p class="updated">最終更新: 2026年8月1日</p>
+
+        <div class="notice">
+            <strong>CareReadyは、医療判断や緊急対応を行うサービスではありません。</strong>
+            急な体調変化や事故のときは、施設・医療機関・地域の緊急窓口へ直接連絡してください。
+        </div>
+
+        <nav aria-label="ページ内メニュー">
+            <a href="#support">お問い合わせ</a>
+            <a href="#local-data">端末内のデータ</a>
+            <a href="#sent-data">送信されるデータ</a>
+            <a href="#delete">削除について</a>
+        </nav>
+
+        <section id="support">
+            <h2>お問い合わせ先</h2>
+            <p>アプリの使い方や不具合は、CareReady画面下部の「困ったこと・ご意見を送る」から連絡できます。返信が必要な場合だけ、連絡先を入力してください。</p>
+            <a class="support-link" href="https://line.me/R/ti/p/@775deusn" target="_blank" rel="noopener">veai公式LINEを開く</a>
+            <a class="support-link secondary-link" href="https://github.com/larai-w/careready-belongings-checker/security/advisories/new" target="_blank" rel="noopener">セキュリティ上の問題を非公開で報告</a>
+            <p>施設スタッフは、パイロット時に案内された担当窓口またはveai公式LINEを利用してください。公開のGitHub Issueには、氏名・施設名・病歴・認証情報を書かないでください。</p>
+        </section>
+
+        <section id="local-data">
+            <h2>端末内に保存されるデータ</h2>
+            <div class="data-row">
+                <h3>持ち物と準備状況</h3>
+                <p>チェック状態、不要設定、入れ物、メモ、呼び名、条件設定は、この端末のIndexedDBに保存されます。通常の操作だけで施設へ自動送信されることはありません。</p>
+            </div>
+            <div class="data-row">
+                <h3>おでかけ日記</h3>
+                <p>ひとこと、気分、写真は端末内に保存されます。CareReadyのサーバーへ自動送信されません。</p>
+            </div>
+            <div class="data-row">
+                <h3>予定日</h3>
+                <p>ショートステイなどの予定日は端末内で判定します。通知を使っても、予定日そのものはサーバーへ送りません。</p>
+            </div>
+        </section>
+
+        <section id="sent-data">
+            <h2>操作したときに送信されるデータ</h2>
+            <div class="data-row">
+                <h3>施設コード</h3>
+                <p>入力したコードをサーバーへ送り、施設の持ち物テンプレートを受け取ります。テンプレートは施設がサーバーで管理し、取込後は家族の端末にも保存されます。コードやQRは公開しないでください。</p>
+            </div>
+            <div class="data-row">
+                <h3>LINE・URL共有</h3>
+                <p>共有を選ぶと、選択した持ち物や入れ物の情報を含むURLを作ります。チェック状態と日記の写真は含みません。受け取る相手以外へURLを転送しないでください。</p>
+            </div>
+            <div class="data-row">
+                <h3>紙のリスト読取</h3>
+                <p>選んだ画像は、文字を読み取るためCareReadyのバックエンドと設定済みのOCRサービスへ送られます。CareReadyは元画像をDynamoDBやS3へ保存しません。氏名・部屋番号・電話番号・病名などが写らない画像だけを使ってください。</p>
+            </div>
+            <div class="data-row">
+                <h3>お問い合わせ</h3>
+                <p>送信したメッセージ、任意の返信先、接続元IPアドレスをサーバーへ保存し、運営へ通知します。個人情報や健康情報は入力しないでください。</p>
+            </div>
+            <div class="data-row">
+                <h3>予定のお知らせ</h3>
+                <p>通知を有効にすると、ブラウザの通知用エンドポイントをサーバーへ保存します。通知をオフにすると、オンライン時に登録を削除します。使えなくなった通知先も送信処理時に削除します。</p>
+            </div>
+        </section>
+
+        <section id="delete">
+            <h2>データを削除するには</h2>
+            <ul>
+                <li>画面下部の「すべてのデータを削除」で、この端末のチェック、メモ、日記、施設テンプレートなどを削除できます。</li>
+                <li>通知を使っている場合は、オンラインの状態で通知をオフにしてから端末データを削除してください。</li>
+                <li>施設テンプレートは、施設管理画面から削除すると共有コードも使えなくなります。</li>
+                <li>送信済みのお問い合わせ記録の削除依頼は、veai公式LINEから連絡してください。本人確認に不要な個人情報は送らないでください。</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <a href="./">CareReadyへ戻る</a>
+        <p>このページは、クローズドパイロットでのデータ取扱いと問い合わせ経路を説明するものです。</p>
+    </footer>
+</body>
+</html>
