@@ -21,6 +21,7 @@
 | [Release evidence workflow](../.github/workflows/release-evidence.yml) | CI・Security・Deployの公開可能な実行証跡をartifact化 |
 | [Project audit workflow](../.github/workflows/project-audit.yml) | ProjectのIssue/Status不整合を週次・手動監査 |
 | [Data and link validators](../scripts/validate_data_contract.py) | 公開データ構造とMarkdownのローカルリンクをCIで検査 |
+| [Issue duplicate audit](../scripts/audit_issue_duplicates.py) | Open Issueの重複候補を週次・手動でレポートする非破壊監査 |
 
 ## 3行サマリー
 

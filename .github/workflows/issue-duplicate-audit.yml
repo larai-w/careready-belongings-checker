@@ -1,0 +1,35 @@
+name: Issue duplicate audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 2 * * 1"
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Find duplicate candidates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          python3 scripts/audit_issue_duplicates.py --repo "${{ github.repository }}" | tee issue-duplicate-report.txt
+          status=${PIPESTATUS[0]}
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          exit 0
+        id: audit
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: issue-duplicate-report
+          path: issue-duplicate-report.txt
+      - name: Flag follow-up candidates
+        if: steps.audit.outputs.status == '1'
+        run: |
+          echo "Possible duplicate Issues found; review the uploaded report."
+          exit 1
