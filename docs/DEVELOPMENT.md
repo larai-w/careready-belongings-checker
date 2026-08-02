@@ -54,7 +54,7 @@ const API_URL = 'https://veai.jp/api/checklist';
 | `sw.js` | Service Worker(オフラインキャッシュ) |
 | `manifest.webmanifest` | PWAマニフェスト |
 | `privacy.html` | 利用者向けのデータ取扱い・削除範囲・問い合わせ先 |
-| `docs/` | 企画・戦略ドキュメント([目次](docs/README.md)) |
+| `docs/` | 企画・戦略ドキュメント([目次](README.md)) |
 
 ## 開発ロードマップ
 

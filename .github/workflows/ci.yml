@@ -27,6 +27,10 @@ jobs:
         run: |
           python3 -c "import json; json.load(open('data.json'))"
           python3 -c "import json; json.load(open('manifest.webmanifest'))"
+          python3 scripts/validate_data_contract.py
+
+      - name: Validate local documentation links
+        run: python3 scripts/check_local_links.py
 
       - name: Validate product content
         run: python3 scripts/validate_content.py
