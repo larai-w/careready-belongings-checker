@@ -31,6 +31,9 @@ jobs:
       - name: Validate product content
         run: python3 scripts/validate_content.py
 
+      - name: Validate product contracts
+        run: python3 scripts/validate_product_contracts.py
+
       - name: Validate frontend source policies
         env:
           CACHE_COMPARE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
