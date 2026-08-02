@@ -61,7 +61,7 @@ The operating model demonstrates:
   roadmap changes can be tied to observable evidence.
 - **Privacy-aware automation** — audits and KPI summaries use counts and public metadata while
   excluding personal, facility, and raw care data.
-- **Release discipline** — dependency audits, CI checks, smoke tests, and deployment evidence are
+- **Release discipline** — dependency audits, CI checks, product-contract checks, smoke tests, and deployment evidence are
   reviewed before release decisions.
 - **Portfolio learning** — recurring findings are tracked over time to show whether delivery hygiene
   and risk controls improve.

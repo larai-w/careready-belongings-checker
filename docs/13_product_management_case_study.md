@@ -1,6 +1,6 @@
 # CareReady Product Management Case Study
 
-Last updated: 2026-07-19
+Last updated: 2026-08-02
 
 ## Executive summary
 
@@ -55,6 +55,8 @@ The initial backlog is organised into four epics: prepare, create a list, share,
 | US-2.1 | Start from a template and personalise it | Delivered for bundled and facility templates; content validation pending | [`6a21757`](https://github.com/larai-w/careready-belongings-checker/commit/6a21757), [`2560898`](https://github.com/larai-w/careready-belongings-checker/commit/2560898) |
 | US-3.1 | Share work across family members | URL template sharing delivered; authenticated cross-device collaboration deferred | [`6a21757`](https://github.com/larai-w/careready-belongings-checker/commit/6a21757), [backend design](06_バックエンド設計書.md) |
 | US-3.3 | Let a facility distribute its official template | Core create-and-redeem loop delivered; uptake analytics deferred | [`e12aea0`](https://github.com/larai-w/careready-belongings-checker/commit/e12aea0), [`2560898`](https://github.com/larai-w/careready-belongings-checker/commit/2560898) |
+| US-1.4 | Make personal belongings easy to spot | Delivered for custom items; human validation pending | [`9bbab74`](https://github.com/larai-w/careready-belongings-checker/commit/9bbab74) |
+| US-2.4 | Prepare for a special outing without mixing core destinations | Prototype and automated contract/E2E coverage delivered; human validation pending | [`dc8d0bd`](https://github.com/larai-w/careready-belongings-checker/commit/dc8d0bd), [`e25d76e`](https://github.com/larai-w/careready-belongings-checker/commit/e25d76e) |
 | US-4.1 | Reuse previous preparation decisions | Local reuse delivered; behaviour validation pending | [`c1b0193`](https://github.com/larai-w/careready-belongings-checker/commit/c1b0193) |
 
 "Delivered" means implemented and technically verified. It does not mean that a user or care outcome has been proven.
@@ -97,6 +99,7 @@ Relevant increments include:
 - Backend and infrastructure: [`e12aea0`](https://github.com/larai-w/careready-belongings-checker/commit/e12aea0)
 - Facility-to-family core loop: [`2560898`](https://github.com/larai-w/careready-belongings-checker/commit/2560898)
 - Release-readiness quality gates: [`3fc49a5`](https://github.com/larai-w/careready-belongings-checker/commit/3fc49a5)
+- Personal-item marker and outing-flow verification: [`9bbab74`](https://github.com/larai-w/careready-belongings-checker/commit/9bbab74), [`e25d76e`](https://github.com/larai-w/careready-belongings-checker/commit/e25d76e)
 - Reviewable release-readiness PR: [PR #4](https://github.com/larai-w/careready-belongings-checker/pull/4)
 
 ## Technical product-management depth

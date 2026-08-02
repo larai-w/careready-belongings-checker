@@ -246,6 +246,27 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
         doc5().getElementById('mode-category').click();
         check('カテゴリー表示に戻せる',
             await waitFor(() => isActive('mode-category') && !isActive('mode-container')));
+
+        // ================= Phase 7: 特別なおでかけ =================
+        log('# Phase 7: 特別なおでかけの作成→定番セット');
+        const specialAdd = Array.from(doc5().querySelectorAll('#location-tabs button'))
+            .find((button) => button.textContent.includes('特別なおでかけ'));
+        check('特別なおでかけ追加ボタンがある', !!specialAdd);
+        specialAdd.click();
+        check('特別なおでかけモーダルが開く',
+            await waitFor(() => !doc5().getElementById('special-modal').classList.contains('hidden')));
+        doc5().getElementById('special-name-input').value = 'E2Eおでかけ';
+        doc5().getElementById('special-save').click();
+        check('特別なおでかけを作成できる',
+            await waitFor(() => doc5().getElementById('location-tabs').textContent.includes('E2Eおでかけ')));
+        check('空状態の案内が表示される',
+            doc5().getElementById('checklist-container').textContent.includes('このおでかけに必要な持ち物'));
+        const starter = Array.from(doc5().querySelectorAll('#checklist-container button'))
+            .find((button) => button.textContent.includes('定番セットを入れる'));
+        check('おでかけ定番セットボタンがある', !!starter);
+        starter.click();
+        check('定番セットを追加できる',
+            await waitFor(() => doc5().getElementById('checklist-container').textContent.includes('財布')));
     } catch (e) {
         log('ERR: ' + ((e && e.stack) || e));
         failures += 1;
