@@ -267,6 +267,10 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
         starter.click();
         check('定番セットを追加できる',
             await waitFor(() => doc5().getElementById('checklist-container').textContent.includes('財布')));
+        doc5().defaultView.print = () => {};
+        doc5().getElementById('print-btn').click();
+        check('おでかけリストの印刷ビューを構築できる',
+            await waitFor(() => doc5().getElementById('print-area').textContent.includes('財布')));
     } catch (e) {
         log('ERR: ' + ((e && e.stack) || e));
         failures += 1;
