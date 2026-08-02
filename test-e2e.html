@@ -119,6 +119,7 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
                 applicable_locations: allLocations,
                 quantity: 1,
                 isCustom: true,
+                personalItem: true,
             }],
         };
         const frame2 = await loadFrame('./index.html?t=' + encodeURIComponent(share(shareData)));
@@ -132,6 +133,8 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
             () => doc2().getElementById('checklist-container').textContent.includes(SHARE_NAME)
         );
         check('取り込んだ品目がチェックリストに現れる', shown);
+        check('個人の持ち物に目印が表示される',
+            doc2().getElementById('checklist-container').textContent.includes('👤 個人'));
 
         // ================= Phase 3: 施設コード取込(fetchモック)=================
         log('# Phase 3: 施設コード取込');

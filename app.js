@@ -1255,6 +1255,7 @@ function openModal(categoryId) {
     $('modal-qty-display').textContent = '1';
     $('modal-item-name').value = '';
     $('modal-myitem').checked = false;
+    $('modal-personal-item').checked = false;
     $('modal-loc-block').classList.remove('hidden');
 
     // カテゴリー選択肢を生成
@@ -1311,6 +1312,7 @@ function handleModalSave() {
 
     // マイ持ち物: すべてのプリセット行き先で毎回出す
     const isMyItem = $('modal-myitem').checked;
+    const isPersonalItem = $('modal-personal-item').checked;
     const checkedLocs = isMyItem
         ? (appData.locations || []).map((l) => l.id)
         : [...$('modal-locations').querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value);
@@ -1330,6 +1332,7 @@ function handleModalSave() {
         quantity: modalQty,
         isCustom: true,
         myItem: isMyItem,
+        personalItem: isPersonalItem,
     });
     setState('customItems', items);
     closeModal();
@@ -2368,6 +2371,12 @@ function createReturnItemRow(item, returnChecked, currentBox) {
         qtyBadge.textContent = `×${qty}`;
         nameWrap.appendChild(qtyBadge);
     }
+    if (item.personalItem) {
+        const personalBadge = document.createElement('span');
+        personalBadge.className = 'text-[10px] font-bold text-sky-700 border border-sky-500/50 bg-sky-500/10 px-1.5 py-0.5 rounded';
+        personalBadge.textContent = '👤 個人';
+        nameWrap.appendChild(personalBadge);
+    }
     textWrap.appendChild(nameWrap);
 
     if (boxId) {
@@ -2437,6 +2446,12 @@ function createItemRow(item, checked, currentBox, showCategoryBadge = false) {
             'text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded';
         qtyBadge.textContent = `×${qty}`;
         nameWrap.appendChild(qtyBadge);
+    }
+    if (item.personalItem) {
+        const personalBadge = document.createElement('span');
+        personalBadge.className = 'text-[10px] font-bold text-sky-700 border border-sky-500/50 bg-sky-500/10 px-1.5 py-0.5 rounded';
+        personalBadge.textContent = '👤 個人';
+        nameWrap.appendChild(personalBadge);
     }
     if (item.isCustom) {
         const customBadge = document.createElement('span');
@@ -3272,7 +3287,7 @@ function handlePrint() {
 
             const name = document.createElement('span');
             name.className = 'print-item-name';
-            name.textContent = item.name;
+            name.textContent = item.personalItem ? `👤 個人: ${item.name}` : item.name;
 
             row.append(cb, name);
 
