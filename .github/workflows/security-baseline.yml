@@ -26,9 +26,18 @@ jobs:
         with:
           fetch-depth: 0
       - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@f586c14365d4643c6aa59d472ae6e984bf47bb34 # v2.3.8
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Run the pinned CLI directly so the scan does not depend on the
+        # deprecated Node 20 runtime used by gitleaks-action v2.
+        run: >-
+          docker run --rm
+          -v "${GITHUB_WORKSPACE}:/repo"
+          zricethezav/gitleaks:v8.30.1
+          git
+          --log-opts="--all"
+          --redact
+          --no-banner
+          --config=/repo/.gitleaks.toml
+          /repo
 
   dependency-audit:
     name: Python dependency audit
