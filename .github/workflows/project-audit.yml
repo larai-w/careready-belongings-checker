@@ -1,0 +1,27 @@
+name: Project audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "27 2 * * 1"
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Audit Project status consistency
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          python3 scripts/audit_github_project.py --project 2 --owner larai-w | tee project-audit.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: project-audit
+          path: project-audit.txt

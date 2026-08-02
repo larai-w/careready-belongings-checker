@@ -19,6 +19,8 @@
 | [20_security_automation_record.md](20_security_automation_record.md) | 公開可能なセキュリティ自動化と監査結果 |
 | [21_release_evidence_checklist.md](21_release_evidence_checklist.md) | 技術検証と人間ゲートを分けた公開リリース証跡 |
 | [Issue readiness audit](../scripts/audit_issue_readiness.py) | Open Issueの受け入れ条件と停滞期間を週次レポートする非破壊監査 |
+| [Release evidence workflow](../.github/workflows/release-evidence.yml) | CI・Security・Deployの公開可能な実行証跡をartifact化 |
+| [Project audit workflow](../.github/workflows/project-audit.yml) | ProjectのIssue/Status不整合を週次・手動監査 |
 
 ## 3行サマリー
 
