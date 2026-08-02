@@ -1746,6 +1746,9 @@ function renderPrepChecklist() {
         if (isSpecialOuting(currentSubtype)) {
             const addWrap = document.createElement('div');
             addWrap.className = 'flex flex-col gap-2';
+            const emptyPrompt = document.createElement('p');
+            emptyPrompt.className = 'text-center text-sm text-pink-700 bg-pink-50 border border-pink-200 rounded-2xl px-4 py-3';
+            emptyPrompt.textContent = 'このおでかけに必要な持ち物を、ここから準備しましょう。';
             const setBtn = document.createElement('button');
             setBtn.className = 'w-full flex items-center justify-center gap-2 text-sm font-bold text-white bg-pink-500 hover:bg-pink-600 rounded-2xl px-5 py-3 transition-colors shadow';
             setBtn.textContent = '🎉 定番セットを入れる';
@@ -1754,7 +1757,7 @@ function renderPrepChecklist() {
             addBtn.className = 'w-full flex items-center justify-center gap-2 text-sm font-bold text-pink-600 bg-pink-50 border border-dashed border-pink-300 hover:bg-pink-100 rounded-2xl px-5 py-3 transition-colors';
             addBtn.textContent = '＋ 持ち物を追加';
             addBtn.addEventListener('click', () => openModal('others'));
-            addWrap.append(setBtn, addBtn);
+            addWrap.append(emptyPrompt, setBtn, addBtn);
             container.appendChild(addWrap);
         }
         // 通常カテゴリを処理
