@@ -8,7 +8,6 @@
 | [04_ユーザーストーリー.md](04_ユーザーストーリー.md) | Epic別ユーザーストーリー+深掘り検討+MVP優先度 |
 | [06_バックエンド設計書.md](06_バックエンド設計書.md) | 施設アカウント・マルチユーザー・DB(DynamoDB+Lambda)の設計。工数約24人日 |
 | [08_持ち物コンテンツ設計_アーキテクチャ.md](08_持ち物コンテンツ設計_アーキテクチャ.md) | 製品・施設・個人の3層コンテンツ設計、デフォルト選定基準、現行アーキテクチャ図 |
-| [12_一般公開マイルストーン.md](12_一般公開マイルストーン.md) | 家族向け公開までのM0〜M6、判定ゲート、自動作業と人間ゲート |
 | [13_product_management_case_study.md](13_product_management_case_study.md) | 英語PMケーススタディ。ユーザーストーリー、優先順位、リスク、コミット、未検証成果の証拠マップ |
 | [14_github_project_operating_model.md](14_github_project_operating_model.md) | GitHub Issues / Projects の運用、自動化、Definition of Ready / Done、初期ライブバックログ |
 | [15_実機E2Eウォークスルー.md](15_実機E2Eウォークスルー.md) | M1安全確認の施設サインインから家族側オフライン・帰宅確認・印刷までの実機手順と証拠テンプレ |
