@@ -60,6 +60,11 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
 
         const privacyLink = doc().querySelector('a[href="./privacy.html"]');
         check('データ取扱いページへの導線がある', !!privacyLink);
+        for (const id of ['theme-btn', 'print-btn', 'share-btn', 'line-share-btn']) {
+            const control = doc().getElementById(id);
+            check(`${id}に支援技術向けラベルがある`,
+                !!control && !!control.getAttribute('aria-label') && !!control.getAttribute('title'));
+        }
         doc().getElementById('feedback-btn').click();
         check('問い合わせフォームが開く',
             await waitFor(() => !doc().getElementById('feedback-modal').classList.contains('hidden')));

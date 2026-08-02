@@ -17,6 +17,7 @@
 | [18_facility_code_handover_observation_template.md](18_facility_code_handover_observation_template.md) | Issue #10の匿名化観察テンプレート |
 | [19_product_decision_evidence_matrix.md](19_product_decision_evidence_matrix.md) | Issue #12の比較判断マトリクス |
 | [20_security_automation_record.md](20_security_automation_record.md) | 公開可能なセキュリティ自動化と監査結果 |
+| [21_release_evidence_checklist.md](21_release_evidence_checklist.md) | 技術検証と人間ゲートを分けた公開リリース証跡 |
 
 ## 3行サマリー
 

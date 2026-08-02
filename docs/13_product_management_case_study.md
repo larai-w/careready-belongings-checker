@@ -101,6 +101,7 @@ Relevant increments include:
 - Release-readiness quality gates: [`3fc49a5`](https://github.com/larai-w/careready-belongings-checker/commit/3fc49a5)
 - Personal-item marker and outing-flow verification: [`9bbab74`](https://github.com/larai-w/careready-belongings-checker/commit/9bbab74), [`e25d76e`](https://github.com/larai-w/careready-belongings-checker/commit/e25d76e)
 - Security automation and reviewable Project audit tooling: [`7bc28ac`](https://github.com/larai-w/careready-belongings-checker/commit/7bc28ac), [`351bc36`](https://github.com/larai-w/careready-belongings-checker/commit/351bc36)
+- Release evidence checklist separating automated checks from human gates: [`615550c`](https://github.com/larai-w/careready-belongings-checker/commit/615550c)
 - Reviewable release-readiness PR: [PR #4](https://github.com/larai-w/careready-belongings-checker/pull/4)
 
 ## Technical product-management depth

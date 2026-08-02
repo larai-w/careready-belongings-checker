@@ -47,6 +47,9 @@ deployed system, solo and AI-assisted, with the delivery discipline kept in publ
 Delivery write-ups (architecture, evidence-based scope decisions, technical trade-offs) are on the
 [VEAI LAB blog](https://veai.jp/blog/).
 
+Release evidence is separated into automated checks and human gates in the
+[public release checklist](docs/21_release_evidence_checklist.md); passing CI does not claim pilot or clinical outcomes.
+
 ## VEAI Ecosystem PM Evidence
 
 CareReady is also one product in a broader VEAI care-technology ecosystem. The ecosystem is managed
