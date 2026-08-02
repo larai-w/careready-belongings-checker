@@ -47,6 +47,31 @@ deployed system, solo and AI-assisted, with the delivery discipline kept in publ
 Delivery write-ups (architecture, evidence-based scope decisions, technical trade-offs) are on the
 [VEAI LAB blog](https://veai.jp/blog/).
 
+## VEAI Ecosystem PM Evidence
+
+CareReady is also one product in a broader VEAI care-technology ecosystem. The ecosystem is managed
+as a public-safe technical product-management portfolio, with product repositories remaining the
+source of implementation evidence and Projects tracking outcomes, dependencies, risks, and release gates.
+
+The operating model demonstrates:
+
+- **Traceable delivery governance** — Issues and Projects are checked for user stories, acceptance
+  criteria, ownership, and delivery status.
+- **Evidence-based prioritisation** — experiments, decisions, tasks, and risks are kept distinct so
+  roadmap changes can be tied to observable evidence.
+- **Privacy-aware automation** — audits and KPI summaries use counts and public metadata while
+  excluding personal, facility, and raw care data.
+- **Release discipline** — dependency audits, CI checks, smoke tests, and deployment evidence are
+  reviewed before release decisions.
+- **Portfolio learning** — recurring findings are tracked over time to show whether delivery hygiene
+  and risk controls improve.
+
+This is evidence of technical product-management practice and delivery governance. It is not a claim
+of clinical effectiveness, facility adoption, or medical-device status. See the public
+[CareReady Product Delivery Project](https://github.com/users/larai-w/projects/2),
+[CareReady issues](https://github.com/larai-w/careready-belongings-checker/issues), and the
+[CareReady PM case study](docs/13_product_management_case_study.md) for public implementation evidence.
+
 ---
 
 ## Architecture
