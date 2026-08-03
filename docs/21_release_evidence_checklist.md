@@ -4,6 +4,8 @@ CareReadyの技術的な完了と、サービスとしての準備完了を混�
 
 ## Automated evidence
 
+ローカルでは`bash scripts/run_human_gate_preflight.sh`で、deploy workflowとPython dependency auditを除く項目を一括確認する。GitHub側のSecurity baselineとDeploy結果は別途確認する。
+
 - [ ] Public repository boundary passes
 - [ ] JavaScript/JSON syntax passes
 - [ ] Product content and product contracts pass
