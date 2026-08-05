@@ -1710,7 +1710,7 @@ function renderPrepHeading() {
         if (DATABLE_PRESETS.includes(currentSubtype)) dateStr = getLocationDates()[currentSubtype] || '';
     }
     const cd = countdownLabel(dateStr);
-    h.textContent = cd ? `🧳 ${name} の準備・${cd}` : `🧳 ${name} の準備`;
+    h.textContent = cd ? `🧳 ${name}の準備・${cd}` : `🧳 ${name}の準備`;
     if (note) note.classList.toggle('hidden', upcomingDatedPlanCount() < 2);
 }
 
