@@ -1487,8 +1487,8 @@ function renderReminder() {
     const until = up.days === 1 ? 'あした' : `あと${up.days}日`;
     if (isSpecialOuting(up.id)) {
         $('reminder-text').textContent = up.days === 0
-            ? `🎉 きょうは ${up.name}！ワクワク、準備していきましょう`
-            : `🎉 ${up.name} まで ${until}！ワクワク、準備していきましょう`;
+            ? `きょうは ${up.name}ですね。たのしみに、いっしょに準備していきましょう ✨`
+            : `${up.name} まで ${until}。たのしみに、いっしょに準備していきましょう ✨`;
     } else {
         $('reminder-text').textContent = up.days === 0
             ? `🎒 ${up.name} は きょうです。持ち物の準備はできていますか？`
@@ -1649,7 +1649,7 @@ function saveSpecialOuting() {
     renderMemo();
     renderPushPrompt();
     launchConfetti(24);
-    showToast(`「${name}」ができました！ワクワクを詰めていきましょう 🎉`, 3500);
+    showToast(`「${name}」ができました。いっしょに準備していきましょう ✨`, 3500);
 }
 
 function deleteSpecialOuting(id) {
@@ -2650,7 +2650,7 @@ function updateProgress() {
         if (done === 0) {
             msgEl.textContent = '';
         } else if (done % 5 === 0) {
-            msgEl.textContent = `🎉 ${done}コ！その調子！`;
+            msgEl.textContent = `✨ ${done}コ、進みました。いいペースです`;
         } else {
             msgEl.textContent = 'いい調子です 🎈';
         }
