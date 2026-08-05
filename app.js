@@ -2338,7 +2338,8 @@ function createReturnItemRow(item, returnChecked, currentBox) {
     const left = document.createElement('div');
     left.className = 'flex items-start gap-3 flex-1';
     const label = document.createElement('label');
-    label.className = 'flex items-center gap-3 cursor-pointer flex-1';
+    // 片手・50〜70代でも取りこぼさないよう、最も押す行はアプリ標準の44pxタップ領域に揃える
+    label.className = 'flex items-center gap-3 cursor-pointer flex-1 min-h-11';
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -2410,7 +2411,8 @@ function createItemRow(item, checked, currentBox, showCategoryBadge = false) {
     const left = document.createElement('div');
     left.className = 'flex items-start gap-3 flex-1';
     const label = document.createElement('label');
-    label.className = 'flex items-center gap-3 cursor-pointer flex-1';
+    // 片手・50〜70代でも取りこぼさないよう、最も押す行はアプリ標準の44pxタップ領域に揃える
+    label.className = 'flex items-center gap-3 cursor-pointer flex-1 min-h-11';
 
     // 本物のcheckboxは残し(テスト/アクセシビリティ)、見た目は丸チェックに
     const checkbox = document.createElement('input');
