@@ -354,7 +354,8 @@
 
         <!-- ③ 準備するもの: 見出し + 進捗 + リセット -->
         <div id="progress-section">
-            <div class="flex items-end justify-between mb-2">
+            <!-- スマホでは見出しを1行(全幅)に。進捗+リセットは下段へ。sm以上は従来の横並び -->
+            <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between mb-2">
                 <h2 id="prep-heading" class="text-lg font-bold text-gray-200">おでかけの準備</h2>
                 <div class="flex items-center gap-3 shrink-0">
                     <span class="text-sm text-gray-400"><span id="progress-text">0/0</span></span>
