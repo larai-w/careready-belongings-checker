@@ -256,7 +256,7 @@
                 <button id="share-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="この持ち物リストを家族に送る" aria-label="この持ち物リストを家族に送る">🔗</button>
                 <button id="line-share-btn" class="h-11 px-3 flex items-center gap-1 text-sm font-bold bg-[#06C755] text-white hover:bg-[#05b34c] rounded-lg transition-colors shrink-0" title="この持ち物リストをLINEで送る" aria-label="この持ち物リストをLINEで送る">💬 LINE</button>
             </div>
-            <p class="text-right text-[11px] text-gray-500 mt-1.5 leading-snug">🔗 / LINE は、この持ち物リスト(カスタム項目・箱の名前)を家族に送るボタン。チェックや写真は送られません。</p>
+            <p class="text-right text-[11px] text-gray-500 mt-1.5 leading-snug">🔗 / LINE は持ち物リストを家族に送るボタン（チェックや写真は送りません）。</p>
         </div>
 
         <!-- 予定リマインド(開いた時。予定日が近い特別なおでかけ) -->
@@ -330,11 +330,18 @@
             <div id="condition-toggles" class="hidden flex flex-wrap items-center gap-2 mt-2"></div>
         </div>
 
-        <!-- 📝 伝えたいこと・メモ (行き先ごと・ローカル保存) -->
+        <!-- 📝 伝えたいこと・メモ (行き先ごと・ローカル保存)。既定は折りたたみ、記入済みは自動で開く -->
         <div id="memo-section" class="mb-4">
-            <label for="memo-input" class="text-xs font-bold text-gray-400 block mb-1">📝 伝えたいこと・メモ（この行き先用）</label>
-            <textarea id="memo-input" rows="2" maxlength="500" placeholder="施設に伝えたいこと・忘れないことをメモ（例: 看護師さんに薬のことを伝える）"
-                class="w-full bg-white border border-gray-300 rounded-2xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-teal-500 placeholder-gray-400 resize-none"></textarea>
+            <button id="memo-toggle" type="button" aria-expanded="false" aria-controls="memo-body"
+                class="w-full flex items-center justify-between text-xs font-bold text-gray-400 hover:text-teal-400 bg-gray-800/60 border border-gray-700 rounded-2xl px-4 py-2.5 transition-colors">
+                <span id="memo-toggle-label">📝 伝えたいこと・メモ（任意）</span>
+                <span id="memo-toggle-caret" class="text-gray-500 text-base leading-none">＋</span>
+            </button>
+            <div id="memo-body" class="hidden mt-2">
+                <label for="memo-input" class="sr-only">伝えたいこと・メモ（この行き先用）</label>
+                <textarea id="memo-input" rows="2" maxlength="500" placeholder="施設に伝えたいこと・忘れないことをメモ（例: 看護師さんに薬のことを伝える）"
+                    class="w-full bg-white border border-gray-300 rounded-2xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-teal-500 placeholder-gray-400 resize-none"></textarea>
+            </div>
         </div>
 
         <!-- ② 作業のしかた: 箱に詰める(主・左) / 持ち物リスト + 帰宅チェック(小・事後) -->

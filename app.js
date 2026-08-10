@@ -1226,15 +1226,27 @@ function renderMemo() {
     if (!el) return;
     const memos = getState('memos', {});
     el.value = (currentSubtype && memos[currentSubtype]) || '';
-    // 文脈で見出し・例文を変える(おでかけと入院/入所では書く内容が違う)
-    const labelEl = document.querySelector('label[for="memo-input"]');
+    // 文脈で見出し・例文を変える(おでかけと入院/入所では書く内容が違う)。見出しは折りたたみボタンに出す。
+    const labelEl = $('memo-toggle-label');
     if (isSpecialOuting(currentSubtype)) {
-        if (labelEl) labelEl.textContent = '📝 メモ（このおでかけ用）';
+        if (labelEl) labelEl.textContent = '📝 メモ（このおでかけ用・任意）';
         el.placeholder = '持っていく物や気をつけることをメモ（例: 酔い止め、帽子、こまめに休憩）';
     } else {
-        if (labelEl) labelEl.textContent = '📝 伝えたいこと・メモ（この行き先用）';
+        if (labelEl) labelEl.textContent = '📝 伝えたいこと・メモ（任意）';
         el.placeholder = '伝えたいこと・忘れないことをメモ（例: 薬のこと、アレルギー、生活のクセ）';
     }
+    // 既定は折りたたみ。すでにメモがある行き先だけ自動で開く(初期画面を軽くする)。
+    setMemoOpen(el.value.trim().length > 0);
+}
+
+function setMemoOpen(open) {
+    const body = $('memo-body');
+    const toggle = $('memo-toggle');
+    const caret = $('memo-toggle-caret');
+    if (!body || !toggle) return;
+    body.classList.toggle('hidden', !open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (caret) caret.textContent = open ? '－' : '＋';
 }
 
 
@@ -3491,6 +3503,11 @@ $('ready-btn').addEventListener('click', celebratePrepDone);
 initStickyProgress();
 $('person-btn').addEventListener('click', handlePersonName);
 $('memo-input').addEventListener('input', saveMemo);
+$('memo-toggle').addEventListener('click', () => {
+    const willOpen = $('memo-body').classList.contains('hidden');
+    setMemoOpen(willOpen);
+    if (willOpen) $('memo-input').focus();
+});
 $('tadaima-btn').addEventListener('click', handleTadaima);
 $('diary-photo-btn').addEventListener('click', () => $('diary-photo-input').click());
 $('diary-photo-input').addEventListener('change', handleDiaryPhoto);
