@@ -41,6 +41,46 @@ let fcRedeemState = null;   // null | { name, items, overrides, facilityName, co
 
 const $ = (id) => document.getElementById(id);
 
+// ---------- 文字サイズ(アクセシビリティ・端末に保存) ----------
+// :root の rem 基準を拡大し、文字・余白・タップ領域ごと大きくする。
+// localStorage から即時適用してちらつき(レイアウトの跳ね)を防ぐ。
+const TEXT_SCALES = ['normal', 'large', 'xlarge'];
+const TEXT_SCALE_LABELS = { normal: '標準', large: '大', xlarge: '特大' };
+
+function getTextScale() {
+    try {
+        const v = localStorage.getItem('careready_textscale');
+        return TEXT_SCALES.includes(v) ? v : 'normal';
+    } catch (e) {
+        return 'normal';
+    }
+}
+
+function applyTextScale(scale) {
+    const s = TEXT_SCALES.includes(scale) ? scale : 'normal';
+    if (s === 'normal') {
+        document.documentElement.removeAttribute('data-textscale');
+    } else {
+        document.documentElement.setAttribute('data-textscale', s);
+    }
+    const btn = $('textsize-btn');
+    if (btn) {
+        const label = `文字の大きさ（いま：${TEXT_SCALE_LABELS[s]}）`;
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('title', label);
+    }
+}
+
+function cycleTextScale() {
+    const next = TEXT_SCALES[(TEXT_SCALES.indexOf(getTextScale()) + 1) % TEXT_SCALES.length];
+    try { localStorage.setItem('careready_textscale', next); } catch (e) { /* noop */ }
+    applyTextScale(next);
+    showToast(`文字の大きさ：${TEXT_SCALE_LABELS[next]}`);
+}
+
+// モジュール読込時に即適用(ヘッダーは既にパース済みなのでボタンのラベルも設定される)
+applyTextScale(getTextScale());
+
 // ---------- State helpers ----------
 
 function getCustomItems() {
@@ -3574,6 +3614,7 @@ $('reset-all').addEventListener('click', resetAll);
 $('share-btn').addEventListener('click', handleShare);
 $('line-share-btn').addEventListener('click', handleLineShare);
 $('theme-btn').addEventListener('click', handleThemeToggle);
+$('textsize-btn').addEventListener('click', cycleTextScale);
 $('print-btn').addEventListener('click', handlePrint);
 $('import-ok').addEventListener('click', handleImportOk);
 $('import-cancel').addEventListener('click', dismissImport);
