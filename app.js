@@ -2284,9 +2284,9 @@ function renderReturnChecklist() {
     const others = returnables.filter((item) => !item.important);
 
     if (important.length > 0) {
-        container.appendChild(
-            buildReturnSection('🌟 わすれたら困るもの', important, returnChecked, containers, 'text-amber-700', 'bg-amber-50 border-amber-200', 'hover:ring-amber-300')
-        );
+        const impSection = buildReturnSection('🌟 わすれたら困るもの', important, returnChecked, containers, 'text-amber-700', 'bg-amber-50 border-amber-200', 'hover:ring-amber-300');
+        impSection.id = 'return-important-section';
+        container.appendChild(impSection);
     }
 
     if (others.length > 0) {
@@ -2322,6 +2322,66 @@ function buildReturnSection(titleText, items, returnChecked, containers, titleCo
     items.forEach((item) => list.appendChild(createReturnItemRow(item, returnChecked, containers[item.id] || 'none')));
     section.appendChild(list);
     return section;
+}
+
+// 準備で詰めた「大事なもの」のうち、まだ回収チェックが付いていないものの名前一覧。
+// 施設への置き忘れ(眼鏡・保険証・入れ歯など)をやさしく気づかせる用。
+function getUnretrievedImportant() {
+    if (!appData || !Array.isArray(appData.categories)) return [];
+    const checked = getState('checked', {});
+    const returnChecked = getState('returnChecked', {});
+    const hideSet = getFacilityHideSet();
+    const out = [];
+    const consider = (item) => {
+        if (
+            item.important && !item.consumable &&
+            (item.applicable_locations || []).includes(currentSubtype) &&
+            checked[item.id] && !hideSet.has(item.id) && isItemVisible(item) &&
+            !returnChecked[item.id]
+        ) {
+            out.push(item.name || item.id);
+        }
+    };
+    appData.categories.forEach((cat) => (cat.items || []).forEach(consider));
+    getCustomItems().forEach(consider);
+    return out;
+}
+
+// 「確認できた!」を押したとき、大事なもの未回収があればやさしく一度だけ確認する。
+// 罪悪感を煽らない・そのまま終えられる(自律を尊重)。
+function showUnretrievedNudge(names, onProceed) {
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4';
+    const card = document.createElement('div');
+    card.className = 'bg-white border border-amber-200 rounded-3xl p-6 w-full max-w-sm shadow-2xl';
+    const h = document.createElement('p');
+    h.className = 'text-lg font-bold text-amber-700 mb-1';
+    h.textContent = '🌟 大事なもの、確認できていますか？';
+    const body = document.createElement('p');
+    body.className = 'text-sm text-gray-600 mb-4 leading-relaxed';
+    const shown = names.slice(0, 4).join('・');
+    const more = names.length > 4 ? ` ほか${names.length - 4}つ` : '';
+    body.textContent = `大事なもの が あと${names.length}つ、チェックできていません（${shown}${more}）。施設に置き忘れがないか、よければご確認ください。そのまま終えても大丈夫です。`;
+    const review = document.createElement('button');
+    review.className = 'w-full flex items-center justify-center gap-2 text-base font-bold text-white bg-amber-500 hover:bg-amber-600 active:scale-[0.98] rounded-2xl px-4 py-3 mb-2 transition-all';
+    review.textContent = '🔎 確認する';
+    const proceed = document.createElement('button');
+    proceed.className = 'w-full text-sm font-bold text-gray-500 hover:text-gray-700 py-2 transition-colors';
+    proceed.textContent = 'このまま終える';
+    const close = () => overlay.remove();
+    review.addEventListener('click', () => {
+        close();
+        const sec = $('return-important-section');
+        if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    proceed.addEventListener('click', () => { close(); onProceed(); });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    card.appendChild(h);
+    card.appendChild(body);
+    card.appendChild(review);
+    card.appendChild(proceed);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
 }
 
 function createReturnItemRow(item, returnChecked, currentBox) {
@@ -3480,10 +3540,18 @@ $('diary-modal').addEventListener('click', (e) => { if (e.target === $('diary-mo
 $('reset-checks').addEventListener('click', resetChecks);
 $('reset-return-checks').addEventListener('click', resetReturnChecks);
 $('return-done-btn').addEventListener('click', () => {
-    const name = getPersonName();
-    showCelebrationOverlay('✅', '確認できました！', `${name ? name + 'さん、' : ''}おつかれさまでした 🍵`, 'text-green-600');
-    returnCheckOpen = false;
-    applyReturnCheckVisibility();
+    const celebrate = () => {
+        const name = getPersonName();
+        showCelebrationOverlay('✅', '確認できました！', `${name ? name + 'さん、' : ''}おつかれさまでした 🍵`, 'text-green-600');
+        returnCheckOpen = false;
+        applyReturnCheckVisibility();
+    };
+    const missing = getUnretrievedImportant();
+    if (missing.length > 0) {
+        showUnretrievedNudge(missing, celebrate);
+    } else {
+        celebrate();
+    }
 });
 $('reset-all').addEventListener('click', resetAll);
 $('share-btn').addEventListener('click', handleShare);
