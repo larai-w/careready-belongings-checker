@@ -429,6 +429,17 @@
             </button>
         </div>
 
+        <!-- 片手用: スクロールで上の進捗が隠れたら、親指ゾーンに進捗と「準備できた」への近道を出す -->
+        <button id="sticky-progress" type="button"
+            class="hidden fixed left-1/2 -translate-x-1/2 bottom-4 z-40 w-[min(92%,420px)] flex items-center gap-3 bg-gray-900/95 backdrop-blur border border-teal-500/40 rounded-full pl-4 pr-4 py-2.5 shadow-2xl active:scale-[0.98] transition-transform"
+            aria-label="準備の進捗。押すと「準備できた！」ボタンへ移動します">
+            <span id="sticky-progress-text" class="text-sm font-bold text-teal-300 whitespace-nowrap">0コ そろえた 🎒</span>
+            <span class="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+                <span id="sticky-progress-bar" class="block h-2 w-0 bg-gradient-to-r from-teal-400 to-emerald-400 rounded-full transition-all duration-500"></span>
+            </span>
+            <span class="text-xs font-bold text-teal-300/80 whitespace-nowrap">できた ↓</span>
+        </button>
+
         <!-- すでにあるリストを取り込む (機能・任意) -->
         <div class="mt-8 mb-2">
             <p class="text-center text-sm font-bold text-gray-400">すでにある持ち物リストを取り込む</p>

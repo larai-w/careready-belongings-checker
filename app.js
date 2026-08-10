@@ -2655,6 +2655,55 @@ function updateProgress() {
             msgEl.textContent = 'いい調子です 🎈';
         }
     }
+
+    updateStickyProgress(total, done);
+}
+
+// 片手用スティッキー進捗: 上の進捗バーが画面外のとき、準備中(returnMode以外・done>0)だけ表示。
+// 「分母は出さない」方針に合わせ、そろえた数のみ見せる(バーは相対量)。
+let topProgressVisible = true;
+let readyVisible = false;
+function updateStickyProgress(total, done) {
+    const el = $('sticky-progress');
+    if (!el) return;
+    if (total === undefined) {
+        if (viewMode === 'container' && !returnMode) {
+            total = document.querySelectorAll('#checklist-container [data-pack-item]').length;
+            done = document.querySelectorAll('#checklist-container [data-pack-item="checked"]').length;
+        } else {
+            total = document.querySelectorAll('input[type="checkbox"]:not([disabled])').length;
+            done = document.querySelectorAll('input[type="checkbox"]:not([disabled]):checked').length;
+        }
+    }
+    const show = !returnMode && done > 0 && !topProgressVisible && !readyVisible;
+    el.classList.toggle('hidden', !show);
+    if (show) {
+        $('sticky-progress-text').textContent = `${done}コ そろえた 🎒`;
+        $('sticky-progress-bar').style.width = total > 0 ? `${(done / total) * 100}%` : '0%';
+    }
+}
+
+function initStickyProgress() {
+    const target = $('progress-bar-wrap');
+    const ready = $('ready-section');
+    const sticky = $('sticky-progress');
+    if (!target || !sticky) return;
+    sticky.addEventListener('click', () => {
+        if (ready) ready.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    if (!('IntersectionObserver' in window)) return;
+    const io = new IntersectionObserver(
+        (entries) => {
+            for (const e of entries) {
+                if (e.target === target) topProgressVisible = e.isIntersecting;
+                else if (e.target === ready) readyVisible = e.isIntersecting;
+            }
+            updateStickyProgress();
+        },
+        { rootMargin: '-8px 0px 0px 0px' }
+    );
+    io.observe(target);
+    if (ready) io.observe(ready);
 }
 
 // ---------- ちょっとしたご褒美演出 ----------
@@ -3379,6 +3428,7 @@ $('mode-category').addEventListener('click', () => switchViewMode('category'));
 $('mode-container').addEventListener('click', () => switchViewMode('container'));
 $('mode-return').addEventListener('click', () => switchReturnMode(!returnMode));
 $('ready-btn').addEventListener('click', celebratePrepDone);
+initStickyProgress();
 $('person-btn').addEventListener('click', handlePersonName);
 $('memo-input').addEventListener('input', saveMemo);
 $('tadaima-btn').addEventListener('click', handleTadaima);
