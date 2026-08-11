@@ -11,7 +11,7 @@
 		"technical-reviewer"
 	],
 	"availability": {
-		"stage": "in-development",
+		"stage": "public-mvp",
 		"access": "public",
 		"summary": {
 			"en": "The family checklist is publicly accessible; facility administration and the complete facility-to-family workflow remain in bounded validation.",
@@ -26,10 +26,10 @@
 		"project": "https://github.com/users/larai-w/projects/2",
 		"app": "https://veai.jp/ready/"
 	},
-	"lastVerified": "2026-07-31",
+	"lastVerified": "2026-08-11",
 	"site": {
-		"status": "in-development",
-		"order": 3,
+		"status": "released",
+		"order": 2,
 		"icon": "🎒",
 		"themeColor": "#fdeed3",
 		"techStack": [
