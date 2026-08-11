@@ -5,7 +5,7 @@ older relative moves between care settings (hospital admission, short stay, day 
 Facility staff publish a template via a 6-character share code; families redeem it on any
 browser—no app install, no login required.
 
-**Status:** In development · [https://veai.jp/apps/careready/](https://veai.jp/apps/careready/)
+**Status:** Public web MVP · [https://veai.jp/ready/](https://veai.jp/ready/)
 
 ---
 
@@ -13,13 +13,13 @@ browser—no app install, no login required.
 
 | State | Detail |
 |---|---|
-| Working | PWA checklist with IndexedDB persistence, facility template redeem via share code, return-check mode, CI/CD to S3/CloudFront |
+| Released | Family-facing PWA checklist with IndexedDB persistence, facility template redeem via share code, return-check mode, and CI/CD to S3/CloudFront |
 | Working | Backend CRUD API (Lambda + DynamoDB) with Cognito JWT auth for staff, deployed to `ap-northeast-1` |
 | In progress | Facility admin portal (`/ready/admin/`) — template editor and QR poster generation |
 | Future | Multi-facility onboarding flow, accessibility improvements, native app packaging |
 
-This is an in-development project by VEAI LAB. It is not a medical device
-and does not make clinical recommendations.
+The family-facing web MVP is public and usable. Facility onboarding and admin workflows remain
+in development. CareReady is not a medical device and does not make clinical recommendations.
 
 ---
 
