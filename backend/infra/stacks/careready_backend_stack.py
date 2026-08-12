@@ -44,6 +44,11 @@ class CareReadyBackendStack(Stack):
             ),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             removal_policy=RemovalPolicy.RETAIN,
+            # OPS-04(PGB 2026-08-12 承認): 本番の介護記録データ。
+            # RPO ≤ 5分 を満たすため PITR、誤削除を防ぐため削除保護を有効にする。
+            # 方針は veai-private の governance/backup-recovery-runbook.md §0.1。
+            point_in_time_recovery=True,
+            deletion_protection=True,
         )
         # GSI1: shareCode 解決用(PK=CODE#<shareCode>)
         table.add_global_secondary_index(
