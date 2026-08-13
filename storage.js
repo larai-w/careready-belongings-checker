@@ -154,3 +154,24 @@ export function removeState(key) {
         localStorage.removeItem('careready_v2_' + key);
     }
 }
+
+// 文字サイズ(アクセシビリティ)は、initStorage 完了前のちらつき防止のため
+// ページ最初期に同期で読み書きする必要がある。ストレージ層に薄い同期アクセサを置き、
+// app.js からは記憶媒体を直接参照させない(実装規約: 保存はstorage.js経由)。
+const TEXT_SCALE_KEY = 'careready_textscale';
+
+export function readTextScale() {
+    try {
+        return localStorage.getItem(TEXT_SCALE_KEY);
+    } catch (e) {
+        return null;
+    }
+}
+
+export function writeTextScale(value) {
+    try {
+        localStorage.setItem(TEXT_SCALE_KEY, value);
+    } catch (e) {
+        /* noop */
+    }
+}
