@@ -48,6 +48,7 @@ jobs:
           mkdir -p dist
           cp index.html privacy.html app.js storage.js sw.js data.json manifest.webmanifest dist/
           cp -r icons dist/
+          cp -r lib dist/
           [ -d admin ] && cp -r admin dist/ || true
 
       - name: Sync to S3

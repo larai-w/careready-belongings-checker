@@ -20,15 +20,18 @@
 
 1. **XSS**: 動的テキストは必ず `createElement` + `textContent`。`innerHTML` にデータを入れない(既存コード全体がこの方式)
 2. **状態管理**: `storage.js` の `getState / setState / removeState` を使う(同期呼び出し可、IndexedDB非同期永続化+localStorageフォールバック)。直接 localStorage/IndexedDB を触らない
-3. **sw.js**: フロントのファイルを変更したら `CACHE_NAME` を必ずバンプする(現在 `careready-v5`)。忘れると利用者に更新が配信されない
+3. **sw.js**: フロントのファイルを変更したら `CACHE_NAME` を必ずバンプする(現在 `careready-v82`)。忘れると利用者に更新が配信されない
 4. **オフラインファースト**: ネットワーク必須の機能を追加する場合も、既存機能がオフラインで動く性質を壊さない(介護施設・病院は電波が弱い)
 5. UIテキストは日本語。ターゲットは50〜70代の家族介護者(高コントラスト・大きめタップ領域)
 
 ## 検証方法(コミット前に必ず)
 
 ```bash
-node --check app.js && node --check storage.js && node --check sw.js
+node --check app.js && node --check storage.js && node --check sw.js && node --check lib/ocr-match.js
 python3 -c "import json; json.load(open('data.json'))"
+
+# フロントエンド ユニットテスト(純粋ロジック: lib/)
+node --test "tests/*.test.js"
 
 # ヘッドレスChromeスモークテスト(macOS)
 python3 -m http.server 8000 --bind 127.0.0.1 &
@@ -39,7 +42,7 @@ grep -o 'type="checkbox"' /tmp/dom.html | wc -l   # 20以上であること(CI�
 # 注意: 実ネットワーク/IndexedDBのIOはvirtual-timeで待てないことがある(描画0はタイミング問題の可能性)
 ```
 
-バックエンド: `backend/.venv/bin/python -m pytest backend/tests/ -q`(9件)。CDK変更時は `npx aws-cdk@2 synth` まで。**`cdk deploy` は人間の確認を得てから**。
+バックエンド: `backend/.venv/bin/python -m pytest backend/tests/ -q`(36件)。CDK変更時は `npx aws-cdk@2 synth` まで。**`cdk deploy` は人間の確認を得てから**。
 
 ## デプロイ
 

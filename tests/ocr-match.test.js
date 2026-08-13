@@ -10,6 +10,7 @@ import { dirname, join } from 'node:path';
 import {
     normalizeOcrText,
     similarity,
+    foldVariants,
     inferOcrCategory,
     isKnownOcrItem,
     guessQuantity,
@@ -51,6 +52,24 @@ test('similarity: 表記揺れは高スコア、無関係は低スコア', () =>
     assert.ok(similarity('歯ブラシ', '保険証') < 0.3, '歯ブラシ vs 保険証');
 });
 
+test('similarity: 小文字カナの揺れ(OCR誤読)を吸収する', () => {
+    // ティッシュ vs テッシュ(小文字ィの脱落・大文字化誤読)
+    assert.equal(similarity('ティッシュ', 'テッシュ'), 1);
+    // 濁点脱落と小文字揺れの複合
+    assert.ok(similarity('ティッシュ', 'テっシュ') >= 0.75, '複合揺れ');
+});
+
+// ---------- foldVariants ----------
+
+test('foldVariants: 小文字母音カナを除去、拗音は保持', () => {
+    assert.equal(foldVariants('ティッシュ'), 'テッシュ');
+    assert.equal(foldVariants('テッシュ'), 'テッシュ');
+    // 拗音(ャュョ)は音の変化が大きいため除去しない
+    assert.equal(foldVariants('パジャマ'), 'パジャマ');
+    assert.equal(foldVariants('シャンプ'), 'シャンプ');
+    assert.equal(foldVariants(''), '');
+});
+
 // ---------- inferOcrCategory ----------
 
 test('inferOcrCategory: カタログ完全一致は該当カテゴリ', () => {
@@ -71,6 +90,13 @@ test('inferOcrCategory: カタログ外はヒント語で推定、未知はother
     assert.equal(inferOcrCategory('カーディガン', categories), 'clothing'); // ヒント語
     assert.equal(inferOcrCategory('まったく未知の品XYZ', categories), 'others');
     assert.equal(inferOcrCategory('', categories), 'others');
+});
+
+test('inferOcrCategory: ヒント語の表記揺れ(濁点落ち・小文字)もあいまい一致で拾う', () => {
+    // 「歯ブラシ」の濁点落ち → 「ハブラシ」(ヒント語に包含されないがあいまい一致で拾う)
+    assert.equal(inferOcrCategory('ハブラシ', categories), 'hygiene');
+    // 「ティッシュ」の小文字揺れ
+    assert.equal(inferOcrCategory('テッシュ', categories), 'hygiene');
 });
 
 test('inferOcrCategory: categories未指定でもヒント語で動く', () => {

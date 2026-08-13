@@ -5,6 +5,15 @@ import {
     isKnownOcrItem as isKnownItemCore,
     guessQuantity,
 } from './lib/ocr-match.js';
+import { encodeShareData, decodeShareData, isValidShareData, mergeById } from './lib/share.js';
+import {
+    isValidData,
+    isConditionActive as isConditionActiveCore,
+    isItemVisible as isItemVisibleCore,
+    getFacilityHideSet as getFacilityHideSetCore,
+    getFacilityItemsByCategory as getFacilityItemsByCategoryCore,
+    isSpecialOuting,
+} from './lib/checklist.js';
 
 // APIのURL。空文字のままなら同梱の data.json を使用する。
 // 例: const API_URL = 'https://veai.jp/api/checklist';
@@ -174,17 +183,12 @@ function getConditionState() {
 }
 
 function isConditionActive(conditionId) {
-    if (!appData || !appData.conditions) return true;
-    const cond = appData.conditions.find((c) => c.id === conditionId);
-    if (!cond) return true;
-    const saved = getConditionState();
-    return saved[conditionId] !== undefined ? saved[conditionId] : cond.default;
+    return isConditionActiveCore(conditionId, appData && appData.conditions, getConditionState());
 }
 
 // アイテムが現在の条件設定で表示すべきか判定
 function isItemVisible(item) {
-    if (!item.condition) return true;
-    return isConditionActive(item.condition);
+    return isItemVisibleCore(item, isConditionActive);
 }
 
 // ---------- Facility template helpers ----------
@@ -195,23 +199,13 @@ function getFacilityTemplate() {
 
 // 施設テンプレのhide対象IDセットを返す
 function getFacilityHideSet() {
-    const tpl = getFacilityTemplate();
-    if (!tpl || !tpl.overrides || !Array.isArray(tpl.overrides.hide)) return new Set();
-    return new Set(tpl.overrides.hide);
+    return getFacilityHideSetCore(getFacilityTemplate());
 }
 
 // 施設テンプレのアイテムをカテゴリIDごとにまとめて返す
 // facilityItems はカテゴリIDをキーとした配列オブジェクト
 function getFacilityItemsByCategory() {
-    const tpl = getFacilityTemplate();
-    if (!tpl || !Array.isArray(tpl.items)) return {};
-    const result = {};
-    tpl.items.forEach((item) => {
-        const catId = item.categoryId || '__facility__';
-        if (!result[catId]) result[catId] = [];
-        result[catId].push({ ...item, isFacility: true });
-    });
-    return result;
+    return getFacilityItemsByCategoryCore(getFacilityTemplate());
 }
 
 // 施設テンプレバナーを更新する
@@ -269,15 +263,6 @@ async function fetchWithTimeout(url) {
     } finally {
         clearTimeout(timer);
     }
-}
-
-function isValidData(data) {
-    return (
-        data &&
-        Array.isArray(data.locations) &&
-        data.locations.length > 0 &&
-        Array.isArray(data.categories)
-    );
 }
 
 async function loadChecklist() {
@@ -364,23 +349,14 @@ async function startApp() {
 }
 
 // ---------- Import / Export ----------
-
-function encodeShareData(data) {
-    return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-}
-
-function decodeShareData(str) {
-    return JSON.parse(decodeURIComponent(escape(atob(str))));
-}
+// encodeShareData / decodeShareData / isValidShareData / mergeById は lib/share.js の純粋関数を使用。
 
 function checkImportParam() {
     const t = new URLSearchParams(window.location.search).get('t');
     if (!t) return;
     try {
         const data = decodeShareData(t);
-        const hasItems = Array.isArray(data.customItems) && data.customItems.length > 0;
-        const hasNames = data.containerNames && Object.keys(data.containerNames).length > 0;
-        if (hasItems || hasNames) {
+        if (isValidShareData(data)) {
             pendingImportData = data;
             const banner = $('import-banner');
             banner.classList.remove('hidden');
@@ -395,10 +371,7 @@ function handleImportOk() {
     if (!pendingImportData) return;
 
     if (Array.isArray(pendingImportData.customItems) && pendingImportData.customItems.length > 0) {
-        const existing = getCustomItems();
-        const existingIds = new Set(existing.map((i) => i.id));
-        const toAdd = pendingImportData.customItems.filter((i) => !existingIds.has(i.id));
-        setState('customItems', [...existing, ...toAdd]);
+        setState('customItems', mergeById(getCustomItems(), pendingImportData.customItems));
     }
     if (pendingImportData.containerNames) {
         const names = getState('containerNames', {});
@@ -406,9 +379,8 @@ function handleImportOk() {
     }
     if (Array.isArray(pendingImportData.customContainers) && pendingImportData.customContainers.length > 0) {
         const existing = getCustomContainers();
-        const existingIds = new Set(existing.map((c) => c.id));
-        const toAdd = pendingImportData.customContainers.filter((c) => c && c.id && !existingIds.has(c.id));
-        if (toAdd.length > 0) setState('customContainers', [...existing, ...toAdd]);
+        const merged = mergeById(existing, pendingImportData.customContainers);
+        if (merged.length > existing.length) setState('customContainers', merged);
     }
 
     pendingImportData = null;
@@ -1427,9 +1399,7 @@ function getSpecialOutings() {
     return Array.isArray(s) ? s : [];
 }
 
-function isSpecialOuting(id) {
-    return typeof id === 'string' && id.startsWith('so_');
-}
+// isSpecialOuting は lib/checklist.js の純粋関数を使用。
 
 // 予定日を入れられるプリセット(泊まり・入所・入院)。デイは当日なので対象外
 const DATABLE_PRESETS = ['shortstay', 'facility', 'roken', 'hospital'];

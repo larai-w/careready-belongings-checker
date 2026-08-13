@@ -1,6 +1,9 @@
 .DS_Store
 node_modules/
 
+# Local agent worktrees (never commit)
+.claude/
+
 # Local credentials and environment overrides
 .env
 .env.*

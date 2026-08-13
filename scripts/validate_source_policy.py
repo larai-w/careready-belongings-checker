@@ -11,7 +11,13 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-JS_FILES = [ROOT / "app.js", ROOT / "admin" / "admin.js"]
+JS_FILES = [
+    ROOT / "app.js",
+    ROOT / "admin" / "admin.js",
+    ROOT / "lib" / "ocr-match.js",
+    ROOT / "lib" / "share.js",
+    ROOT / "lib" / "checklist.js",
+]
 STATE_PRIMITIVES = re.compile(r"\b(?:localStorage|indexedDB)\b")
 INNER_HTML_ASSIGNMENT = re.compile(r"\.innerHTML\s*=")
 REQUIRED_PRECACHE = {
@@ -32,7 +38,7 @@ FRONTEND_PATHS = {
     "admin/index.html",
     "admin/admin.js",
 }
-FRONTEND_PREFIXES = ("icons/",)
+FRONTEND_PREFIXES = ("icons/", "lib/")
 
 
 class ValidationError(Exception):
