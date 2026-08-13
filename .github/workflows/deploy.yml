@@ -1,4 +1,7 @@
-# S3 + CloudFront へのデプロイ (veai.jp/ready/)
+# S3 + CloudFront への手動デプロイ (veai.jp/ready/)
+#
+# 通常の main push デプロイは ci.yml の `deploy` job(needs: check)が担う。
+# このワークフローは workflow_dispatch 専用 — CI を通さず手動で本番へ出す緊急/例外用。
 #
 # 有効化するにはリポジトリに以下を設定する:
 #   Secrets:   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
@@ -6,11 +9,9 @@
 #              S3_PREFIX (省略時: ready)
 #              AWS_REGION (省略時: ap-northeast-1)
 #              CLOUDFRONT_DISTRIBUTION_ID (設定時のみキャッシュ無効化を実行)
-name: Deploy
+name: Deploy (manual)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
