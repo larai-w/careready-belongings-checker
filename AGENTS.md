@@ -14,20 +14,20 @@
 ## プロジェクト構成
 
 - **ビルドなし** Vanilla JS (ES Modules) + Tailwind CDN。npmもバンドラもない。導入しないこと
-- `index.html`(マークアップ) / `app.js`(全ロジック) / `storage.js`(永続化) / `data.json`(持ち物データ) / `sw.js`(SW) / `admin/`(施設向け管理画面) / `backend/`(CDK + Lambda) / `docs/`(企画・設計・引き継ぎ)
+- `index.html`(マークアップ) / `app.js`(全ロジック) / `lib/`(純粋関数モジュール: share・checklist・ocr-match) / `storage.js`(永続化) / `data.json`(持ち物データ) / `sw.js`(SW) / `admin/`(施設向け管理画面) / `backend/`(CDK + Lambda) / `docs/`(企画・設計・引き継ぎ)
 
 ## 必須の規約
 
 1. **XSS**: 動的テキストは必ず `createElement` + `textContent`。`innerHTML` にデータを入れない(既存コード全体がこの方式)
 2. **状態管理**: `storage.js` の `getState / setState / removeState` を使う(同期呼び出し可、IndexedDB非同期永続化+localStorageフォールバック)。直接 localStorage/IndexedDB を触らない
-3. **sw.js**: フロントのファイルを変更したら `CACHE_NAME` を必ずバンプする(現在 `careready-v82`)。忘れると利用者に更新が配信されない
+3. **sw.js**: フロントのファイルを変更したら `CACHE_NAME` を必ずバンプする(現在 `careready-v84`)。忘れると利用者に更新が配信されない
 4. **オフラインファースト**: ネットワーク必須の機能を追加する場合も、既存機能がオフラインで動く性質を壊さない(介護施設・病院は電波が弱い)
 5. UIテキストは日本語。ターゲットは50〜70代の家族介護者(高コントラスト・大きめタップ領域)
 
 ## 検証方法(コミット前に必ず)
 
 ```bash
-node --check app.js && node --check storage.js && node --check sw.js && node --check lib/ocr-match.js
+node --check app.js && node --check storage.js && node --check sw.js && node --check lib/ocr-match.js && node --check lib/share.js && node --check lib/checklist.js
 python3 -c "import json; json.load(open('data.json'))"
 
 # フロントエンド ユニットテスト(純粋ロジック: lib/)
