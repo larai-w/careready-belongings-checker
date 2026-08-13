@@ -22,6 +22,10 @@ jobs:
           node --check storage.js
           node --check sw.js
           node --check admin/admin.js
+          node --check lib/ocr-match.js
+
+      - name: Unit tests (frontend, node:test)
+        run: node --test tests/
 
       - name: Validate JSON
         run: |
