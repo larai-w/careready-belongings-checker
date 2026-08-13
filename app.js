@@ -1,5 +1,10 @@
 // app.js — CareReady メインロジック
 import { initStorage, getState, setState, removeState } from './storage.js';
+import {
+    inferOcrCategory as inferCategoryCore,
+    isKnownOcrItem as isKnownItemCore,
+    guessQuantity,
+} from './lib/ocr-match.js';
 
 // APIのURL。空文字のままなら同梱の data.json を使用する。
 // 例: const API_URL = 'https://veai.jp/api/checklist';
@@ -585,20 +590,8 @@ function revokeFacilityTemplate() {
 
 // ---------- OCR取込 ----------
 
-const OCR_CATEGORY_HINTS = {
-    clothing: ['着替', '衣類', '服', '肌着', '下着', '靴下', 'パジャマ', '寝間着', '上着', '羽織', 'カーディガン', '室内履き', 'スリッパ'],
-    hygiene: ['タオル', '歯ブラシ', 'コップ', '入れ歯', '洗浄', 'おむつ', 'パッド', 'おしりふき', '清拭', 'シャンプー', '石けん', 'ティッシュ', '袋'],
-    medical: ['薬', 'お薬', '服薬', '処方', '目薬', '軟膏', '湿布', 'とろみ', '眼鏡', '補聴器', '電池'],
-    documents: ['保険証', '診察券', '認定証', '印鑑', '連絡先', '書類', '同意書', '利用票', '介護保険'],
-    others: ['マスク', '水筒', '飲み物', '連絡帳', 'カード', '本', 'ラジオ', '携帯', '充電器', '小銭', '財布'],
-};
-
-function normalizeOcrText(text) {
-    return (text || '')
-        .normalize('NFKC')
-        .toLowerCase()
-        .replace(/[\s・、。,.／/()（）[\]【】「」『』:：\-ー〜~]+/g, '');
-}
+// OCR品目マッチングの純粋ロジックは lib/ocr-match.js に分離(ユニットテスト可能)。
+// ここではアプリ状態(appData・施設テンプレート・個人追加)と結びつける薄いラッパーを置く。
 
 function getCategoryName(categoryId) {
     const cat = appData && appData.categories.find((c) => c.id === categoryId);
@@ -606,24 +599,7 @@ function getCategoryName(categoryId) {
 }
 
 function inferOcrCategory(name) {
-    const normalized = normalizeOcrText(name);
-    if (!appData) return 'others';
-
-    for (const cat of appData.categories) {
-        for (const item of cat.items || []) {
-            const itemKey = normalizeOcrText(item.name);
-            if (itemKey && normalized.length >= 3 && (itemKey.includes(normalized) || normalized.includes(itemKey))) {
-                return cat.id;
-            }
-        }
-    }
-
-    for (const [categoryId, hints] of Object.entries(OCR_CATEGORY_HINTS)) {
-        if (hints.some((hint) => normalized.includes(normalizeOcrText(hint)))) {
-            return categoryId;
-        }
-    }
-    return 'others';
+    return inferCategoryCore(name, appData ? appData.categories : []);
 }
 
 function getKnownItemNames() {
@@ -642,23 +618,7 @@ function getKnownItemNames() {
 }
 
 function isKnownOcrItem(name) {
-    const candidateKey = normalizeOcrText(name);
-    if (candidateKey.length < 2) return false;
-    return getKnownItemNames().some((knownName) => {
-        const knownKey = normalizeOcrText(knownName);
-        return knownKey.length >= 2 && (
-            knownKey.includes(candidateKey) ||
-            (candidateKey.length >= 4 && candidateKey.includes(knownKey))
-        );
-    });
-}
-
-function guessQuantity(name) {
-    const normalized = (name || '').normalize('NFKC');
-    const match = normalized.match(/(\d{1,2})\s*(枚|個|本|組|足|箱|日分|セット)/);
-    if (!match) return 1;
-    const qty = Number(match[1]);
-    return Number.isFinite(qty) && qty > 0 ? Math.min(qty, 99) : 1;
+    return isKnownItemCore(name, getKnownItemNames());
 }
 
 function setOcrError(message) {
