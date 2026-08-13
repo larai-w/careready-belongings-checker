@@ -25,7 +25,7 @@ jobs:
           node --check lib/ocr-match.js
 
       - name: Unit tests (frontend, node:test)
-        run: node --test tests/
+        run: node --test tests/*.test.js
 
       - name: Validate JSON
         run: |
