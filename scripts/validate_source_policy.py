@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -28,17 +27,6 @@ REQUIRED_PRECACHE = {
     "./data.json",
     "./manifest.webmanifest",
 }
-FRONTEND_PATHS = {
-    "index.html",
-    "app.js",
-    "storage.js",
-    "data.json",
-    "manifest.webmanifest",
-    "sw.js",
-    "admin/index.html",
-    "admin/admin.js",
-}
-FRONTEND_PREFIXES = ("icons/", "lib/")
 
 
 class ValidationError(Exception):
@@ -98,62 +86,17 @@ def validate_service_worker() -> str:
     return f"sw.js OK: {cache_name}, {len(urls)} precache entries"
 
 
-def git_output(*args: str) -> str:
-    completed = subprocess.run(
-        ["git", *args],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return completed.stdout
-
-
-def is_frontend_path(path: str) -> bool:
-    return path in FRONTEND_PATHS or path.startswith(FRONTEND_PREFIXES)
-
-
-def validate_cache_bump(base: str | None) -> str:
-    if not base or set(base) == {"0"}:
-        return "cache bump check skipped: comparison base is unavailable"
-
-    try:
-        changed = {
-            line.strip()
-            for line in git_output("diff", "--name-only", f"{base}...HEAD").splitlines()
-            if line.strip()
-        }
-    except subprocess.CalledProcessError as error:
-        raise ValidationError(f"git差分を取得できません: {error.stderr.strip()}") from error
-
-    changed_frontend = sorted(path for path in changed if is_frontend_path(path))
-    if not changed_frontend:
-        return "cache bump OK: frontend files unchanged"
-
-    try:
-        previous_sw = git_output("show", f"{base}:sw.js")
-    except subprocess.CalledProcessError:
-        return "cache bump OK: sw.js did not exist at comparison base"
-
-    current_name = parse_cache_name(read(ROOT / "sw.js"))
-    previous_name = parse_cache_name(previous_sw)
-    require(
-        current_name != previous_name,
-        "フロント変更時はsw.jsのCACHE_NAMEを更新してください: "
-        + ", ".join(changed_frontend),
-    )
-    return f"cache bump OK: {previous_name} -> {current_name}"
-
-
 def main() -> int:
+    # 注: CACHE_NAME の手動バンプ検査は廃止。デプロイ時(deploy-steps.yml)に
+    # git short hash を自動注入するため、手動バンプ漏れは構造的に起きない。
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base", help="CACHE_NAME更新を比較するGitコミット")
-    args = parser.parse_args()
+    parser.add_argument("--base", help="(廃止・無視。後方互換のため残す)")
+    parser.parse_args()
     try:
         for result in validate_xss_and_storage():
             print(result)
         print(validate_service_worker())
-        print(validate_cache_bump(args.base))
+        print("cache bump: auto-injected at deploy time (deploy-steps.yml)")
     except (OSError, ValidationError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1

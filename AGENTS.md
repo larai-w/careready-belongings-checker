@@ -20,7 +20,7 @@
 
 1. **XSS**: 動的テキストは必ず `createElement` + `textContent`。`innerHTML` にデータを入れない(既存コード全体がこの方式)
 2. **状態管理**: `storage.js` の `getState / setState / removeState` を使う(同期呼び出し可、IndexedDB非同期永続化+localStorageフォールバック)。直接 localStorage/IndexedDB を触らない
-3. **sw.js**: フロントのファイルを変更したら `CACHE_NAME` を必ずバンプする(現在 `careready-v84`)。忘れると利用者に更新が配信されない
+3. **sw.js**: `CACHE_NAME` はデプロイ時(deploy-steps.yml)に git short hash で自動上書きされる。手動バンプは不要。ローカルの静的値は開発用プレースホルダ
 4. **オフラインファースト**: ネットワーク必須の機能を追加する場合も、既存機能がオフラインで動く性質を壊さない(介護施設・病院は電波が弱い)
 5. UIテキストは日本語。ターゲットは50〜70代の家族介護者(高コントラスト・大きめタップ領域)
 
@@ -47,6 +47,7 @@ grep -o 'type="checkbox"' /tmp/dom.html | wc -l   # 20以上であること(CI�
 ## デプロイ
 
 `main` へのpushで GitHub Actions が自動実行: CI(上記スモークテスト) → S3 `veai-careready-frontend/ready/` 同期 + CloudFront無効化。手動デプロイ不要。本番: https://veai.jp/ready/
+デプロイ手順は `.github/workflows/deploy-steps.yml` (reusable) に集約。ci.yml の deploy job と deploy.yml (手動) の両方から呼び出される。
 
 ## 触ってはいけないもの
 

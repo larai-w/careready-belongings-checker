@@ -1,4 +1,3 @@
-.DS_Store
 node_modules/
 
 # Local agent worktrees (never commit)
@@ -13,6 +12,7 @@ secret_key.txt
 
 # backend
 backend/.venv/
+backend/infra/.venv/
 backend/infra/cdk.out/
 __pycache__/
 *.pyc
