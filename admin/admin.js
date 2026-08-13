@@ -1,12 +1,19 @@
 /* CareReady 施設管理画面 (設計書 ステップ B-2)
  *
- * 依存なしの静的 JS。DOM 生成は createElement + textContent のみを用い、
+ * ES Module。DOM 生成は createElement + textContent のみを用い、
  * ユーザー由来テキストを innerHTML に流し込まない(XSS 対策)。
+ * 純粋ロジック(日付整形・エラー文言・ペイロード構築等)は lib/admin-template.js
+ * に分離し、node --test で単体テストしている。
  */
-(function () {
-  "use strict";
+import {
+  fmtDate,
+  mapLoginError,
+  shareUrlFor as buildShareUrl,
+  normalizeFacRow,
+  buildTemplatePayload
+} from "../lib/admin-template.js";
 
-  // ---- 定数 -------------------------------------------------------------
+// ---- 定数 -------------------------------------------------------------
   var API_BASE = "https://6r6n0fjn4d.execute-api.ap-northeast-1.amazonaws.com";
   var COGNITO_ENDPOINT = "https://cognito-idp.ap-northeast-1.amazonaws.com/";
   var COGNITO_CLIENT_ID = "3l4qskvaoqeso5ofcvi35t6bqp";
@@ -123,12 +130,7 @@
     }).then(function (res) {
       return res.json().then(function (data) {
         if (!res.ok) {
-          var type = (data.__type || "").split("#").pop();
-          var msg = "ログインに失敗しました。";
-          if (type === "NotAuthorizedException") msg = "メールアドレスまたはパスワードが違います。";
-          else if (type === "UserNotFoundException") msg = "アカウントが見つかりません。";
-          else if (type === "PasswordResetRequiredException") msg = "パスワードの再設定が必要です。管理者にお問い合わせください。";
-          throw new Error(msg);
+          throw new Error(mapLoginError(data));
         }
         if (data.ChallengeName) {
           throw new Error("初回ログインのため追加手続きが必要です。管理者にお問い合わせください。");
@@ -195,14 +197,7 @@
   }
 
   // ---- テンプレ一覧 -----------------------------------------------------
-  function fmtDate(epochSeconds) {
-    if (!epochSeconds) return "";
-    var d = new Date(Number(epochSeconds) * 1000);
-    if (isNaN(d.getTime())) return "";
-    function p(n) { return String(n).padStart(2, "0"); }
-    return d.getFullYear() + "/" + p(d.getMonth() + 1) + "/" + p(d.getDate()) +
-      " " + p(d.getHours()) + ":" + p(d.getMinutes());
-  }
+  // fmtDate は lib/admin-template.js から import
 
   function renderList(templates) {
     var container = $("tplList");
@@ -382,13 +377,7 @@
   }
 
   function addFacRow(data) {
-    data = data || {};
-    state.facRows.push({
-      id: data.id || genFacId(),
-      name: data.name || "",
-      quantity: data.quantity || "",
-      locations: new Set(data.applicable_locations || [])
-    });
+    state.facRows.push(normalizeFacRow(data, genFacId));
     renderFacRows();
   }
 
@@ -462,12 +451,7 @@
 
     state.facRows = [];
     (tpl.items || []).forEach(function (it) {
-      state.facRows.push({
-        id: it.id || genFacId(),
-        name: it.name || "",
-        quantity: it.quantity || "",
-        locations: new Set(it.applicable_locations || [])
-      });
+      state.facRows.push(normalizeFacRow(it, genFacId));
     });
     renderFacRows();
   }
@@ -499,33 +483,19 @@
   }
 
   function buildPayload() {
-    var name = $("tplName").value.trim();
-    var facilityName = $("tplFacilityName").value.trim();
-    var facilityPhone = $("tplFacilityPhone").value.trim();
-    var facilityAddress = $("tplFacilityAddress").value.trim();
-    var note = $("tplNote").value.trim();
-
-    var items = [];
-    for (var i = 0; i < state.facRows.length; i++) {
-      var r = state.facRows[i];
-      var n = (r.name || "").trim();
-      if (!n) continue;
-      items.push({
-        id: r.id,
-        name: n,
-        quantity: (r.quantity || "").trim(),
-        applicable_locations: Array.from(r.locations)
-      });
-    }
-
-    var overrides = { hide: collectHidden() };
-    if (note) overrides.note = note;
-
-    var payload = { name: name, items: items, overrides: overrides };
-    if (facilityName) payload.facilityName = facilityName;
-    if (facilityPhone) payload.facilityPhone = facilityPhone;
-    if (facilityAddress) payload.facilityAddress = facilityAddress;
-    return payload;
+    // DOM からの値収集のみここで行い、ペイロード構築ロジックは
+    // lib/admin-template.js の buildTemplatePayload に委譲する(テスト可能)。
+    return buildTemplatePayload(
+      {
+        name: $("tplName").value,
+        facilityName: $("tplFacilityName").value,
+        facilityPhone: $("tplFacilityPhone").value,
+        facilityAddress: $("tplFacilityAddress").value,
+        note: $("tplNote").value
+      },
+      state.facRows,
+      collectHidden()
+    );
   }
 
   function saveTemplate() {
@@ -558,16 +528,14 @@
   }
 
   // ---- 配布画面 ---------------------------------------------------------
-  function shareUrlFor(code) {
-    return SHARE_BASE_URL + "?fc=" + encodeURIComponent(code);
-  }
+  // shareUrlFor は lib/admin-template.js から import (buildShareUrl)
 
   function openShare(tpl) {
     show("shareView");
     $("shareTplName").textContent = tpl.name || "(名称未設定)";
     var code = tpl.shareCode || "";
     $("shareCode").textContent = code || "-";
-    var url = shareUrlFor(code);
+    var url = buildShareUrl(SHARE_BASE_URL, code);
     $("shareUrl").textContent = url;
 
     // プレビューボタン用にコードを保持
@@ -607,7 +575,7 @@
       toast("共有コードがありません。", true);
       return;
     }
-    var url = shareUrlFor(fc);
+    var url = buildShareUrl(SHARE_BASE_URL, fc);
     window.open(url, "_blank", "noopener");
   }
 
@@ -673,9 +641,10 @@
     }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
-})();
+// ES Module は DOM パース後に実行されるため、DOMContentLoaded 待ちは不要だが、
+// 安全のため readyState チェックを残す。
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
