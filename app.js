@@ -1,5 +1,5 @@
 // app.js — CareReady メインロジック
-import { initStorage, getState, setState, removeState } from './storage.js';
+import { initStorage, getState, setState, removeState, readTextScale, writeTextScale } from './storage.js';
 
 // APIのURL。空文字のままなら同梱の data.json を使用する。
 // 例: const API_URL = 'https://veai.jp/api/checklist';
@@ -43,17 +43,13 @@ const $ = (id) => document.getElementById(id);
 
 // ---------- 文字サイズ(アクセシビリティ・端末に保存) ----------
 // :root の rem 基準を拡大し、文字・余白・タップ領域ごと大きくする。
-// localStorage から即時適用してちらつき(レイアウトの跳ね)を防ぐ。
+// storage.js の同期アクセサから即時適用してちらつき(レイアウトの跳ね)を防ぐ。
 const TEXT_SCALES = ['normal', 'large', 'xlarge'];
 const TEXT_SCALE_LABELS = { normal: '標準', large: '大', xlarge: '特大' };
 
 function getTextScale() {
-    try {
-        const v = localStorage.getItem('careready_textscale');
-        return TEXT_SCALES.includes(v) ? v : 'normal';
-    } catch (e) {
-        return 'normal';
-    }
+    const v = readTextScale();
+    return TEXT_SCALES.includes(v) ? v : 'normal';
 }
 
 function applyTextScale(scale) {
@@ -73,7 +69,7 @@ function applyTextScale(scale) {
 
 function cycleTextScale() {
     const next = TEXT_SCALES[(TEXT_SCALES.indexOf(getTextScale()) + 1) % TEXT_SCALES.length];
-    try { localStorage.setItem('careready_textscale', next); } catch (e) { /* noop */ }
+    writeTextScale(next);
     applyTextScale(next);
     showToast(`文字の大きさ：${TEXT_SCALE_LABELS[next]}`);
 }
@@ -3205,7 +3201,7 @@ function showCelebrationOverlay(emojiChar, titleText, subText, titleColor) {
     }, 3600);
 }
 
-// 初回だけ・スキップ可の使い方カード(①行き先 ②準備 ③おかえり)。localStorageで既読管理。
+// 初回だけ・スキップ可の使い方カード(①行き先 ②準備 ③おかえり)。既読は storage.js で管理。
 function maybeShowOnboarding() {
     if (getState('onboarded', false)) return false;
 
