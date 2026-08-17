@@ -251,89 +251,108 @@ class CareReadyBackendStack(Stack):
             cors_preflight=cors,
         )
 
+        # --- API Gateway スロットリング(無料の DoS 対策) ---
+        # WAF 保留中はここで IP 無差別の大量リクエストを抑制する。
+        # 10 rps / burst 20 は現行トラフィックのピーク想定に対して十分な余裕。
+        # L2 HttpStage には throttle プロパティがないため、L1 CfnStage の
+        # default_route_settings に RouteSettingsProperty で設定する。
+        if http_api.default_stage:
+            cfn_stage = http_api.default_stage.node.default_child
+            cfn_stage.default_route_settings = (
+                apigwv2.CfnStage.RouteSettingsProperty(
+                    throttling_rate_limit=10.0,
+                    throttling_burst_limit=20,
+                )
+            )
+
         # --- S1: WAF(Web ACL)— レートリミット + AWSマネージドルール ---
-        # 公開エンドポイント(redeem/OCR/feedback/push)へのブルートフォース・
-        # スクレイピング・OWASP系攻撃を API 手前で遮断する。
-        web_acl = wafv2.CfnWebACL(
-            self,
-            "ApiWebAcl",
-            name="careready-api-waf",
-            scope="REGIONAL",
-            default_action=wafv2.CfnWebACL.DefaultActionProperty(allow={}),
-            visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
-                cloud_watch_metrics_enabled=True,
-                metric_name="careready-api-waf",
-                sampled_requests_enabled=True,
-            ),
-            rules=[
-                # IP単位レートリミット: 5分間で300リクエスト超をブロック
-                wafv2.CfnWebACL.RuleProperty(
-                    name="RateLimitPerIp",
-                    priority=1,
-                    action=wafv2.CfnWebACL.RuleActionProperty(block={}),
-                    statement=wafv2.CfnWebACL.StatementProperty(
-                        rate_based_statement=wafv2.CfnWebACL.RateBasedStatementProperty(
-                            limit=300,
-                            aggregate_key_type="IP",
-                        )
-                    ),
-                    visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
-                        cloud_watch_metrics_enabled=True,
-                        metric_name="careready-rate-limit",
-                        sampled_requests_enabled=True,
-                    ),
+        # コスト判断(2026-08-17): パイロット前段階では約$7/月の WAF は過剰と判断し、
+        # デフォルトでは無効化。施設パイロット開始時に `cdk deploy -c enable_waf=true`
+        # で有効化する(コード変更不要)。決定は veai-private の decision-log に記録。
+        enable_waf = self.node.try_get_context("enable_waf")
+        if isinstance(enable_waf, str):
+            enable_waf = enable_waf.lower() == "true"
+        if enable_waf:
+            web_acl = wafv2.CfnWebACL(
+                self,
+                "ApiWebAcl",
+                name="careready-api-waf",
+                scope="REGIONAL",
+                default_action=wafv2.CfnWebACL.DefaultActionProperty(allow={}),
+                visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
+                    cloud_watch_metrics_enabled=True,
+                    metric_name="careready-api-waf",
+                    sampled_requests_enabled=True,
                 ),
-                # AWS Managed Rules: OWASP Top10 等の既知攻撃パターン
-                wafv2.CfnWebACL.RuleProperty(
-                    name="AwsManagedRulesCommon",
-                    priority=2,
-                    override_action=wafv2.CfnWebACL.OverrideActionProperty(
-                        none={}
+                rules=[
+                    # IP単位レートリミット: 5分間で300リクエスト超をブロック
+                    wafv2.CfnWebACL.RuleProperty(
+                        name="RateLimitPerIp",
+                        priority=1,
+                        action=wafv2.CfnWebACL.RuleActionProperty(block={}),
+                        statement=wafv2.CfnWebACL.StatementProperty(
+                            rate_based_statement=wafv2.CfnWebACL.RateBasedStatementProperty(
+                                limit=300,
+                                aggregate_key_type="IP",
+                            )
+                        ),
+                        visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
+                            cloud_watch_metrics_enabled=True,
+                            metric_name="careready-rate-limit",
+                            sampled_requests_enabled=True,
+                        ),
                     ),
-                    statement=wafv2.CfnWebACL.StatementProperty(
-                        managed_rule_group_statement=wafv2.CfnWebACL.ManagedRuleGroupStatementProperty(
-                            vendor_name="AWS",
-                            name="AWSManagedRulesCommonRuleSet",
-                        )
+                    # AWS Managed Rules: OWASP Top10 等の既知攻撃パターン
+                    wafv2.CfnWebACL.RuleProperty(
+                        name="AwsManagedRulesCommon",
+                        priority=2,
+                        override_action=wafv2.CfnWebACL.OverrideActionProperty(
+                            none={}
+                        ),
+                        statement=wafv2.CfnWebACL.StatementProperty(
+                            managed_rule_group_statement=wafv2.CfnWebACL.ManagedRuleGroupStatementProperty(
+                                vendor_name="AWS",
+                                name="AWSManagedRulesCommonRuleSet",
+                            )
+                        ),
+                        visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
+                            cloud_watch_metrics_enabled=True,
+                            metric_name="careready-common-rules",
+                            sampled_requests_enabled=True,
+                        ),
                     ),
-                    visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
-                        cloud_watch_metrics_enabled=True,
-                        metric_name="careready-common-rules",
-                        sampled_requests_enabled=True,
+                    # SQLインジェクション対策
+                    wafv2.CfnWebACL.RuleProperty(
+                        name="AwsManagedRulesSql",
+                        priority=3,
+                        override_action=wafv2.CfnWebACL.OverrideActionProperty(
+                            none={}
+                        ),
+                        statement=wafv2.CfnWebACL.StatementProperty(
+                            managed_rule_group_statement=wafv2.CfnWebACL.ManagedRuleGroupStatementProperty(
+                                vendor_name="AWS",
+                                name="AWSManagedRulesSQLiRuleSet",
+                            )
+                        ),
+                        visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
+                            cloud_watch_metrics_enabled=True,
+                            metric_name="careready-sqli-rules",
+                            sampled_requests_enabled=True,
+                        ),
                     ),
-                ),
-                # SQLインジェクション対策
-                wafv2.CfnWebACL.RuleProperty(
-                    name="AwsManagedRulesSql",
-                    priority=3,
-                    override_action=wafv2.CfnWebACL.OverrideActionProperty(
-                        none={}
-                    ),
-                    statement=wafv2.CfnWebACL.StatementProperty(
-                        managed_rule_group_statement=wafv2.CfnWebACL.ManagedRuleGroupStatementProperty(
-                            vendor_name="AWS",
-                            name="AWSManagedRulesSQLiRuleSet",
-                        )
-                    ),
-                    visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
-                        cloud_watch_metrics_enabled=True,
-                        metric_name="careready-sqli-rules",
-                        sampled_requests_enabled=True,
-                    ),
-                ),
-            ],
-        )
-        # WAF 関連付けはステージ単位の ARN(HTTP API のデフォルトステージ $default)
-        api_stage_arn = (
-            f"arn:{self.partition}:apigateway:{self.region}::"
-            f"/apis/{http_api.api_id}/stages/$default"
-        )
-        wafv2.CfnWebACLAssociation(
-            self,
-            "ApiWebAclAssociation",
-            resource_arn=api_stage_arn,
-            web_acl_arn=web_acl.attr_arn,
-        )
+                ],
+            )
+            # WAF 関連付けはステージ単位の ARN(HTTP API のデフォルトステージ $default)
+            api_stage_arn = (
+                f"arn:{self.partition}:apigateway:{self.region}::"
+                f"/apis/{http_api.api_id}/stages/$default"
+            )
+            wafv2.CfnWebACLAssociation(
+                self,
+                "ApiWebAclAssociation",
+                resource_arn=api_stage_arn,
+                web_acl_arn=web_acl.attr_arn,
+            )
 
         integration = apigwv2_int.HttpLambdaIntegration(
             "ApiIntegration", api_alias
