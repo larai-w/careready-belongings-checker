@@ -6,7 +6,7 @@
 #     (CLAUDE.md「cdk deploy は人間の確認を得てから」を CI 上でも担保)
 #
 # 有効化に必要な設定:
-#   Secrets:   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+#   Secrets:   AWS_BACKEND_ROLE_ARN (OIDC ロール。cdk bootstrap ロールの引き受けのみ可)
 #              (このキーには CloudFormation/Lambda/APIGW/DynamoDB/IAM 等 CDK デプロイ権限が必要)
 #   Variables: AWS_REGION (省略時: ap-northeast-1)
 #   任意:      Environment "production-backend" に required reviewers を設定すると
@@ -26,12 +26,16 @@ concurrency:
 jobs:
   preview:
     runs-on: ubuntu-latest
+    # OIDC でロールを引き受けるために必要
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Check AWS credentials
         id: creds
         run: |
-          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+          if [ -z "${{ secrets.AWS_BACKEND_ROLE_ARN }}" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "::notice::AWSシークレット未設定のためスキップ (deploy-backend.yml のコメント参照)"
           else
@@ -51,8 +55,10 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         if: steps.creds.outputs.configured == 'true'
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # 長期アクセスキーから OIDC へ移行（2026-08-17）。
+          # このロールは AWS リソースへの直接権限を持たず、cdk bootstrap ロール
+          # (deploy/file-publishing/image-publishing/lookup) の引き受けだけができる。
+          role-to-assume: ${{ secrets.AWS_BACKEND_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
       - name: CDK synth + diff (preview only)
         if: steps.creds.outputs.configured == 'true'
@@ -67,13 +73,17 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     needs: preview
     runs-on: ubuntu-latest
+    # OIDC でロールを引き受けるために必要
+    permissions:
+      id-token: write
+      contents: read
     environment: production-backend
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Check AWS credentials
         id: creds
         run: |
-          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+          if [ -z "${{ secrets.AWS_BACKEND_ROLE_ARN }}" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "::error::AWSシークレット未設定のためデプロイできません"
             exit 1
@@ -90,8 +100,10 @@ jobs:
         run: pip install -r backend/infra/requirements.txt
       - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # 長期アクセスキーから OIDC へ移行（2026-08-17）。
+          # このロールは AWS リソースへの直接権限を持たず、cdk bootstrap ロール
+          # (deploy/file-publishing/image-publishing/lookup) の引き受けだけができる。
+          role-to-assume: ${{ secrets.AWS_BACKEND_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
       - name: CDK deploy
         working-directory: backend/infra
