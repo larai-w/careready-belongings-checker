@@ -7,7 +7,7 @@ on:
       - 'backend/push_sender/**'
       - '.github/workflows/backend-infra-ci.yml'
   push:
-    branches: [development]
+    branches: [main, development]
     paths:
       - 'backend/infra/**'
       - 'backend/push_sender/**'
