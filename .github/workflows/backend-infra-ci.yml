@@ -31,3 +31,24 @@ jobs:
         run: |
           npx --yes aws-cdk@2 synth --quiet
           python3 validate_template.py cdk.out/CareReadyBackendStack.template.json
+      - name: Golden Path infrastructure report (non-blocking)
+        id: golden-path
+        continue-on-error: true
+        working-directory: backend/infra
+        run: |
+          python3 -m unittest discover -s tests -p 'test_validate_golden_path.py'
+          python3 validate_golden_path.py \
+            --lambda-alias-selector '^careready-api$' \
+            --require-api-throttling \
+            cdk.out/CareReadyBackendStack.template.json
+      - name: Publish Golden Path report status
+        if: always()
+        env:
+          GOLDEN_PATH_OUTCOME: ${{ steps.golden-path.outcome }}
+        run: |
+          echo '### Golden Path infrastructure report' >> "$GITHUB_STEP_SUMMARY"
+          if [ "$GOLDEN_PATH_OUTCOME" = 'success' ]; then
+            echo '✅ Shared infrastructure controls passed.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '⚠️ Findings were reported above. Adoption is report-only and does not block CI.' >> "$GITHUB_STEP_SUMMARY"
+          fi
