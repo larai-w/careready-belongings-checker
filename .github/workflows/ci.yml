@@ -66,26 +66,43 @@ jobs:
 
       - name: Smoke test (headless Chrome)
         run: |
+          # 注: E2E と同じ理由でリトライする。headless --dump-dom は
+          # --virtual-time-budget の消費量が非決定的で、稀に描画完了前に
+          # dump され途中打ち切りになる(2026-08-18 に main が実際にこれで落ちた。
+          # 同一内容の 8ab3d23 は成功、マージコミット 658a661 は checkboxes=2 で失敗)。
+          # 真の回帰なら毎回同じチェックが落ちるので、全リトライ失敗として検出できる。
           python3 -m http.server 8000 --bind 127.0.0.1 &
+          SRV=$!
           sleep 2
-          google-chrome --headless=new --disable-gpu --no-sandbox \
-            --virtual-time-budget=25000 --dump-dom "http://127.0.0.1:8000/" > dom.html 2>/dev/null
+          ok=0
+          for attempt in 1 2 3 4; do
+            google-chrome --headless=new --disable-gpu --no-sandbox \
+              --virtual-time-budget=25000 --dump-dom "http://127.0.0.1:8000/" > dom.html 2>/dev/null
 
-          CHECKBOXES=$(grep -o 'type="checkbox"' dom.html | wc -l)
-          echo "checkboxes rendered: $CHECKBOXES"
-          if [ "$CHECKBOXES" -lt 20 ]; then
-            echo "::error::チェックリストが描画されていません (checkboxes=$CHECKBOXES)"
+            CHECKBOXES=$(grep -o 'type="checkbox"' dom.html | wc -l)
+            echo "attempt $attempt: checkboxes rendered: $CHECKBOXES"
+            if [ "$CHECKBOXES" -lt 20 ]; then
+              echo "attempt $attempt incomplete (checkboxes=$CHECKBOXES), retrying..."
+              continue
+            fi
+
+            # 準備画面の見出しは「🧳 ◯◯ の準備・…」と動的表示になったため "の準備" で確認
+            missing=""
+            for LABEL in "おかえり" "どこへ" "箱に詰める" "の準備"; do
+              grep -q "$LABEL" dom.html || missing="$missing $LABEL"
+            done
+            if [ -n "$missing" ]; then
+              echo "attempt $attempt: UI要素が見つかりません:$missing"
+              continue
+            fi
+            ok=1; echo "smoke test OK (attempt $attempt)"; break
+          done
+          kill "$SRV" 2>/dev/null || true
+
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::スモークテストが4回とも通りませんでした(最後: checkboxes=$CHECKBOXES 欠落:$missing)"
             exit 1
           fi
-
-          # 準備画面の見出しは「🧳 ◯◯ の準備・…」と動的表示になったため "の準備" で確認
-          for LABEL in "おかえり" "どこへ" "箱に詰める" "の準備"; do
-            if ! grep -q "$LABEL" dom.html; then
-              echo "::error::UI要素が見つかりません: $LABEL"
-              exit 1
-            fi
-          done
-          echo "smoke test OK"
 
       - name: E2E test (headless Chrome)
         run: |
