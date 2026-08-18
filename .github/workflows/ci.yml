@@ -102,7 +102,7 @@ jobs:
           if [ "$ok" -ne 1 ]; then
             echo "::error::スモークテストが4回とも通りませんでした(最後: checkboxes=$CHECKBOXES 欠落:$missing)"
             exit 1
-          fi"
+          fi
 
       - name: E2E test (headless Chrome)
         run: |
