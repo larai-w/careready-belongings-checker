@@ -1187,7 +1187,7 @@ function handlePersonName() {
     renderPersonName();
 }
 
-// ---------- 行き先ごとのメモ ----------
+// ---------- 行き先ごとの自由メモ ----------
 
 function renderMemo() {
     const el = $('memo-input');
@@ -1197,11 +1197,11 @@ function renderMemo() {
     // 文脈で見出し・例文を変える(おでかけと入院/入所では書く内容が違う)。見出しは折りたたみボタンに出す。
     const labelEl = $('memo-toggle-label');
     if (isSpecialOuting(currentSubtype)) {
-        if (labelEl) labelEl.textContent = '📝 メモ（このおでかけ用・任意）';
-        el.placeholder = '持っていく物や気をつけることをメモ（例: 酔い止め、帽子、こまめに休憩）';
+        if (labelEl) labelEl.textContent = '📝 自由メモ（このおでかけ用・任意）';
+        el.placeholder = '持ち物、気づいたこと、あとで確認することなど（例: 酔い止め、帽子、こまめに休憩）';
     } else {
-        if (labelEl) labelEl.textContent = '📝 伝えたいこと・メモ（任意）';
-        el.placeholder = '伝えたいこと・忘れないことをメモ（例: 薬のこと、アレルギー、生活のクセ）';
+        if (labelEl) labelEl.textContent = '📝 自由メモ（任意）';
+        el.placeholder = '持ち物、伝えたいこと、あとで確認することなど（例: 薬のこと、アレルギー、生活のクセ）';
     }
     // 既定は折りたたみ。すでにメモがある行き先だけ自動で開く(初期画面を軽くする)。
     setMemoOpen(el.value.trim().length > 0);

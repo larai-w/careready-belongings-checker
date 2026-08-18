@@ -339,16 +339,16 @@
             <div id="condition-toggles" class="hidden flex flex-wrap items-center gap-2 mt-2"></div>
         </div>
 
-        <!-- 📝 伝えたいこと・メモ (行き先ごと・ローカル保存)。既定は折りたたみ、記入済みは自動で開く -->
+        <!-- 📝 自由メモ (行き先ごと・ローカル保存)。既定は折りたたみ、記入済みは自動で開く -->
         <div id="memo-section" class="mb-4">
             <button id="memo-toggle" type="button" aria-expanded="false" aria-controls="memo-body"
                 class="w-full flex items-center justify-between text-xs font-bold text-gray-400 hover:text-teal-400 bg-gray-800/60 border border-gray-700 rounded-2xl px-4 py-2.5 transition-colors">
-                <span id="memo-toggle-label">📝 伝えたいこと・メモ（任意）</span>
+                <span id="memo-toggle-label">📝 自由メモ（任意）</span>
                 <span id="memo-toggle-caret" class="text-gray-500 text-base leading-none">＋</span>
             </button>
             <div id="memo-body" class="hidden mt-2">
-                <label for="memo-input" class="sr-only">伝えたいこと・メモ（この行き先用）</label>
-                <textarea id="memo-input" rows="2" maxlength="500" placeholder="施設に伝えたいこと・忘れないことをメモ（例: 看護師さんに薬のことを伝える）"
+                <label for="memo-input" class="sr-only">自由メモ（この行き先用）</label>
+                <textarea id="memo-input" rows="3" maxlength="500" placeholder="持ち物、気づいたこと、あとで確認することなど（例: 薬は赤い袋・帰りに杖を忘れない）"
                     class="w-full bg-white border border-gray-300 rounded-2xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-teal-500 placeholder-gray-400 resize-none"></textarea>
             </div>
         </div>
