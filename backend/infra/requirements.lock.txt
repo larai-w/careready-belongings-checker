@@ -3,7 +3,7 @@
 # CDK synth/deploy ではこのファイルを使って再現可能なビルドを行う:
 #   python3 -m pip install -r backend/infra/requirements.lock.txt
 attrs==26.1.0
-aws-cdk-lib==2.261.0
+aws-cdk-lib==2.265.0
 aws-cdk.asset-awscli-v1==2.2.282
 aws-cdk.asset-node-proxy-agent-v6==2.1.2
 aws-cdk.cloud-assembly-schema==54.9.0
