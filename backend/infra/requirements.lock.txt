@@ -8,7 +8,7 @@ aws-cdk.asset-awscli-v1==2.2.282
 aws-cdk.asset-node-proxy-agent-v6==2.1.2
 aws-cdk.cloud-assembly-schema==54.9.0
 boto3==1.43.46
-botocore==1.43.46
+botocore==1.43.72
 cattrs==26.1.0
 constructs==10.6.0
 jmespath==1.1.0
