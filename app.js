@@ -3337,6 +3337,18 @@ function handlePrint() {
     dateLine.textContent = `印刷日: ${dateStr}`;
     printArea.append(h1, dateLine);
 
+    const memo = (getState('memos', {})[currentSubtype] || '').trim();
+    if (memo) {
+        const memoBox = document.createElement('div');
+        memoBox.className = 'print-memo';
+        const memoTitle = document.createElement('strong');
+        memoTitle.textContent = '自由メモ';
+        const memoText = document.createElement('p');
+        memoText.textContent = memo;
+        memoBox.append(memoTitle, memoText);
+        printArea.appendChild(memoBox);
+    }
+
     // 3層マージ
     const hideSet = getFacilityHideSet();
     const facilityItemsByCategory = getFacilityItemsByCategory();
