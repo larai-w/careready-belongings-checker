@@ -21,6 +21,10 @@ browser—no app install, no login required.
 The family-facing web MVP is public and usable. Facility onboarding and admin workflows remain
 in development. CareReady is not a medical device and does not make clinical recommendations.
 
+The checklist can be printed with the printer button. The print view includes the current location's
+visible belongings, checkboxes, quantities, container labels, and any saved free memo; it is generated
+locally in the browser and does not upload the list.
+
 ---
 
 ## Product Management
