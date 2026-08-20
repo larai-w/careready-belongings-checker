@@ -25,3 +25,21 @@ if [ -n "$GL" ]; then
 else
   echo "⚠️  gitleaks not found (PATH or ~/bin) — secret scan skipped."
 fi
+
+# ── 2026-08-20 追加 ───────────────────────────────────────────────
+# 異言語混入（BLOCK）: AI が生成した日本語にキリル文字等が紛れることがある。
+# 薬機法・医療広告（DELAY）: 警告のみ。「改善」は文脈で正誤が変わるため
+#   機械が断定して止めると迂回される。人が判断する。
+STAGED=$(git diff --cached --name-only --diff-filter=ACM \
+  -- '*.md' '*.html' '*.ts' '*.tsx' '*.js' '*.mjs' '*.py' '*.astro' 2>/dev/null || true)
+if [ -n "$STAGED" ]; then
+  # shellcheck disable=SC2086
+  python3 scripts/check_health_copy.py $STAGED || true   # DELAY: 止めない
+  # shellcheck disable=SC2086
+  if ! python3 scripts/check_language_contamination.py $STAGED; then
+    echo ""
+    echo "❌ pre-commit blocked: 想定外の文字体系が混入しています。"
+    echo "   迂回せず、該当箇所を修正してください。"
+    exit 1
+  fi
+fi
