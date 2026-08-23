@@ -1,5 +1,5 @@
 // app.js — CareReady メインロジック
-import { initStorage, getState, setState, removeState, readTextScale, writeTextScale } from './storage.js';
+import { initStorage, getState, setState, removeState, readTextScale, writeTextScale, getLastUpdatedAt } from './storage.js';
 import {
     inferOcrCategory as inferCategoryCore,
     isKnownOcrItem as isKnownItemCore,
@@ -3289,6 +3289,9 @@ function resetAll() {
         snapshot[k] = getState(k, null);
         removeState(k);
     });
+    // 最終更新日時も消す。残すと全削除後の印刷ヘッダーに、
+    // 消したはずのデータの更新時刻が出続ける
+    removeState('_lastUpdatedAt');
     updateFacilityBanner();
     renderConditionToggles();
     renderChecklist();
@@ -3336,6 +3339,17 @@ function handlePrint() {
     dateLine.className = 'print-date';
     dateLine.textContent = `印刷日: ${dateStr}`;
     printArea.append(h1, dateLine);
+
+    // 最終更新日時を表示
+    const lastUpdated = getLastUpdatedAt();
+    if (lastUpdated) {
+        const updatedLine = document.createElement('p');
+        updatedLine.className = 'print-date';
+        const d = new Date(lastUpdated);
+        const updatedStr = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        updatedLine.textContent = `データ最終更新: ${updatedStr}`;
+        printArea.appendChild(updatedLine);
+    }
 
     const memo = (getState('memos', {})[currentSubtype] || '').trim();
     if (memo) {

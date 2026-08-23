@@ -175,6 +175,11 @@
 
         /* ===== 印刷スタイル ===== */
         @media print {
+            /* A4印刷設定 */
+            @page {
+                size: A4 portrait;
+                margin: 15mm 12mm;
+            }
             /* 画面UIを全部隠す */
             body > div,
             #toast {

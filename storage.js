@@ -135,15 +135,24 @@ export function getState(key, fallback) {
 
 export function setState(key, value) {
     cache[key] = value;
+    // 最終更新日時を記録(印刷モード等で使用)
+    cache._lastUpdatedAt = new Date().toISOString();
     if (db) {
         idbPut(key, value).catch((e) => console.error('保存に失敗:', e));
+        idbPut('_lastUpdatedAt', cache._lastUpdatedAt).catch(() => {});
     } else {
         try {
             localStorage.setItem('careready_v2_' + key, JSON.stringify(value));
+            localStorage.setItem('careready_v2__lastUpdatedAt', JSON.stringify(cache._lastUpdatedAt));
         } catch (e) {
             console.error('保存に失敗:', e);
         }
     }
+}
+
+// 最終更新日時を取得(印刷モード用)
+export function getLastUpdatedAt() {
+    return cache._lastUpdatedAt || null;
 }
 
 export function removeState(key) {
