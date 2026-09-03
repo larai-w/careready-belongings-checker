@@ -16,6 +16,14 @@ jobs:
       - name: Enforce public repository boundary
         run: python3 scripts/check_public_repo.py --tracked
 
+      # pre-commit にしか無く、フックを設定していないクローンや Web UI 経由の
+      # 変更は素通りしていた（2026-09-03 に気づいた）。追跡中の全テキストに当てる。
+      # 検査器自身は .langcheckignore で除外済み（検出対象の文字を正規表現で持つため）。
+      - name: Check language contamination
+        run: |
+          git ls-files '*.md' '*.mjs' '*.js' '*.ts' '*.html' '*.py' \
+            | xargs python3 scripts/check_language_contamination.py
+
       - name: Syntax check (JS)
         run: |
           node --check app.js
