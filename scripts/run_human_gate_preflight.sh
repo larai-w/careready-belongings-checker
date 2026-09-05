@@ -103,12 +103,20 @@ fi
 
 echo "[4/5] Headless smoke"
 SMOKE_DOM="$TMP_DIR/smoke-dom.html"
-if ! run_with_timeout 120 "$CHROME" --headless=new --disable-gpu --no-sandbox \
+set +e
+run_with_timeout 120 "$CHROME" --headless=new --disable-gpu --no-sandbox \
   --disable-background-networking --disable-default-apps --no-first-run \
   --user-data-dir="$TMP_DIR/chrome-smoke" \
   --virtual-time-budget=25000 --dump-dom "${BASE_URL}/" \
-  >"$SMOKE_DOM" 2>/dev/null; then
-  echo "Headless smoke did not finish within 120 seconds." >&2
+  >"$SMOKE_DOM" 2>/dev/null
+SMOKE_STATUS=$?
+set -e
+if [ "$SMOKE_STATUS" -ne 0 ]; then
+  if [ "$SMOKE_STATUS" -eq 124 ]; then
+    echo "Headless smoke timed out after 120 seconds." >&2
+  else
+    echo "Headless smoke exited with status $SMOKE_STATUS before completion." >&2
+  fi
   exit 1
 fi
 

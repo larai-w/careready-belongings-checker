@@ -2682,6 +2682,14 @@ function updateProgress() {
     // 完了はユーザーが「準備できた!」で宣言する → 分母(ゴール)は出さず「貯まった数」を見せる
     $('progress-text').textContent = done > 0 ? `${done}コ そろえた 🎒` : 'これから準備 🎒';
     $('progress-bar').style.width = total > 0 ? `${(done / total) * 100}%` : '0%';
+    const progressBarWrap = document.getElementById('progress-bar-wrap');
+    if (progressBarWrap) {
+        // 見た目のバーだけに頼らず、読み上げや支援技術にも現在状態を渡す。
+        // total=0でもARIAの範囲が不正にならないよう最大値は1以上にする。
+        progressBarWrap.setAttribute('aria-valuemin', '0');
+        progressBarWrap.setAttribute('aria-valuemax', String(Math.max(total, 1)));
+        progressBarWrap.setAttribute('aria-valuenow', String(done));
+    }
 
     const msgEl = document.getElementById('progress-msg');
     if (msgEl) {
