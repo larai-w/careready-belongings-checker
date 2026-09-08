@@ -13,7 +13,7 @@ browser—no app install, no login required.
 
 | State | Detail |
 |---|---|
-| Released | Family-facing PWA checklist with IndexedDB persistence, facility template redeem via share code, return-check mode, and CI/CD to S3/CloudFront |
+| Released | Family-facing PWA checklist with IndexedDB persistence, facility template redeem via share code, return-check mode, preparation JSON backup/restore, and CI/CD to S3/CloudFront |
 | Working | Backend CRUD API (Lambda + DynamoDB) with Cognito JWT auth for staff, deployed to `ap-northeast-1` |
 | In progress | Facility admin portal (`/ready/admin/`) — template editor and QR poster generation |
 | Future | Multi-facility onboarding flow, accessibility improvements, native app packaging |
@@ -24,6 +24,31 @@ in development. CareReady is not a medical device and does not make clinical rec
 The checklist can be printed with the printer button. The print view includes the current location's
 visible belongings, checkboxes, quantities, container labels, and any saved free memo; it is generated
 locally in the browser and does not upload the list.
+
+---
+
+## Preparation backup and restore
+
+Families can [save and restore preparation](https://veai.jp/ready/#backup) without an account.
+Open “準備データの保存・復元へ”, choose “1. 今の準備をファイルに保存” to download a JSON backup,
+or select a saved file under “2. 保存したファイルから戻す” to review it before restoring.
+
+- **Included:** custom belongings and containers, preparation and return checks, container assignments,
+  packed-bag state, conditions, plans, and the facility template.
+- **Excluded:** diary entries, photos, the person-name field, free-form personal memos, and notification
+  preferences. Existing destination values outside the backup remain unchanged.
+- **Replacement, not automatic sync:** a successful restore replaces the preparation covered by the file.
+  Export the current preparation first if you may want to return to it. Cancellation leaves it unchanged.
+  The existing list-sharing flow does not include check states; the backup does.
+- **File limits and handling:** CareReady version 1 JSON, up to 2 MB. Files can contain sensitive item names,
+  plans, and facility details. Keep them appropriately; clearing browser data does not delete exported copies.
+
+Restore checks the confirmation against current stored values and writes them in one IndexedDB transaction.
+The localStorage fallback supports export but refuses multi-key restore. The item-add dialog supports
+Escape cancellation, and service-worker cache cleanup is scoped to CareReady caches.
+
+[Development and test instructions](docs/DEVELOPMENT.md) describe the storage behavior and browser checks.
+Automated tests do not establish real-world usability or clinical outcomes.
 
 ---
 
