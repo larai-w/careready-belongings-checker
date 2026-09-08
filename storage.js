@@ -71,6 +71,7 @@ function idbPut(key, value) {
         tx.objectStore(STORE).put(value, key);
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error('IndexedDB write aborted'));
     });
 }
 
@@ -80,13 +81,14 @@ function idbDelete(key) {
         tx.objectStore(STORE).delete(key);
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error('IndexedDB delete aborted'));
     });
 }
 
 // localStorage上のデータをIndexedDBへ引き継ぐ:
 // - 旧バージョンのキー(careready_*)
 // - IndexedDBが一時的に使えなかったセッションで書かれたキー(careready_v2_*)
-function migrateFromLocalStorage() {
+async function migrateFromLocalStorage() {
     const pairs = Object.entries(LEGACY_KEYS);
     for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
@@ -98,14 +100,17 @@ function migrateFromLocalStorage() {
         const raw = localStorage.getItem(srcKey);
         if (raw === null) continue;
         try {
-            if (cache[newKey] === undefined) {
-                const parsed = JSON.parse(raw);
+            const parsed = JSON.parse(raw);
+            if (cache[newKey] === undefined || JSON.stringify(cache[newKey]) === JSON.stringify(parsed)) {
                 cache[newKey] = parsed;
-                if (db) idbPut(newKey, parsed).catch(() => {});
+                // 元データを消す前に、書き込みトランザクションの完了を待つ。
+                if (db) {
+                    await idbPut(newKey, parsed);
+                    localStorage.removeItem(srcKey);
+                }
             }
-        } catch { /* 壊れたデータは捨てる */ }
-        // IndexedDBが使えている時だけ移行元を消す(フォールバック動作中は残す)
-        if (db) localStorage.removeItem(srcKey);
+            // 保存先と内容が違う場合は、自動で選び直さず移行元も残す。
+        } catch { /* 読み取り・保存失敗時も移行元を残し、次回起動で再試行する */ }
     }
 }
 
@@ -126,7 +131,7 @@ export async function initStorage() {
             }
         }
     }
-    migrateFromLocalStorage();
+    await migrateFromLocalStorage();
 }
 
 export function getState(key, fallback) {
@@ -134,17 +139,19 @@ export function getState(key, fallback) {
 }
 
 export function setState(key, value) {
+    if (restoreBusy) throw new Error('復元中です。操作をお待ちください。');
     cache[key] = value;
     // 最終更新日時を記録(印刷モード等で使用)
     cache._lastUpdatedAt = new Date().toISOString();
     if (db) {
-        idbPut(key, value).catch((e) => console.error('保存に失敗:', e));
-        idbPut('_lastUpdatedAt', cache._lastUpdatedAt).catch(() => {});
+        trackWrite(idbPut(key, value));
+        trackWrite(idbPut('_lastUpdatedAt', cache._lastUpdatedAt));
     } else {
         try {
             localStorage.setItem('careready_v2_' + key, JSON.stringify(value));
             localStorage.setItem('careready_v2__lastUpdatedAt', JSON.stringify(cache._lastUpdatedAt));
         } catch (e) {
+            writeFault = true;
             console.error('保存に失敗:', e);
         }
     }
@@ -156,9 +163,10 @@ export function getLastUpdatedAt() {
 }
 
 export function removeState(key) {
+    if (restoreBusy) throw new Error('復元中です。操作をお待ちください。');
     delete cache[key];
     if (db) {
-        idbDelete(key).catch(() => {});
+        trackWrite(idbDelete(key));
     } else {
         localStorage.removeItem('careready_v2_' + key);
     }
@@ -183,4 +191,63 @@ export function writeTextScale(value) {
     } catch (e) {
         /* noop */
     }
+}
+
+// Backup reads durable values, not an optimistic in-memory cache.
+const pendingWrites = new Set();
+let writeFault = false;
+let restoreBusy = false;
+function trackWrite(promise) {
+    const tracked = promise.catch((error) => { writeFault = true; console.error('保存に失敗:', error); });
+    pendingWrites.add(tracked);
+    tracked.finally(() => pendingWrites.delete(tracked));
+}
+async function waitForWrites() {
+    await Promise.all([...pendingWrites]);
+    if (writeFault) throw new Error('保存に失敗した操作があります。画面の内容を確認してから再読み込みしてください。');
+}
+export async function readBackupState(keys) {
+    await waitForWrites();
+    let values;
+    if (db) values = await idbGetAll(db);
+    else {
+        values = {};
+        for (const key of keys) {
+            const raw = localStorage.getItem('careready_v2_' + key);
+            if (raw !== null) values[key] = JSON.parse(raw);
+        }
+    }
+    return Object.fromEntries(keys.filter(k => values[k] !== undefined).map(k => [k, values[k]]));
+}
+export async function restoreBackupState(data, expected) {
+    await waitForWrites();
+    if (!db) throw new Error('このブラウザでは一括保存を利用できません。別のブラウザで復元してください。');
+    if (restoreBusy) throw new Error('復元中です。しばらくお待ちください。');
+    const keys = Object.keys(data);
+    restoreBusy = true;
+    try {
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, 'readwrite');
+            const store = tx.objectStore(STORE);
+            let remaining = keys.length;
+            let conflict = false;
+            tx.oncomplete = resolve;
+            tx.onerror = () => reject(new Error('保存できませんでした。元のデータは変更していません。'));
+            tx.onabort = () => reject(new Error(conflict ? '別の画面でデータが変わりました。取り消してファイルを選び直してください。' : '保存できませんでした。元のデータは変更していません。'));
+            for (const key of keys) {
+                const req = store.get(key);
+                req.onsuccess = () => {
+                    if (JSON.stringify(req.result === undefined ? null : req.result) !== JSON.stringify(expected[key] === undefined ? null : expected[key])) conflict = true;
+                    if (--remaining === 0) {
+                        if (conflict) { tx.abort(); return; }
+                        try {
+                            for (const k of keys) store.put(data[k], k);
+                            store.put(new Date().toISOString(), '_lastUpdatedAt');
+                        } catch { tx.abort(); }
+                    }
+                };
+            }
+        });
+        for (const key of keys) cache[key] = structuredClone(data[key]);
+    } finally { restoreBusy = false; }
 }

@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { encodeShareData, decodeShareData, isValidShareData, mergeById } from '../lib/share.js';
+import { encodeShareData, decodeShareData, isValidShareData, mergeById, createShareURL } from '../lib/share.js';
 
 // ---------- encodeShareData / decodeShareData ----------
 
@@ -75,4 +75,21 @@ test('mergeById: idなしアイテムは無視', () => {
     const merged = mergeById([{ id: 'a' }], [{ name: 'no-id' }, { id: 'b' }]);
     assert.equal(merged.length, 2);
     assert.deepEqual(merged.map((i) => i.id), ['a', 'b']);
+});
+test('mergeById: incoming内の重複も1件にし、元配列を変更しない', () => {
+    const existing = [{ id: 'a', name: '元' }];
+    const incoming = [{ id: 'b', name: '最初' }, { id: 'b', name: '重複' }];
+    assert.deepEqual(mergeById(existing, incoming), [existing[0], incoming[0]]);
+    assert.equal(existing.length, 1);
+    assert.equal(incoming.length, 2);
+});
+
+
+test('createShareURL: Base64の+を含む名前もURL経由で復元できる', () => {
+    const data = { customItems: [{ id: 'sample', name: 'ま' }] };
+    assert(encodeShareData(data).includes('+'));
+    const url = new URL(createShareURL('http://localhost/', data));
+    assert.deepEqual(decodeShareData(url.searchParams.get('t')), data);
+    const legacy = new URL('http://localhost/?t=' + encodeShareData(data));
+    assert.deepEqual(decodeShareData(legacy.searchParams.get('t')), data);
 });

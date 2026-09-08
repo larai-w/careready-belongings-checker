@@ -11,6 +11,8 @@ const PRECACHE_URLS = [
     './app.js',
     './lib/ocr-match.js',
     './lib/share.js',
+    './lib/backup.js',
+    './lib/backup-ui.js',
     './lib/checklist.js',
     './storage.js',
     './data.json',
@@ -22,17 +24,37 @@ const PRECACHE_URLS = [
     './icons/apple-touch-icon.png',
 ];
 
+// The first page is not controlled yet, so its CDN request never reaches fetch below.
+// Save the styling runtime during installation as well, for the first offline reload.
+const STYLE_RUNTIME_URL = 'https://cdn.tailwindcss.com';
+async function cacheStyleRuntime(cache) {
+    const previous = await caches.match(STYLE_RUNTIME_URL);
+    if (previous) await cache.put(STYLE_RUNTIME_URL, previous);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try {
+        const response = await fetch(new Request(STYLE_RUNTIME_URL, {
+            mode: 'no-cors', credentials: 'omit', cache: 'reload', signal: controller.signal,
+        }));
+        if (response.ok || response.type === 'opaque') await cache.put(STYLE_RUNTIME_URL, response);
+    } catch {
+        // A CDN outage must not prevent the local application shell from installing.
+        // An existing runtime is retained if available.
+    } finally { clearTimeout(timer); }
+}
+
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
-    );
-    self.skipWaiting();
+    event.waitUntil((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        await Promise.all([cache.addAll(PRECACHE_URLS), cacheStyleRuntime(cache)]);
+        await self.skipWaiting();
+    })());
 });
 
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) =>
-            Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+            Promise.all(keys.filter((k) => k.startsWith('careready-') && k !== CACHE_NAME).map((k) => caches.delete(k)))
         ).then(() => self.clients.claim())
     );
 });

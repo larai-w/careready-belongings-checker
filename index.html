@@ -265,6 +265,22 @@
         #print-area {
             display: none;
         }
+        /* Backup remains readable independently of CDN utility styles. */
+        #backup { background:#f7fcfa; color:#183b35; border:1px solid #779b8f; border-radius:16px; padding:20px; margin:28px auto; scroll-margin-top:16px; }
+        #backup h2 { font-size:1.25rem; font-weight:700; }
+        #backup p, #backup-dialog p { margin:12px 0; line-height:1.7; }
+        #backup button, #backup-file, #backup-dialog button, .backup-link { min-height:44px; font:inherit; }
+        #backup button { padding:12px 16px; background:#185b4d; color:#fff; border-radius:8px; font-weight:700; margin:12px 0; }
+        #backup button:disabled { opacity:.5; }
+        #backup-file { display:block; max-width:100%; border:1px solid #779b8f; border-radius:8px; padding:8px; margin-top:8px; }
+        #backup label { display:block; font-weight:700; }
+        #backup-status { font-weight:700; }
+        #backup details { margin:12px 0; }
+        #backup summary { cursor:pointer; font-weight:700; padding:8px 0; }
+        #backup-dialog { max-width:min(92vw,36rem); max-height:85vh; overflow:auto; padding:24px; border-radius:16px; background:#fff; color:#183b35; }
+        #backup-dialog::backdrop { background:rgba(0,0,0,.55); }
+        #backup-dialog:focus-visible, #backup :focus-visible, #backup-dialog :focus-visible, .backup-link:focus-visible { outline:3px solid #ae680f; outline-offset:3px; }
+        .backup-link { display:inline-flex; align-items:center; padding:8px 12px; border:1px solid #779b8f; border-radius:8px; background:#f7fcfa; color:#183b35; text-decoration:underline; margin-top:12px; }
     </style>
 </head>
 <body class="p-4 md:p-8 font-sans">
@@ -288,6 +304,8 @@
             </div>
             <p class="text-right text-[11px] text-gray-500 mt-1.5 leading-snug">🔗 / LINE は持ち物リストを家族に送るボタン（チェックや写真は送りません）。</p>
         </div>
+
+        <a class="backup-link" href="#backup">準備データの保存・復元へ</a>
 
         <!-- 予定リマインド(開いた時。予定日が近い特別なおでかけ) -->
         <div id="reminder-banner" class="hidden bg-pink-500/10 border border-pink-300 rounded-2xl px-4 py-3 mb-4 items-center justify-between gap-2">
@@ -522,6 +540,22 @@
             </div>
         </div>
 
+        <section id="backup" aria-labelledby="backup-heading">
+            <h2 id="backup-heading">準備の続きをファイルに残す</h2>
+            <p>機種変更の前や、準備の区切りに。持ち物とチェック、入れ物への割り当てを保存し、あとから戻せます。</p>
+            <details><summary>保存されるもの・されないもの</summary>
+                <p>持ち物、準備・帰宅チェック、入れ物と割り当て、条件、予定、施設テンプレートを保存します。</p>
+                <p>写真・日記・本人の名前・自由メモ・通知設定は含みません。復元先にあるこれらの内容も変わりません。</p>
+                <p>品名や予定、施設テンプレートの名前・連絡先・注意文はファイルに入ります。自分で管理できる場所に保管してください。家族にリストを送る共有リンクとは別の機能です。</p>
+            </details>
+            <button id="backup-export" disabled>1. 今の準備をファイルに保存</button>
+            <label for="backup-file">2. 保存したファイルから戻す</label>
+            <p>ファイルを選ぶと、置き換える内容を確認できます。確認画面で取り消すこともできます。</p>
+            <input id="backup-file" disabled type="file" accept=".json,application/json" aria-describedby="backup-file-help">
+            <p id="backup-file-help">CareReadyのバックアップ（JSON形式・2MBまで）を選んでください。</p>
+            <p id="backup-status" role="status"></p>
+        </section>
+
         <!-- 区切り: 破壊的操作を物理的に分離 -->
         <hr class="border-gray-700 my-8 max-w-xs mx-auto">
 
@@ -639,18 +673,18 @@
     </div>
 
     <!-- アイテム追加モーダル -->
-    <div id="add-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
-        <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm space-y-4" id="add-modal-inner">
-            <h3 class="text-lg font-bold text-teal-300">アイテムを追加</h3>
+    <dialog id="add-modal" aria-labelledby="add-modal-title" class="fixed inset-0 w-full max-w-none h-full max-h-none m-0 border-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm max-h-full overflow-y-auto space-y-4" id="add-modal-inner">
+            <h3 id="add-modal-title" class="text-lg font-bold text-teal-300">持ち物を追加</h3>
 
             <div>
-                <label class="text-xs text-gray-400 block mb-1">アイテム名 <span class="text-red-400">*</span></label>
+                <label for="modal-item-name" class="text-xs text-gray-400 block mb-1">持ち物の名前 <span class="text-red-400">*</span></label>
                 <input id="modal-item-name" type="text" placeholder="例: 耳栓、替えの眼鏡ケース…" maxlength="50"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-teal-500 placeholder-gray-600">
             </div>
 
             <div>
-                <label class="text-xs text-gray-400 block mb-1">カテゴリー</label>
+                <label for="modal-category" class="text-xs text-gray-400 block mb-1">カテゴリー</label>
                 <select id="modal-category"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-teal-500">
                 </select>
@@ -672,9 +706,9 @@
             <div>
                 <label class="text-xs text-gray-400 block mb-1">必要な数量</label>
                 <div class="flex items-center gap-3">
-                    <button id="modal-qty-minus" class="w-8 h-8 rounded-full bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 font-bold text-xl leading-none flex items-center justify-center">−</button>
+                    <button id="modal-qty-minus" aria-label="数量を1減らす" class="w-11 h-11 rounded-full bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 font-bold text-xl leading-none flex items-center justify-center">−</button>
                     <span id="modal-qty-display" class="text-lg font-bold text-gray-200 w-8 text-center">1</span>
-                    <button id="modal-qty-plus" class="w-8 h-8 rounded-full bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 font-bold text-xl leading-none flex items-center justify-center">+</button>
+                    <button id="modal-qty-plus" aria-label="数量を1増やす" class="w-11 h-11 rounded-full bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 font-bold text-xl leading-none flex items-center justify-center">+</button>
                 </div>
             </div>
 
@@ -687,7 +721,7 @@
                 </button>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <!-- おでかけ日記モーダル -->
     <div id="diary-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
@@ -721,5 +755,17 @@
     <div id="print-area"></div>
 
     <script type="module" src="./app.js"></script>
+<dialog id="backup-dialog" aria-labelledby="backup-dialog-title" aria-describedby="backup-replace-note">
+  <h2 id="backup-dialog-title" style="font-size:1.25rem;font-weight:bold">この準備データで置き換えますか？</h2>
+  <p id="backup-date"></p><p id="backup-summary" style="margin:1rem 0"></p><p id="backup-current"></p>
+  <p id="backup-replace-note" style="margin:1rem 0">現在の持ち物・チェック・入れ物・条件・予定・施設テンプレートを置き換えます。元に戻すには、先に現在のバックアップを保存してください。</p>
+  <p>写真・日記・名前・自由メモ・通知設定は復元せず、この端末の内容を維持します。完了後は行き先を選んで続きを確認してください。</p>
+  <p id="backup-error" role="alert" style="color:#9b2020"></p>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem">
+    <button id="backup-cancel" autofocus style="padding:.75rem;border:1px solid;border-radius:.5rem">取り消す</button>
+    <button id="backup-confirm" style="padding:.75rem;border:1px solid;border-radius:.5rem;background:#185b4d;color:white">この内容で復元する</button>
+  </div>
+</dialog>
+
 </body>
 </html>

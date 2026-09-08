@@ -1,3 +1,4 @@
+import { setupBackup } from './lib/backup-ui.js';
 // app.js — CareReady メインロジック
 import { initStorage, getState, setState, removeState, readTextScale, writeTextScale, getLastUpdatedAt } from './storage.js';
 import {
@@ -5,7 +6,7 @@ import {
     isKnownOcrItem as isKnownItemCore,
     guessQuantity,
 } from './lib/ocr-match.js';
-import { encodeShareData, decodeShareData, isValidShareData, mergeById } from './lib/share.js';
+import { createShareURL, decodeShareData, isValidShareData, mergeById } from './lib/share.js';
 import {
     isValidData,
     isConditionActive as isConditionActiveCore,
@@ -303,6 +304,7 @@ function showDataBanner(source) {
 
 async function startApp() {
     await initStorage();
+    setupBackup();
     restoreTheme();
     checkImportParam();
     try {
@@ -936,9 +938,8 @@ function generateShareURL() {
         containerNames: getState('containerNames', {}),
         customContainers: getCustomContainers(),
     };
-    const encoded = encodeShareData(data);
     const base = window.location.origin + window.location.pathname;
-    return `${base}?t=${encoded}`;
+    return createShareURL(base, data);
 }
 
 async function handleShare() {
@@ -1270,10 +1271,12 @@ function openModal(categoryId) {
 
     $('add-modal').classList.remove('hidden');
     $('add-modal').classList.add('flex');
-    setTimeout(() => $('modal-item-name').focus(), 50);
+    $('add-modal').showModal();
+    $('modal-item-name').focus();
 }
 
 function closeModal() {
+    $('add-modal').close();
     $('add-modal').classList.add('hidden');
     $('add-modal').classList.remove('flex');
 }
@@ -2709,6 +2712,7 @@ function updateProgress() {
 // 「分母は出さない」方針に合わせ、そろえた数のみ見せる(バーは相対量)。
 let topProgressVisible = true;
 let readyVisible = false;
+let backupVisible = false;
 function updateStickyProgress(total, done) {
     const el = $('sticky-progress');
     if (!el) return;
@@ -2721,7 +2725,7 @@ function updateStickyProgress(total, done) {
             done = document.querySelectorAll('input[type="checkbox"]:not([disabled]):checked').length;
         }
     }
-    const show = !returnMode && done > 0 && !topProgressVisible && !readyVisible;
+    const show = !returnMode && done > 0 && !topProgressVisible && !readyVisible && !backupVisible;
     el.classList.toggle('hidden', !show);
     if (show) {
         $('sticky-progress-text').textContent = `${done}コ そろえた 🎒`;
@@ -2732,6 +2736,7 @@ function updateStickyProgress(total, done) {
 function initStickyProgress() {
     const target = $('progress-bar-wrap');
     const ready = $('ready-section');
+    const backup = $('backup');
     const sticky = $('sticky-progress');
     if (!target || !sticky) return;
     sticky.addEventListener('click', () => {
@@ -2743,6 +2748,7 @@ function initStickyProgress() {
             for (const e of entries) {
                 if (e.target === target) topProgressVisible = e.isIntersecting;
                 else if (e.target === ready) readyVisible = e.isIntersecting;
+                else if (e.target === backup) backupVisible = e.isIntersecting;
             }
             updateStickyProgress();
         },
@@ -2750,6 +2756,7 @@ function initStickyProgress() {
     );
     io.observe(target);
     if (ready) io.observe(ready);
+    if (backup) io.observe(backup);
 }
 
 // ---------- ちょっとしたご褒美演出 ----------
@@ -3585,7 +3592,10 @@ $('modal-myitem').addEventListener('change', (e) => {
 });
 $('modal-item-name').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') handleModalSave();
-    if (e.key === 'Escape') closeModal();
+});
+$('add-modal').addEventListener('cancel', (e) => {
+    e.preventDefault();
+    closeModal();
 });
 // モーダル外クリックで閉じる
 $('add-modal').addEventListener('click', (e) => {
