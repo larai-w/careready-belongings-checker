@@ -212,7 +212,11 @@ Frontend CI: syntax check + headless Chrome smoke test on every push (GitHub Act
 ```bash
 # Frontend (static, no build step required)
 python3 -m http.server 8000   # serves index.html from repo root
-# or open index.html directly in a browser
+# Serve over HTTP. `file://` cannot register the service worker (sw.js),
+# so offline use and cache updates will silently do nothing.
+
+# Frontend tests (what CI runs)
+npm test                      # node --test tests/*.test.js
 
 # Backend CDK synthesis (no AWS credentials needed)
 cd backend/infra

@@ -26,6 +26,27 @@ Contributions are welcome. Please read `README.md` and `AGENTS.md` first.
 3. Add/adjust tests or checks when possible.
 4. Run validation checks listed below.
 
+## Run it locally
+
+CareReady is a static PWA — there is no build step.
+
+```bash
+python3 -m http.server 8000    # then open http://localhost:8000
+npm test                       # 64 tests, no browser or AWS account needed
+```
+
+⚠️ **Serve it over HTTP. Do not open `index.html` with `file://`.**
+The app registers a service worker (`sw.js`), and service workers are not
+available on `file://`. The registration failure is caught and logged, so the
+page still loads — but offline use and cache updates silently do nothing, and
+you will be debugging the wrong thing.
+
+`npm test` is what CI runs (`node --test tests/*.test.js`). It uses fixtures
+only: **no real care records, no AWS calls.**
+
+Backend (CDK/Lambda) setup is separate — see **Local Development** in
+`README.md`.
+
 ### 3) Required checks (before commit)
 ```bash
 node --check app.js && node --check storage.js && node --check sw.js
