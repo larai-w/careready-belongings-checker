@@ -2,7 +2,7 @@
 
 What user, product, operational, or quality outcome does this change support?
 
-## Traceability
+## Link / Context
 
 - Story / task / experiment:
 - Decision or risk:
@@ -10,17 +10,18 @@ What user, product, operational, or quality outcome does this change support?
 
 ## Scope
 
-- Included:
+- In scope:
 - Deliberately excluded:
 
 ## Verification
 
 - [ ] `node --check app.js && node --check storage.js && node --check sw.js && node --check admin/admin.js`
 - [ ] `python3 -c "import json; json.load(open('data.json'))"`
-- [ ] Backend tests when backend behaviour changes
-- [ ] Headless Chrome smoke test when the family UI changes
-- [ ] Manual evidence recorded for behaviour automation cannot verify
-- [ ] `sw.js` cache version bumped when frontend files change
+- [ ] `python3 scripts/check_public_repo.py --staged`
+- [ ] Backend tests were run when backend behaviour changed
+- [ ] Headless UI checks were run when family UI changed
+- [ ] Manual evidence recorded when automation is insufficient
+- [ ] `sw.js` cache version handling reviewed when frontend files changed
 
 ## Risk and release notes
 
@@ -31,4 +32,4 @@ What user, product, operational, or quality outcome does this change support?
 
 ## Evidence
 
-Screenshots, test output, anonymised pilot notes, or links to relevant documentation:
+Screenshots, test output, anonymised notes, or links to documentation:
