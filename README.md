@@ -13,6 +13,10 @@ browser—no app install, no login required.
 - **Microduck** — **In review** PR: [Fresh camera snapshots through robotctl and console HTTP](https://github.com/pollen-robotics/microduck/pull/241)
 - **stack-chan** — **In review** PR: [Deterministic sample sync for gallery output](https://github.com/stack-chan/stack-chan/pull/702)
 
+### Contributing
+
+Contributions are welcome. See [CONTRIBUTING](./CONTRIBUTING.md).
+
 ---
 
 ## Status & Limitations
