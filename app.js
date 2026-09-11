@@ -2672,16 +2672,7 @@ function renameContainer(containerId) {
 }
 
 function updateProgress() {
-    let total;
-    let done;
-    if (viewMode === 'container' && !returnMode) {
-        // 「箱に詰める」表示はタップ行(input無し)なのでマーカーで数える
-        total = document.querySelectorAll('#checklist-container [data-pack-item]').length;
-        done = document.querySelectorAll('#checklist-container [data-pack-item="checked"]').length;
-    } else {
-        total = document.querySelectorAll('input[type="checkbox"]:not([disabled])').length;
-        done = document.querySelectorAll('input[type="checkbox"]:not([disabled]):checked').length;
-    }
+    const { total, done } = getPreparationProgress();
     // 完了はユーザーが「準備できた!」で宣言する → 分母(ゴール)は出さず「貯まった数」を見せる
     $('progress-text').textContent = done > 0 ? `${done}コ そろえた 🎒` : 'これから準備 🎒';
     $('progress-bar').style.width = total > 0 ? `${(done / total) * 100}%` : '0%';
@@ -2706,6 +2697,20 @@ function updateProgress() {
     }
 
     updateStickyProgress(total, done);
+}
+
+function getPreparationProgress() {
+    let total;
+    let done;
+    if (viewMode === 'container' && !returnMode) {
+        // 「箱に詰める」表示はタップ行(input無し)なのでマーカーで数える
+        total = document.querySelectorAll('#checklist-container [data-pack-item]').length;
+        done = document.querySelectorAll('#checklist-container [data-pack-item="checked"]').length;
+    } else {
+        total = document.querySelectorAll('input[type="checkbox"]:not([disabled])').length;
+        done = document.querySelectorAll('input[type="checkbox"]:not([disabled]):checked').length;
+    }
+    return { total, done };
 }
 
 // 片手用スティッキー進捗: 上の進捗バーが画面外のとき、準備中(returnMode以外・done>0)だけ表示。
@@ -2843,6 +2848,18 @@ function getSealedBoxes() {
 
 // A: ユーザーが「準備できた!」と宣言したとき → 送り出しの演出
 function celebratePrepDone() {
+    const { total, done } = getPreparationProgress();
+    const remaining = Math.max(total - done, 0);
+    if (remaining > 0) {
+        $('ready-confirm-message').textContent = `まだ ${remaining}件、確認していない持ち物があります。`;
+        $('ready-confirm-dialog').showModal();
+        $('ready-confirm-review').focus();
+        return;
+    }
+    finishPrepDone();
+}
+
+function finishPrepDone() {
     launchConfetti(44);
     if (navigator.vibrate) { try { navigator.vibrate([20, 40, 20, 40, 60]); } catch (e) { /* noop */ } }
     showSendOff();
@@ -3507,6 +3524,14 @@ $('mode-category').addEventListener('click', () => switchViewMode('category'));
 $('mode-container').addEventListener('click', () => switchViewMode('container'));
 $('mode-return').addEventListener('click', () => switchReturnMode(!returnMode));
 $('ready-btn').addEventListener('click', celebratePrepDone);
+$('ready-confirm-review').addEventListener('click', () => {
+    $('ready-confirm-dialog').close();
+    $('progress-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('ready-confirm-continue').addEventListener('click', () => {
+    $('ready-confirm-dialog').close();
+    finishPrepDone();
+});
 initStickyProgress();
 $('person-btn').addEventListener('click', handlePersonName);
 $('memo-input').addEventListener('input', saveMemo);

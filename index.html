@@ -484,6 +484,18 @@
             </button>
         </div>
 
+        <dialog id="ready-confirm-dialog" aria-labelledby="ready-confirm-title" class="w-[min(92vw,28rem)] rounded-3xl border border-violet-200 bg-white p-0 text-gray-800 shadow-2xl backdrop:bg-slate-900/60">
+            <div class="p-6">
+                <h2 id="ready-confirm-title" class="text-lg font-bold">まだ確認していない持ち物があります</h2>
+                <p id="ready-confirm-message" class="mt-3 text-sm leading-6 text-gray-600"></p>
+                <p class="mt-2 text-xs leading-5 text-gray-500">今回は不要な物があっても大丈夫です。準備を終えるか、残りを見直すかを選べます。</p>
+                <div class="mt-5 flex flex-col gap-2">
+                    <button id="ready-confirm-review" type="button" class="min-h-11 rounded-xl border border-teal-600 bg-white px-4 py-3 text-sm font-bold text-teal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">残りを確認する</button>
+                    <button id="ready-confirm-continue" type="button" class="min-h-11 rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">このまま準備を終える</button>
+                </div>
+            </div>
+        </dialog>
+
         <!-- 片手用: スクロールで上の進捗が隠れたら、親指ゾーンに進捗と「準備できた」への近道を出す -->
         <button id="sticky-progress" type="button"
             class="hidden fixed left-1/2 -translate-x-1/2 bottom-4 z-40 w-[min(92%,420px)] flex items-center gap-3 bg-gray-900/95 backdrop-blur border border-teal-500/40 rounded-full pl-4 pr-4 py-2.5 shadow-2xl active:scale-[0.98] transition-transform"

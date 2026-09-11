@@ -34,6 +34,11 @@ const server = transport.createServer(serverOptions, (req,res) => {
   const page=await context.newPage();
   await page.goto(base+'/index.html');
   await page.getByRole('button',{name:'はじめる',exact:true}).click();
+  // 残りがある状態で準備完了を選ぶと、強制せず確認へ戻れる。
+  await page.locator('#ready-btn').click();
+  assert(await page.locator('#ready-confirm-dialog').evaluate(el=>el.open),'Remaining items must open the completion confirmation');
+  await page.locator('#ready-confirm-review').click();
+  assert(await page.locator('#ready-confirm-dialog').evaluate(el=>!el.open),'Review must close the completion confirmation');
   await page.locator('#location-tabs button').filter({hasText:'デイサービス'}).click();
   await page.locator('#mode-category').click();
   const add=page.getByRole('button',{name:'＋ 追加',exact:true}).first();
