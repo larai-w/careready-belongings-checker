@@ -13,6 +13,13 @@ browser—no app install, no login required.
 - **Microduck** — **In review** PR: [Fresh camera snapshots through robotctl and console HTTP](https://github.com/pollen-robotics/microduck/pull/241)
 - **stack-chan** — **In review** PR: [Deterministic sample sync for gallery output](https://github.com/stack-chan/stack-chan/pull/702)
 
+### Contributing
+
+Contributions are welcome. See [CONTRIBUTING](./CONTRIBUTING.md).
+
+- Quick start for first contributions: open an issue with the [Good first issue](https://github.com/larai-w/careready-belongings-checker/issues/new/choose) template.
+- For code changes, open a pull request from [Compare changes](https://github.com/larai-w/careready-belongings-checker/compare).
+
 ---
 
 ## Status & Limitations
@@ -205,7 +212,11 @@ Frontend CI: syntax check + headless Chrome smoke test on every push (GitHub Act
 ```bash
 # Frontend (static, no build step required)
 python3 -m http.server 8000   # serves index.html from repo root
-# or open index.html directly in a browser
+# Serve over HTTP. `file://` cannot register the service worker (sw.js),
+# so offline use and cache updates will silently do nothing.
+
+# Frontend tests (what CI runs)
+npm test                      # node --test tests/*.test.js
 
 # Backend CDK synthesis (no AWS credentials needed)
 cd backend/infra

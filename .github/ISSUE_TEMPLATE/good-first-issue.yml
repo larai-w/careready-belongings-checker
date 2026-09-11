@@ -1,0 +1,34 @@
+name: Good first issue
+description: Small, safe tasks suitable for first-time contributors.
+title: "[Good first] "
+labels:
+  - good first issue
+  - help wanted
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This form is intended for low-risk contribution starters.
+        Keep details limited to public-safe copy, no facility-identifying data.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Task summary
+      description: What change is needed and what benefit it brings
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ] Scope is narrow and reproducible
+        - [ ] Tests or checks are updated
+        - [ ] PR description contains what changed and validation commands
+    validations:
+      required: true
+  - type: input
+    id: estimated_effort
+    attributes:
+      label: Estimated effort
+      placeholder: 30m / 1h / 2h
