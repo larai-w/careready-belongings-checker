@@ -1,15 +1,17 @@
-# S3 + CloudFront への手動デプロイ (veai.jp/ready/)
+# Manual deploy to S3 + CloudFront (veai.jp/ready/)
 #
-# 通常の main push デプロイは ci.yml の `deploy` job(needs: check)が担う。
-# このワークフローは workflow_dispatch 専用 — CI を通さず手動で本番へ出す緊急/例外用。
-# デプロイ手順本体は deploy-steps.yml (reusable) に集約。CACHE_NAME 自動バンプ付き。
+# The normal push-to-main deploy is the `deploy` job in ci.yml (needs: check).
+# This workflow is workflow_dispatch only: for an emergency or an exception where
+# something goes to production by hand without CI.
+# The deploy steps live in deploy-steps.yml (reusable), including the automatic
+# CACHE_NAME bump.
 #
-# 有効化するにはリポジトリに以下を設定する:
-#   Secrets:   AWS_DEPLOY_ROLE_ARN (OIDC ロールの ARN)
-#   Variables: S3_BUCKET (例: veai-jp-frontend)
-#              S3_PREFIX (省略時: ready)
-#              AWS_REGION (省略時: ap-northeast-1)
-#              CLOUDFRONT_DISTRIBUTION_ID (設定時のみキャッシュ無効化を実行)
+# To enable it, configure the repository with:
+#   Secrets:   AWS_DEPLOY_ROLE_ARN (ARN of the OIDC role)
+#   Variables: S3_BUCKET (e.g. veai-jp-frontend)
+#              S3_PREFIX (default: ready)
+#              AWS_REGION (default: ap-northeast-1)
+#              CLOUDFRONT_DISTRIBUTION_ID (invalidation runs only when set)
 name: Deploy (manual)
 
 on:
