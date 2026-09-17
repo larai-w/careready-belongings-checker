@@ -1,13 +1,14 @@
-# S3 + CloudFront デプロイの reusable workflow。
-# ci.yml の deploy job と deploy.yml (手動) の両方から呼び出される。
+# Reusable workflow for the S3 + CloudFront deploy.
+# Called both from the deploy job in ci.yml and from deploy.yml (manual).
 #
-# CACHE_NAME 自動バンプ: デプロイ時に sw.js の CACHE_NAME を git short hash で
-# 上書きする。これにより手動バンプ漏れによるキャッシュ staleness を根絶する。
-# ローカル開発時は sw.js の静的 CACHE_NAME をそのまま使う。
+# Automatic CACHE_NAME bump: on deploy, CACHE_NAME in sw.js is overwritten with
+# the git short hash. That removes stale caches caused by forgetting to bump it
+# by hand. Local development keeps the static CACHE_NAME in sw.js as it is.
 #
-# 必要な Secrets: AWS_DEPLOY_ROLE_ARN (OIDC ロールの ARN)
-# 必要な Variables: S3_BUCKET, S3_PREFIX(省略時 ready), AWS_REGION(省略時 ap-northeast-1),
-#                   CLOUDFRONT_DISTRIBUTION_ID(設定時のみ無効化)
+# Required secrets: AWS_DEPLOY_ROLE_ARN (ARN of the OIDC role)
+# Required variables: S3_BUCKET, S3_PREFIX (default ready),
+#                   AWS_REGION (default ap-northeast-1),
+#                   CLOUDFRONT_DISTRIBUTION_ID (invalidation only when set)
 name: Deploy Steps (reusable)
 
 on:
@@ -23,7 +24,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # OIDC でロールを引き受けるために必要。長期キーは使わない。
+    # Needed to assume the role via OIDC. No long-lived keys.
     permissions:
       id-token: write
       contents: read
@@ -44,13 +45,15 @@ jobs:
         if: steps.creds.outputs.configured == 'true'
         uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
         with:
-          # 長期アクセスキーから OIDC へ移行（2026-08-17）。
-          # 権限は veai-careready-frontend/ready/* と veai.jp の無効化に限定。
-          # 同バケットを gutpacer 等と共有しているため、prefix を絞っている。
+          # Moved from a long-lived access key to OIDC (2026-08-17). Permissions
+          # are limited to veai-careready-frontend/ready/* plus CloudFront
+          # invalidation for veai.jp. The bucket is shared with gutpacer and
+          # others, which is why the prefix is kept narrow.
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
 
-      # D4: CACHE_NAME 自動バンプ — git short hash を注入して手動バンプ漏れを根絶
+      # D4: automatic CACHE_NAME bump - inject the git short hash so a forgotten
+      # manual bump cannot leave a stale cache behind
       - name: Inject CACHE_NAME from git hash
         if: steps.creds.outputs.configured == 'true'
         run: |
@@ -73,11 +76,13 @@ jobs:
         run: |
           PREFIX="${{ vars.S3_PREFIX || 'ready' }}"
           BUCKET="${{ vars.S3_BUCKET }}"
-          # 画像アイコンだけ長期キャッシュ(内容更新時はファイル追加/CACHE_NAMEで対応)
+          # Long cache for image icons only. When their content changes, add a new
+          # file or rely on CACHE_NAME.
           aws s3 sync dist/icons/ "s3://${BUCKET}/${PREFIX}/icons/" \
             --cache-control "public,max-age=86400"
-          # アプリ本体(html/js/json/manifest/sw/admin)は no-cache で常に最新を配信
-          # (max-age を付けると SW 更新時にエッジ/ブラウザが古い app.js/data.json を掴む)
+          # The app itself (html, js, json, manifest, sw, admin) is served no-cache
+          # so it is always current. With a max-age, an edge or a browser holds on
+          # to an old app.js or data.json when the service worker updates.
           aws s3 sync dist/ "s3://${BUCKET}/${PREFIX}/" \
             --delete \
             --exclude "icons/*" \
