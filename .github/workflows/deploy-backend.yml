@@ -55,7 +55,7 @@ jobs:
       - name: Install CDK deps
         if: steps.creds.outputs.configured == 'true'
         run: pip install -r backend/infra/requirements.txt
-      - uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         if: steps.creds.outputs.configured == 'true'
         with:
           # Moved from a long-lived access key to OIDC (2026-08-17). This role has
@@ -101,7 +101,7 @@ jobs:
           node-version: '20'
       - name: Install CDK deps
         run: pip install -r backend/infra/requirements.txt
-      - uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           # Moved from a long-lived access key to OIDC (2026-08-17). This role has
           # no direct permissions on AWS resources; all it can do is assume the cdk
