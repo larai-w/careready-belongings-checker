@@ -28,11 +28,15 @@ Contributions are welcome. Please read `README.md` and `AGENTS.md` first.
 
 ## Run it locally
 
-CareReady is a static PWA — there is no build step.
+CareReady is a static PWA — there is no build step. Start with the
+[local development guide](README.md#local-development). `API_BASE` still points to
+a deployed API; localhost alone does not isolate OCR, template redemption,
+notifications, feedback or staff operations. Use synthetic inputs and an isolated
+backend for those paths.
 
 ```bash
-python3 -m http.server 8000    # then open http://localhost:8000
-npm test                       # 64 tests, no browser or AWS account needed
+python3 -m http.server 8000 --bind 127.0.0.1  # open http://localhost:8000/
+npm test                       # existing frontend logic checks
 ```
 
 ⚠️ **Serve it over HTTP. Do not open `index.html` with `file://`.**
