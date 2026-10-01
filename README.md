@@ -1,9 +1,12 @@
-# CareReady — Dynamic Belongings Checklist for Care Facility Transfers
+# 🧳 CareReady — Dynamic Belongings Checklist for Care Facility Transfers
+
+[日本語](README.ja.md) · [Local development](#local-development) · [App](https://veai.jp/ready/)
 
 A serverless PWA that helps family caregivers prepare and verify personal belongings when an
 older relative moves between care settings (hospital admission, short stay, day service, facility admission).
 Facility staff publish a template via a 6-character share code; families redeem it on any
-browser—no app install, no login required.
+browser—no app install, no family login required. The user interface is Japanese.
+The core checklist works with bundled data; facility-code redemption and image reading are separate network-backed features.
 
 **Status:** Public web MVP · [https://veai.jp/ready/](https://veai.jp/ready/)
 
@@ -29,7 +32,7 @@ Contributions are welcome. See [CONTRIBUTING](./CONTRIBUTING.md).
 | Released | Family-facing PWA checklist with IndexedDB persistence, facility template redeem via share code, return-check mode, preparation JSON backup/restore, and CI/CD to S3/CloudFront |
 | Working | Backend CRUD API (Lambda + DynamoDB) with Cognito JWT auth for staff, deployed to `ap-northeast-1` |
 | In progress | Facility admin portal (`/ready/admin/`) — template editor and QR poster generation |
-| Future | Multi-facility onboarding flow, accessibility improvements, native app packaging |
+| Scope boundary | Facility onboarding and admin availability must be assessed separately from the public family checklist |
 
 The family-facing web MVP is public and usable. Facility onboarding and admin workflows remain
 in development. CareReady is not a medical device and does not make clinical recommendations.
@@ -187,73 +190,117 @@ Validation limits: name ≤ 100 chars, items ≤ 200 entries, item name ≤ 100 
 
 ---
 
-## Testing
+## Testing and engineering evidence
 
-Backend: **pytest + moto** (mocked DynamoDB). 9 test cases covering:
+The existing checks cover distinct layers. Their presence does not establish live service health or human usability.
 
-- `POST /v1/templates/redeem` — happy path and 404
-- Facility template CRUD round-trip (create → get → update → delete → 404)
-- Input validation (empty name, >200 items, item name >100 chars)
-- `facilityId` fallback to Cognito `sub` when `custom:facilityId` is absent
+| Concern | Source / checks |
+| --- | --- |
+| Checklist filtering and progress | [Checklist logic](lib/checklist.js), [tests](tests/checklist.test.js) |
+| Sharing without check states | [Share contract](lib/share.js), [tests](tests/share.test.js) |
+| Preparation backup boundaries | [Backup format](lib/backup.js), [tests](tests/backup.test.js) |
+| Atomic restore and storage fallback | [Storage](storage.js), [browser checks](tests/backup.browser.cjs) |
+| Offline update and cache isolation | [Service worker](sw.js), [browser checks](tests/backup-offline.browser.cjs) |
+| OCR candidate matching | [Matching logic](lib/ocr-match.js), [tests](tests/ocr-match.test.js) |
+| Backend request handling | [Python handler](backend/src/handler.py), [pytest checks](backend/tests/test_handler.py) |
+
+Frontend checks use Node's built-in test runner:
 
 ```bash
-# Run backend tests
-python -m venv backend/.venv && source backend/.venv/bin/activate
-pip install --prefer-binary aws-cdk-lib constructs pytest moto boto3
-python -m pytest backend/tests/ -q
+npm test
 ```
 
-Frontend CI: syntax check + headless Chrome smoke test on every push (GitHub Actions).
+No frontend dependency installation or build step is required. Browser scenarios require a separately supplied Playwright installation; see [development instructions](docs/DEVELOPMENT.md). Do not infer that all browser scenarios run in CI: [the workflow](.github/workflows/ci.yml) specifies the actual syntax, unit, backend, contract and headless-browser jobs.
 
----
+Backend test dependencies are pinned separately:
+
+```bash
+python3 -m venv backend/.venv
+backend/.venv/bin/python -m pip install -r backend/requirements-test.lock.txt
+backend/.venv/bin/python -m pytest backend/tests/ -q
+```
+
+These are instructions for running the existing checks, not a report of their latest results.
 
 ## Local Development
 
-```bash
-# Frontend (static, no build step required)
-python3 -m http.server 8000   # serves index.html from repo root
-# Serve over HTTP. `file://` cannot register the service worker (sw.js),
-# so offline use and cache updates will silently do nothing.
-
-# Frontend tests (what CI runs)
-npm test                      # node --test tests/*.test.js
-
-# Backend CDK synthesis (no AWS credentials needed)
-cd backend/infra
-source ../.venv/bin/activate
-cdk synth --quiet
-```
-
-Set `DYNAMODB_ENDPOINT` to a local DynamoDB instance to run Lambda locally.
-CORS allows `http://localhost:8000` in addition to `https://veai.jp`.
-
----
-
-## Deployment
+Requirements for the frontend: Git and Python 3. Use Node.js for JavaScript checks. The frontend is vanilla JavaScript with ES modules; no bundler is needed.
 
 ```bash
-cd backend/infra
-source ../.venv/bin/activate
-
-# First time only
-cdk bootstrap aws://<ACCOUNT_ID>/ap-northeast-1
-
-cdk deploy
+git clone https://github.com/larai-w/careready-belongings-checker.git
+cd careready-belongings-checker
+python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-CDK outputs: `ApiUrl`, `UserPoolId`, `UserPoolClientId`, `TableName`.
+Open **http://localhost:8000/**. Stop with `Ctrl+C`. Use HTTP rather than `file://` so ES modules and service-worker behavior can work normally. Offline availability requires a successful initial load/cache and does not cover every network-backed feature.
 
-Frontend: GitHub Actions deploys to S3 on push to `main` and invalidates CloudFront.
+### Explore the core flow
+
+In a separate browser profile, use invented belongings:
+
+1. Select a care setting and check an item.
+2. Add an item or container, adjust its quantity and assign it to a bag.
+3. Switch to the return-check view and inspect what remains to bring home.
+4. Export a preparation JSON file, then inspect the restore confirmation before choosing whether to replace the covered preparation state.
+5. Preview printing to see the visible list, quantities and container labels.
+
+Do not use real names or facility information for development. These steps are an exploration guide, not new usability evidence.
+
+### Local versus network-backed features
+
+| Path | Data boundary |
+| --- | --- |
+| Core checklist | `API_URL` is empty by default, so definitions come from bundled `data.json`; device state is stored through `storage.js` |
+| JSON backup and print | Generated locally; exported files can contain sensitive belongings or plans |
+| List sharing | Different from backup: the share contract does not include preparation check states |
+| Facility share code | Calls the backend to retrieve a template; staff CRUD uses Cognito JWT authentication |
+| Image reading | Sends a selected, resized image to the OCR API; review extracted candidates before adding them |
+| Optional notifications / feedback | Network requests; not part of an entirely offline path |
+
+`API_BASE` in `app.js` points to a deployed backend, independently of `API_URL`. A localhost page is therefore **not automatically isolated from production**. Keep local exploration to core checklist/backup/print, or explicitly configure an isolated backend before exercising share-code redemption, OCR, notifications, feedback or staff administration. Do not submit test records or images to the live service.
+
+The page loads Tailwind from a CDN. A first load with no network is not a guaranteed offline installation.
+
+### Backend development and synthesis
+
+Backend setup is separate from the static frontend. Inspect [the handler](backend/src/handler.py), [CDK stack](backend/infra/stacks/careready_backend_stack.py), and [backend documentation](backend/README.md).
+
+For template synthesis, install the pinned CDK Python dependencies in the virtual environment above:
+
+```bash
+backend/.venv/bin/python -m pip install -r backend/infra/requirements.lock.txt
+source backend/.venv/bin/activate
+cd backend/infra
+npx --yes aws-cdk@2 synth --quiet
+```
+
+The `npx` command may download the CLI. Synthesis writes CloudFormation templates; it is not deployment. A local DynamoDB endpoint alone does not supply an HTTP server, staff authentication or an isolated OCR provider.
+
+## Deployment boundary
+
+On a push to `main`, [CI](.github/workflows/ci.yml) runs its `check` job; a successful result then invokes [the reusable deployment workflow](.github/workflows/deploy-steps.yml). It versions the service-worker cache and publishes the frontend to S3/CloudFront using GitHub OIDC. Manual frontend deployment is also available.
+
+**Documentation-only changes merged to `main` can therefore deploy the frontend.** Branch publication and PR review are separate from the production merge decision. CDK/backend releases are also separate; see [backend documentation](backend/README.md) and the [backend workflow](.github/workflows/deploy-backend.yml). Do not run bootstrap, deploy or live API examples as part of ordinary README exploration.
+
+## Repository guide
+
+| Location | Purpose |
+| --- | --- |
+| `index.html`, `app.js` | Japanese interface and application flow |
+| `storage.js`, `sw.js` | Persistence and cache/update behavior |
+| `lib/` | Checklist, sharing, OCR matching, backup and export modules |
+| `admin/` | Staff-facing template interface |
+| `backend/` | Python API, AWS CDK and backend checks |
+| `tests/` | Pure logic and browser scenarios |
+| `docs/` | Public technical guides and delivery evidence |
+
+Keep care data, private working notes and credentials outside public issues, PRs and fixtures. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
 ## 日本語
 
-高齢者やケアを受ける方が施設入所・帰宅する際に、家族が使う持ち物チェッカー PWA です。
-施設スタッフが管理ポータルでテンプレートを作り、6 文字のシェアコードを配布すると、
-家族がコードを入力するだけで施設専用リストを取り込めます。IndexedDB でオフライン動作し、
-「返却チェックモード」で未返却品を確認できます。
-バックエンドは AWS CDK で管理する完全サーバーレス構成（Lambda + DynamoDB + Cognito）。
+機能、保存・復元の範囲、開発手順は [日本語README](README.ja.md) にまとめています。
 
 ---
 
