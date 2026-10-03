@@ -5,12 +5,13 @@ name: Dependabot auto-merge
 #       The real gate is branch protection on main. Without it, this is not
 #       automation, it is a free pass.
 #
-# No production deploy happens in this repo.
-#    On push:main, deploy-backend.yml only runs the preview (synth + diff); the
-#    real deploy is workflow_dispatch only, and deploy.yml is dispatch only too.
-#    So the carequest problem - main drifting away from production because a
-#    GITHUB_TOKEN push does not start other workflows - does not apply here.
-#    That assumption breaks the day a real deploy is wired to push:main.
+# A merge to main DOES deploy the frontend.
+#    ci.yml's deploy job runs on push:main (S3 sync + CloudFront invalidation via
+#    deploy-steps.yml). Only the backend is dispatch-only: deploy-backend.yml runs
+#    the preview (synth + diff) on push:main, and the real backend deploy and
+#    deploy.yml are workflow_dispatch only. So an auto-merged dependency update
+#    can reach production for the frontend - keep the gate below strict.
+#    (Whether a GITHUB_TOKEN merge triggers that push run is not verified here.)
 on: pull_request
 
 permissions:
@@ -24,7 +25,7 @@ jobs:
     steps:
       - name: Dependabot metadata
         id: meta
-        uses: dependabot/fetch-metadata@v3
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
       - name: Enable auto-merge for patch/minor
         if: ${{ steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor' }}
         run: gh pr merge --auto --squash "$PR_URL"
