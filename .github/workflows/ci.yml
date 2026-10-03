@@ -58,7 +58,7 @@ jobs:
         run: python3 scripts/validate_workflow_security.py
 
       - name: Audit workflow Action refs
-        run: python3 scripts/audit_action_refs.py
+        run: python3 scripts/audit_action_refs.py --strict
 
       - name: Validate accessibility contracts
         run: python3 scripts/validate_accessibility_contracts.py
