@@ -4,8 +4,9 @@
 
 A serverless PWA that helps family caregivers prepare and verify personal belongings when an
 older relative moves between care settings (hospital admission, short stay, day service, facility admission).
-Facility staff publish a template via a 6-character share code; families redeem it on any
-browser—no app install, no family login required. The user interface is Japanese.
+The public family checklist can redeem a 6-character facility template code in a browser—
+no app install or family login required. Staff-side template publishing and facility onboarding
+are still being validated. The user interface is Japanese.
 The core checklist works with bundled data; facility-code redemption and image reading are separate network-backed features.
 
 **Status:** Public web MVP · [https://veai.jp/ready/](https://veai.jp/ready/)
