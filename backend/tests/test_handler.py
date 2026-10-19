@@ -593,3 +593,53 @@ def test_push_unsubscribe(dynamodb_table):
         make_event("POST", "/v1/push/unsubscribe", body={"endpoint": "https://example.com/ep2"})
     )
     assert resp["statusCode"] == 200
+
+
+# --- 予期しない例外（catch-all の 500）--------------------------------------
+# 握って 500 を返すので Lambda の Errors には数えられない。
+# 印が変わるとメトリクスフィルタが当たらなくなり、全部 500 でも誰も気づけない。
+
+_LEAKY = "boom: secret-ish detail /internal/path パジャマ"
+
+
+def _raise_unexpected(*_args, **_kwargs):
+    raise RuntimeError(_LEAKY)
+
+
+def test_unexpected_error_logs_marker_with_class_only(dynamodb_table, monkeypatch, capsys):
+    handler = dynamodb_table
+    monkeypatch.setattr(handler, "list_templates", _raise_unexpected)
+
+    resp = handler.lambda_handler(
+        make_event("GET", "/v1/facility/templates", facility_id=FAC)
+    )
+
+    assert resp["statusCode"] == 500
+    out = capsys.readouterr().out
+    marker_lines = [line for line in out.splitlines() if "[API UNEXPECTED ERROR]" in line]
+    assert marker_lines == ["[API UNEXPECTED ERROR] reason=RuntimeError"]
+    # 例外の文言は、ログにも出さない
+    assert "boom" not in out
+    assert "パジャマ" not in out
+
+
+def test_unexpected_error_does_not_leak_exception_text(dynamodb_table, monkeypatch):
+    handler = dynamodb_table
+    monkeypatch.setattr(handler, "create_template", _raise_unexpected)
+
+    resp = _create(handler)
+
+    assert resp["statusCode"] == 500
+    assert _body(resp) == {"error": "internal error"}
+    assert "boom" not in resp["body"]
+    assert "secret-ish" not in resp["body"]
+
+
+def test_expected_errors_do_not_log_unexpected_marker(dynamodb_table, capsys):
+    handler = dynamodb_table
+    # ルートが無い（404）・入力が不正（400）は想定どおり。印を出すと誤検知になる。
+    assert handler.lambda_handler(make_event("GET", "/v1/nope"))["statusCode"] == 404
+    assert handler.lambda_handler(
+        make_event("POST", "/v1/push/subscribe", body={"subscription": {}})
+    )["statusCode"] == 400
+    assert "[API UNEXPECTED ERROR]" not in capsys.readouterr().out
