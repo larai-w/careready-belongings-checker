@@ -786,4 +786,9 @@ def lambda_handler(event, context=None):
     except _Unauthorized as e:
         return _error(401, str(e))
     except Exception as e:  # noqa: BLE001 予期しないエラーは500
-        return _error(500, f"internal error: {e}")
+        # 握って 500 を返すので、Lambda の Errors には数えられない。
+        # grep できる印を必ず残す（メトリクスフィルタはこの印に張る）。
+        # 本文・例外の文言は出さない。利用者の入力が混ざりうるため。
+        print(f"[API UNEXPECTED ERROR] reason={type(e).__name__}")
+        # 例外の文言は内部の事情を含むので、利用者には返さない。
+        return _error(500, "internal error")
