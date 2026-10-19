@@ -48,6 +48,12 @@ CDK、フロントエンドの JS(CDN 読み込み)。本番環境・AWS には�
      自動テストが無い。
    - 提案: push_sender にも lock を作って版を固定し、`webpush()` 呼び出しのユニットテスト(モック)を
      足したうえで #119 を取り込む。動作確認は検証用の購読で実際に 1 通送る(人間が実施)。
+   - **2026-10-19 進捗:** `backend/tests/test_push_sender.py` を追加(11件)。送る相手・`data=None`・VAPID の鍵と
+     `sub`・404/410 の購読削除・それ以外の失敗で消さないこと・壊れた行を飛ばすことを、渡す引数そのもので確かめる。
+     送信コードを4通り壊すと、それぞれ1件ずつ失敗することを確認した。あわせて手元で**本物の pywebpush 1.14.1 と
+     2.5.0 に同じ呼び出しをした結果が一致**(HTTP は偽物: 201=成功、410/404/500=`WebPushException` で
+     `response.status_code` が取れる、VAPID 署名あり、本文なし)。→ #119 の取り込みに支障は見当たらない。
+     push_sender の lock と、検証用の購読での実送信(人間)は残り。
 2. **CI を lock ファイルから入れるようにする**
    - `backend-infra-ci.yml` は `requirements.txt` から入れているため、lock が壊れても CI が緑のまま。
      lock から入れる、または `pip install -r requirements.lock.txt && pip check` を足すと今回のような
