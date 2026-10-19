@@ -92,6 +92,11 @@ def _subscribe(table, sk, endpoint):
     return subscription
 
 
+def _lines(capsys, marker):
+    """標準出力（Lambda では CloudWatch Logs）のうち、印で始まる行だけを返す。"""
+    return [line for line in capsys.readouterr().out.splitlines() if line.startswith(marker)]
+
+
 def _remaining_sks(table):
     return sorted(item["SK"] for item in table.scan()["Items"])
 
@@ -102,7 +107,7 @@ def test_sends_payloadless_push_with_vapid_to_every_subscription(push_env):
 
     result = push_env.sender.handler()
 
-    assert result == {"sent": 2, "removed": 0}
+    assert result == {"sent": 2, "removed": 0, "failed": 0, "skipped": 0}
     sent_to = sorted(call["subscription_info"]["endpoint"] for call in push_env.calls)
     assert sent_to == [sub_a["endpoint"], sub_b["endpoint"]]
     for call in push_env.calls:
@@ -131,22 +136,26 @@ def test_gone_subscription_is_deleted(push_env, status):
 
     result = push_env.sender.handler()
 
-    assert result == {"sent": 1, "removed": 1}
+    assert result == {"sent": 1, "removed": 1, "failed": 0, "skipped": 0}
     assert _remaining_sks(push_env.table) == ["ok"]
 
 
 @pytest.mark.parametrize("status", [400, 413, 429, 500])
-def test_other_push_failures_keep_the_subscription(push_env, status):
+def test_other_push_failures_keep_the_subscription(push_env, status, capsys):
     _subscribe(push_env.table, "flaky", "https://push.example/flaky")
     push_env.outcomes["https://push.example/flaky"] = status
 
     result = push_env.sender.handler()
 
-    assert result == {"sent": 0, "removed": 0}
+    assert result == {"sent": 0, "removed": 0, "failed": 1, "skipped": 0}
     assert _remaining_sks(push_env.table) == ["flaky"]
+    # 握った失敗は grep できる印で残す（無いと全件失敗でも Errors は 0 のまま）
+    assert _lines(capsys, "[PUSH SEND FAILED]") == [
+        f"[PUSH SEND FAILED] status={status} reason=FakeWebPushException"
+    ]
 
 
-def test_failure_without_response_keeps_the_subscription(push_env, monkeypatch):
+def test_failure_without_response_keeps_the_subscription(push_env, monkeypatch, capsys):
     # 接続エラーなど response の無い失敗では、購読を消さない
     _subscribe(push_env.table, "flaky", "https://push.example/flaky")
 
@@ -158,23 +167,31 @@ def test_failure_without_response_keeps_the_subscription(push_env, monkeypatch):
 
     result = push_env.sender.handler()
 
-    assert result == {"sent": 0, "removed": 0}
+    assert result == {"sent": 0, "removed": 0, "failed": 1, "skipped": 0}
     assert _remaining_sks(push_env.table) == ["flaky"]
+    assert _lines(capsys, "[PUSH SEND FAILED]") == [
+        "[PUSH SEND FAILED] status=none reason=FakeWebPushException"
+    ]
 
 
-def test_broken_subscription_record_is_skipped_without_blocking_others(push_env):
+def test_broken_subscription_record_is_skipped_without_blocking_others(push_env, capsys):
     push_env.table.put_item(Item={"PK": "PUSHSUB", "SK": "broken", "subscription": "{not json"})
     push_env.table.put_item(Item={"PK": "PUSHSUB", "SK": "missing"})
     _subscribe(push_env.table, "ok", "https://push.example/ok")
 
     result = push_env.sender.handler()
 
-    assert result == {"sent": 1, "removed": 0}
+    assert result == {"sent": 1, "removed": 0, "failed": 0, "skipped": 2}
     assert [call["subscription_info"]["endpoint"] for call in push_env.calls] == [
         "https://push.example/ok"
     ]
     # 壊れた行は送らないが、勝手に消しもしない
     assert _remaining_sks(push_env.table) == ["broken", "missing", "ok"]
+    # 飛ばした行も印を残す（json の失敗と、subscription 列が無い行）
+    assert sorted(_lines(capsys, "[PUSH SUB SKIPPED]")) == [
+        "[PUSH SUB SKIPPED] reason=JSONDecodeError",
+        "[PUSH SUB SKIPPED] reason=KeyError",
+    ]
 
 
 def test_only_push_subscriptions_are_read(push_env):
@@ -189,7 +206,58 @@ def test_only_push_subscriptions_are_read(push_env):
 
     result = push_env.sender.handler()
 
-    assert result == {"sent": 1, "removed": 0}
+    assert result == {"sent": 1, "removed": 0, "failed": 0, "skipped": 0}
     assert [call["subscription_info"]["endpoint"] for call in push_env.calls] == [
         "https://push.example/ok"
     ]
+
+
+def test_unexpected_error_is_counted_and_marked_without_blocking_others(
+    push_env, monkeypatch, capsys
+):
+    # WebPushException 以外（ライブラリの不具合・鍵の形式など）も、握るなら印を残す
+    _subscribe(push_env.table, "a", "https://push.example/a")
+    _subscribe(push_env.table, "b", "https://push.example/b")
+
+    def raise_for_a(**kwargs):
+        push_env.calls.append(kwargs)
+        if kwargs["subscription_info"]["endpoint"].endswith("/a"):
+            raise ValueError("bad key")
+
+    monkeypatch.setattr(push_env.sender, "webpush", raise_for_a)
+
+    result = push_env.sender.handler()
+
+    assert result == {"sent": 1, "removed": 0, "failed": 1, "skipped": 0}
+    assert len(push_env.calls) == 2  # 1件の失敗で残りを止めない
+    assert _lines(capsys, "[PUSH SEND FAILED]") == [
+        "[PUSH SEND FAILED] status=none reason=ValueError"
+    ]
+
+
+def test_total_outage_leaves_one_marker_per_subscription_and_a_summary(push_env, capsys):
+    # 全件失敗しても handler は例外を投げない（Errors は 0）。印と件数だけが手がかり
+    for sk in ("a", "b", "c"):
+        _subscribe(push_env.table, sk, f"https://push.example/{sk}")
+        push_env.outcomes[f"https://push.example/{sk}"] = 500
+
+    result = push_env.sender.handler()
+
+    assert result == {"sent": 0, "removed": 0, "failed": 3, "skipped": 0}
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+    assert lines.count("[PUSH SEND FAILED] status=500 reason=FakeWebPushException") == 3
+    assert lines[-1] == "[PUSH SUMMARY] sent=0 removed=0 failed=3 skipped=0"
+    # 印に購読の endpoint や鍵を出さない
+    assert "push.example" not in out
+    assert "p256dh" not in out
+    assert "auth-" not in out
+
+
+def test_successful_run_prints_summary_without_failure_markers(push_env, capsys):
+    _subscribe(push_env.table, "a", "https://push.example/a")
+
+    push_env.sender.handler()
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines == ["[PUSH SUMMARY] sent=1 removed=0 failed=0 skipped=0"]
