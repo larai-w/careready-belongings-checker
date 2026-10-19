@@ -51,7 +51,9 @@ def dynamodb_table():
         yield handler_module
 
 
-def make_event(method, path, body=None, tpl_id=None, facility_id=None, sub=None):
+def make_event(
+    method, path, body=None, tpl_id=None, facility_id=None, sub=None, extra_claims=None
+):
     """HTTP API v2 形式のイベントを組み立てる。"""
     route_path = path
     path_params = {}
@@ -64,6 +66,8 @@ def make_event(method, path, body=None, tpl_id=None, facility_id=None, sub=None)
         claims["custom:facilityId"] = facility_id
     if sub is not None:
         claims["sub"] = sub
+    if extra_claims:
+        claims.update(extra_claims)
 
     event = {
         "routeKey": f"{method} {route_path}",
