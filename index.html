@@ -47,7 +47,10 @@
         body:not(.light) .app-logo { filter: drop-shadow(0 0 10px rgba(45,212,191,0.60)); }
         body:not(.light) .app-title { text-shadow: 0 0 14px rgba(45,212,191,0.55), 0 0 4px rgba(45,212,191,0.45); }
         /* ライトでは薄すぎる色を濃く(可読性) */
-        body.light .text-amber-600 { color: #b45309 !important; }
+        body.light .text-amber-600 { color: #92400e !important; }
+        body.light .text-blue-400 { color: #1d4ed8 !important; }
+        body.light .text-red-400 { color: #b91c1c !important; }
+        body.light .text-\[\#06C755\] { color: #067a37 !important; }
         body.light .text-pink-600 { color: #be185d !important; }
         /* ダークのキャンディカード見出しだけネオンで明るく(白背景モーダル等は対象外) */
         body:not(.light) .candy-card h2 { filter: brightness(1.35) saturate(1.15); }
@@ -71,7 +74,7 @@
         }
         body.light .text-teal-500,
         body.light .text-teal-600 {
-            color: #0d9488 !important;
+            color: #0f766e !important;
         }
         body.light .bg-teal-500,
         body.light .bg-teal-400 {
@@ -79,6 +82,7 @@
         }
         /* ヘッダー・カード背景 */
         body.light .bg-gray-800\/50,
+        body.light .bg-gray-800\/60,
         body.light .bg-slate-800\/60,
         body.light .bg-slate-800\/80 {
             background-color: #ffffff !important;
@@ -265,6 +269,13 @@
         #print-area {
             display: none;
         }
+        /* ===== 使いやすさ: 押す場所は44px以上・キーボードのフォーカス枠を常に表示 ===== */
+        button, summary, select, input[type="text"], input[type="date"] { min-height: 44px; }
+        #add-modal label.flex, a[href^="https://line.me"] { min-height: 44px; }
+        body.light .text-sky-600 { color: #0369a1 !important; }
+        #fc-modal-x, #diary-close { min-width: 44px; min-height: 44px; }
+        :focus-visible { outline: 3px solid #0d9488 !important; outline-offset: 2px; }
+
         /* Backup remains readable independently of CDN utility styles. */
         #backup { background:#f7fcfa; color:#183b35; border:1px solid #779b8f; border-radius:16px; padding:20px; margin:28px auto; scroll-margin-top:16px; }
         #backup h2 { font-size:1.25rem; font-weight:700; }
@@ -291,18 +302,18 @@
             <div class="flex items-center gap-2.5 mb-3">
                 <img src="./icons/careready-logo.svg" alt="CareReady ロゴ" class="app-logo w-12 h-12 rounded-2xl shadow-sm shrink-0">
                 <div class="min-w-0">
-                    <h1 class="app-title text-3xl font-bold text-teal-400 tracking-wide">CareReady</h1>
+                    <h1 class="app-title text-3xl font-bold text-teal-400 tracking-wide [overflow-wrap:anywhere]">CareReady</h1>
                     <p class="text-sm text-gray-400 mt-0.5">持ちものを、わすれずに。</p>
                 </div>
             </div>
-            <div class="flex items-center justify-end gap-2">
-                <button id="textsize-btn" class="w-11 h-11 flex items-center justify-center bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="文字の大きさ" aria-label="文字の大きさ"><span class="font-bold leading-none"><span class="text-base">A</span><span class="text-xs">A</span></span></button>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                <button id="textsize-btn" class="w-11 h-11 flex items-center justify-center bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="文字の大きさ" aria-label="文字の大きさ"><span class="font-bold leading-none"><span class="text-base">A</span><span class="text-sm">A</span></span></button>
                 <button id="theme-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="テーマ切替" aria-label="テーマ切替">🌙</button>
                 <button id="print-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="印刷する" aria-label="印刷する">🖨️</button>
                 <button id="share-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="この持ち物リストを家族に送る" aria-label="この持ち物リストを家族に送る">🔗</button>
-                <button id="line-share-btn" class="h-11 px-3 flex items-center gap-1 text-sm font-bold bg-[#06C755] text-white hover:bg-[#05b34c] rounded-lg transition-colors shrink-0" title="この持ち物リストをLINEで送る" aria-label="この持ち物リストをLINEで送る">💬 LINE</button>
+                <button id="line-share-btn" class="h-11 px-3 flex items-center gap-1 text-sm font-bold bg-[#067a37] text-white hover:bg-[#05682e] rounded-lg transition-colors shrink-0" title="この持ち物リストをLINEで送る" aria-label="この持ち物リストをLINEで送る">💬 LINE</button>
             </div>
-            <p class="text-right text-[11px] text-gray-500 mt-1.5 leading-snug">🔗 / LINE は持ち物リストを家族に送るボタン（チェックや写真は送りません）。</p>
+            <p class="text-right text-sm text-gray-500 mt-1.5 leading-snug">🔗 / LINE は持ち物リストを家族に送るボタン（チェックや写真は送りません）。</p>
         </div>
 
         <a class="backup-link" href="#backup">準備データの保存・復元へ</a>
@@ -311,7 +322,7 @@
         <div id="reminder-banner" class="hidden bg-pink-500/10 border border-pink-300 rounded-2xl px-4 py-3 mb-4 items-center justify-between gap-2">
             <button id="reminder-open" class="flex-1 text-left">
                 <p class="text-sm font-bold text-pink-600" id="reminder-text"></p>
-                <p class="text-xs text-gray-500 mt-0.5">タップして準備をはじめる</p>
+                <p class="text-sm text-gray-500 mt-0.5">タップして準備をはじめる</p>
             </button>
             <button id="reminder-dismiss" class="text-gray-400 hover:text-gray-600 text-xl leading-none px-2 shrink-0" aria-label="閉じる">×</button>
         </div>
@@ -319,7 +330,7 @@
         <!-- お知らせ誘導(予定日つきのおでかけがあるのに通知OFFのとき・任意) -->
         <div id="push-prompt" class="hidden bg-pink-500/10 border border-pink-300 rounded-2xl px-4 py-3 mb-4 items-center justify-between gap-3">
             <p class="text-sm font-bold text-pink-600 flex-1">🔔 予定の日の前に、お知らせを受け取りますか？
-                <span class="block text-xs font-normal text-gray-500 mt-0.5">予定日の数日前にそっとお知らせします（端末内で判定・任意）</span>
+                <span class="block text-sm font-normal text-gray-500 mt-0.5">予定日の数日前にそっとお知らせします（端末内で判定・任意）</span>
             </p>
             <button id="push-prompt-enable" class="shrink-0 text-sm font-bold text-white bg-pink-500 hover:bg-pink-600 rounded-xl px-4 py-2 transition-colors">受け取る</button>
         </div>
@@ -328,28 +339,28 @@
         <div id="import-banner" class="hidden bg-teal-500/10 border border-teal-500/30 rounded-xl px-4 py-3 mb-4 items-start justify-between gap-3">
             <div>
                 <p class="text-sm font-bold text-teal-300">リストを受け取りました</p>
-                <p class="text-xs text-gray-400 mt-0.5">カスタムアイテムを取り込みますか？</p>
+                <p class="text-sm text-gray-400 mt-0.5">カスタムアイテムを取り込みますか？</p>
             </div>
             <div class="flex gap-2 shrink-0 mt-2">
-                <button id="import-cancel" class="text-xs text-gray-500 hover:text-gray-300 px-3 py-1 rounded border border-gray-700 transition-colors">いいえ</button>
-                <button id="import-ok" class="text-xs bg-teal-500 text-slate-900 font-bold px-3 py-1 rounded-lg">取り込む</button>
+                <button id="import-cancel" class="text-sm text-gray-500 hover:text-gray-300 px-3 py-1 rounded border border-gray-700 transition-colors">いいえ</button>
+                <button id="import-ok" class="text-sm bg-teal-500 text-slate-900 font-bold px-3 py-1 rounded-lg">取り込む</button>
             </div>
         </div>
 
         <!-- 施設テンプレ取込中バナー -->
         <div id="facility-banner" class="hidden bg-blue-500/10 border border-blue-500/30 rounded-xl px-4 py-3 mb-4 items-start justify-between gap-3">
             <div class="flex-1">
-                <p class="text-xs text-blue-400 font-bold">🏥 施設テンプレ取込中</p>
+                <p class="text-sm text-blue-400 font-bold">🏥 施設テンプレ取込中</p>
                 <p id="facility-banner-name" class="text-sm text-blue-300 mt-0.5"></p>
                 <a id="facility-banner-phone" class="hidden text-sm text-blue-300 mt-0.5 underline hover:text-blue-200"></a>
-                <p id="facility-banner-address" class="hidden text-xs text-blue-400/80 mt-0.5"></p>
+                <p id="facility-banner-address" class="hidden text-sm text-blue-400/80 mt-0.5"></p>
             </div>
-            <button id="facility-revoke" class="text-xs text-gray-500 hover:text-red-400 px-3 py-1 rounded border border-gray-700 transition-colors shrink-0">解除</button>
+            <button id="facility-revoke" class="text-sm text-gray-500 hover:text-red-400 px-3 py-1 rounded border border-gray-700 transition-colors shrink-0">解除</button>
         </div>
 
         <!-- 施設からのお知らせバナー -->
         <div id="facility-note-banner" class="hidden bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-3 mb-4">
-            <p class="text-xs text-yellow-400 font-bold mb-1">📢 施設からのお知らせ</p>
+            <p class="text-sm text-yellow-400 font-bold mb-1">📢 施設からのお知らせ</p>
             <p id="facility-note-text" class="text-sm text-yellow-200"></p>
         </div>
 
@@ -368,7 +379,7 @@
 
         <!-- ① 行き先をえらぶ (主役) -->
         <div class="mb-4">
-            <p class="text-xs font-bold text-gray-500 mb-2">① きょうは どこへ おでかけ？</p>
+            <p class="text-sm font-bold text-gray-500 mb-2">① きょうは どこへ おでかけ？</p>
             <div id="location-tabs" class="grid grid-cols-2 gap-2">
                 <p class="text-gray-500 text-sm col-span-2 text-center py-2">データを読み込み中...</p>
             </div>
@@ -381,7 +392,7 @@
         <!-- 📝 自由メモ (行き先ごと・ローカル保存)。既定は折りたたみ、記入済みは自動で開く -->
         <div id="memo-section" class="mb-4">
             <button id="memo-toggle" type="button" aria-expanded="false" aria-controls="memo-body"
-                class="w-full flex items-center justify-between text-xs font-bold text-gray-400 hover:text-teal-400 bg-gray-800/60 border border-gray-700 rounded-2xl px-4 py-2.5 transition-colors">
+                class="w-full flex items-center justify-between text-sm font-bold text-gray-400 hover:text-teal-400 bg-gray-800/60 border border-gray-700 rounded-2xl px-4 py-2.5 transition-colors">
                 <span id="memo-toggle-label">📝 自由メモ（任意）</span>
                 <span id="memo-toggle-caret" class="text-gray-500 text-base leading-none">＋</span>
             </button>
@@ -393,8 +404,8 @@
         </div>
 
         <!-- ② 作業のしかた: 箱に詰める(主・左) / 持ち物リスト + 帰宅チェック(小・事後) -->
-        <div class="flex items-stretch gap-2 mb-5">
-            <div id="view-mode-toggle" class="flex-1 flex bg-gray-800 rounded-xl p-1 border border-gray-700">
+        <div class="flex flex-wrap items-stretch gap-2 mb-5">
+            <div id="view-mode-toggle" class="flex-1 basis-[16rem] flex bg-gray-800 rounded-xl p-1 border border-gray-700">
                 <button id="mode-container" class="flex-1 py-2.5 text-sm font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200">
                     🧳 入れ物に詰める
                 </button>
@@ -402,7 +413,7 @@
                     📋 持ち物リスト
                 </button>
             </div>
-            <button id="mode-return" class="shrink-0 text-[11px] font-bold leading-tight bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-3 transition-colors">
+            <button id="mode-return" class="shrink-0 text-sm font-bold leading-tight bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-3 transition-colors">
                 🏠 おかえり<br>チェック
             </button>
         </div>
@@ -414,7 +425,7 @@
                 <h2 id="prep-heading" class="text-lg font-bold text-gray-200">おでかけの準備</h2>
                 <div class="flex items-center gap-3 shrink-0">
                     <span class="text-sm text-gray-400"><span id="progress-text">0/0</span></span>
-                    <button id="reset-checks" class="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/20">
+                    <button id="reset-checks" class="text-sm text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/20">
                         リセット
                     </button>
                 </div>
@@ -426,7 +437,7 @@
         <p id="progress-msg" class="text-sm text-teal-400 mb-4 min-h-[1.25rem]"></p>
 
         <!-- 予定が複数あるときの案内(近い予定からひとつずつ) -->
-        <p id="multi-plan-note" class="hidden text-xs text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 mb-3">📅 予定が複数あります。日にちが近いものから、ひとつずつ準備しましょう。</p>
+        <p id="multi-plan-note" class="hidden text-sm text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 mb-3">📅 予定が複数あります。日にちが近いものから、ひとつずつ準備しましょう。</p>
 
         <!-- 帰宅チェック進捗バー -->
         <div id="return-progress-section" class="hidden">
@@ -446,7 +457,7 @@
                     <input id="diary-photo-input" type="file" accept="image/*" class="hidden">
                     <button id="diary-photo-btn" type="button" class="text-sm font-bold text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 hover:bg-amber-500/20 transition-colors">📸 思い出の写真（任意）</button>
                     <img id="diary-photo-preview" class="hidden w-12 h-12 rounded-lg object-cover border border-amber-200" alt="写真プレビュー">
-                    <button id="diary-photo-clear" type="button" class="hidden text-xs text-gray-400 hover:text-red-400 underline">取り消す</button>
+                    <button id="diary-photo-clear" type="button" class="hidden text-sm text-gray-400 hover:text-red-400 underline">取り消す</button>
                 </div>
                 <button id="tadaima-btn" class="w-full flex items-center justify-center gap-2 text-base font-bold text-white bg-amber-500 hover:bg-amber-600 active:scale-[0.98] rounded-2xl px-4 py-3 shadow-lg transition-all">
                     🏠 ただいま！（きょうを記録）
@@ -462,7 +473,7 @@
         </div>
 
         <!-- 名前記入のやさしい注意(洗濯物・取り違え対策)。準備モードのみ表示 -->
-        <p id="name-note" class="hidden text-xs text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 mb-3">🖊️ 洗濯に出す物や、他の方と間違えやすい物（衣類・タオル・眼鏡・入れ歯など）には、お名前を書いておくと安心です。</p>
+        <p id="name-note" class="hidden text-sm text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 mb-3">🖊️ 洗濯に出す物や、他の方と間違えやすい物（衣類・タオル・眼鏡・入れ歯など）には、お名前を書いておくと安心です。</p>
 
         <!-- チェックリスト本体 -->
         <div id="checklist-container" class="space-y-6"></div>
@@ -473,7 +484,7 @@
                 ✅ 確認できた！
             </button>
             <div class="text-center mt-2">
-                <button id="reset-return-checks" class="text-xs text-gray-400 hover:text-red-400 underline transition-colors">確認をリセット</button>
+                <button id="reset-return-checks" class="text-sm text-gray-400 hover:text-red-400 underline transition-colors">確認をリセット</button>
             </div>
         </div>
 
@@ -488,7 +499,7 @@
             <div class="p-6">
                 <h2 id="ready-confirm-title" class="text-lg font-bold">まだ確認していない持ち物があります</h2>
                 <p id="ready-confirm-message" class="mt-3 text-sm leading-6 text-gray-600"></p>
-                <p class="mt-2 text-xs leading-5 text-gray-500">今回は不要な物があっても大丈夫です。準備を終えるか、残りを見直すかを選べます。</p>
+                <p class="mt-2 text-sm leading-5 text-gray-500">今回は不要な物があっても大丈夫です。準備を終えるか、残りを見直すかを選べます。</p>
                 <div class="mt-5 flex flex-col gap-2">
                     <button id="ready-confirm-review" type="button" class="min-h-11 rounded-xl border border-teal-600 bg-white px-4 py-3 text-sm font-bold text-teal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">残りを確認する</button>
                     <button id="ready-confirm-continue" type="button" class="min-h-11 rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">このまま準備を終える</button>
@@ -504,21 +515,21 @@
             <span class="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
                 <span id="sticky-progress-bar" class="block h-2 w-0 bg-gradient-to-r from-teal-400 to-emerald-400 rounded-full transition-all duration-500"></span>
             </span>
-            <span class="text-xs font-bold text-teal-300/80 whitespace-nowrap">できた ↓</span>
+            <span class="text-sm font-bold text-teal-300/80 whitespace-nowrap">できた ↓</span>
         </button>
 
         <!-- すでにあるリストを取り込む (機能・任意) -->
         <div class="mt-8 mb-2">
             <p class="text-center text-sm font-bold text-gray-400">すでにある持ち物リストを取り込む</p>
-            <p class="text-center text-xs text-gray-500 mb-3">施設や紙のリストがあれば、自動でこのチェックリストに追加できます（任意）</p>
+            <p class="text-center text-sm text-gray-500 mb-3">施設や紙のリストがあれば、自動でこのチェックリストに追加できます（任意）</p>
             <div class="flex flex-col items-stretch gap-2 max-w-xs mx-auto">
                 <button id="fc-open-btn" class="flex flex-col items-center leading-tight text-sm font-bold text-blue-400 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/60 rounded-xl px-5 py-2 transition-colors">
                     <span>🏥 施設のコードで取り込む</span>
-                    <span class="text-[10px] font-normal opacity-70">施設からもらった番号を入れると、指定の持ち物が入ります</span>
+                    <span class="text-sm font-normal">施設からもらった番号を入れると、指定の持ち物が入ります</span>
                 </button>
                 <button id="ocr-open-btn" class="flex flex-col items-center leading-tight text-sm font-bold text-amber-600 bg-amber-500/10 border border-amber-500/40 hover:bg-amber-500/20 hover:border-amber-500/70 rounded-xl px-5 py-2 transition-colors">
                     <span>📷 紙のリストを写真で取り込む</span>
-                    <span class="text-[10px] font-normal opacity-70">紙の持ち物リストを撮ると、項目を自動でチェックリストにします</span>
+                    <span class="text-sm font-normal">紙の持ち物リストを撮ると、項目を自動でチェックリストにします</span>
                 </button>
             </div>
         </div>
@@ -529,13 +540,13 @@
                 <button id="push-toggle" class="w-full flex items-center justify-center gap-2 text-sm font-bold text-pink-600 bg-pink-500/10 border border-pink-300 hover:bg-pink-500/20 rounded-xl px-5 py-2.5 transition-colors">
                     🔔 予定のお知らせを受け取る
                 </button>
-                <p class="text-[10px] text-gray-400 mt-1 text-center">ショートステイ・入所・入院や特別なおでかけなど、予定日を入れると数日前にお知らせします。内容は端末内だけで判定し、サーバには送りません（任意）。</p>
+                <p class="text-sm text-gray-400 mt-1 text-center">ショートステイ・入所・入院や特別なおでかけなど、予定日を入れると数日前にお知らせします。内容は端末内だけで判定し、サーバには送りません（任意）。</p>
             </div>
         </div>
 
         <!-- お知らせ・お問い合わせ (別目的なので分離) -->
         <div class="mt-8 mb-2">
-            <p class="text-center text-xs text-gray-500 mb-2">お知らせ・お問い合わせ</p>
+            <p class="text-center text-sm text-gray-500 mb-2">お知らせ・お問い合わせ</p>
             <div class="flex flex-col items-stretch gap-2 max-w-xs mx-auto">
                 <a href="https://line.me/R/ti/p/@775deusn" target="_blank" rel="noopener"
                    class="flex items-center justify-center gap-2 text-sm font-bold text-[#06C755] bg-[#06C755]/10 border border-[#06C755]/40 hover:bg-[#06C755]/20 hover:border-[#06C755]/70 rounded-xl px-5 py-2.5 transition-colors">
@@ -573,7 +584,7 @@
 
         <!-- 全削除 -->
         <div class="text-center mb-4">
-            <button id="reset-all" class="text-xs text-gray-600 hover:text-red-400 underline transition-colors">
+            <button id="reset-all" class="text-sm text-gray-600 hover:text-red-400 underline transition-colors">
                 すべてのデータを削除(入れ物・カスタムアイテム含む)
             </button>
         </div>
@@ -586,18 +597,18 @@
             <p class="text-sm text-gray-400">氏名・部屋番号・電話番号などが写らないように撮影してください。読み取った候補は確認してから追加します。</p>
 
             <div>
-                <label class="text-xs text-gray-400 block mb-1">写真を選択 <span class="text-red-400">*</span></label>
+                <label for="ocr-file-input" class="text-sm text-gray-400 block mb-1">写真を選択 <span class="text-red-400">*</span></label>
                 <input id="ocr-file-input" type="file" accept="image/*"
                     class="w-full text-sm text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-500 file:px-3 file:py-2 file:text-sm file:font-bold file:text-slate-900 hover:file:bg-amber-400">
             </div>
 
-            <p id="ocr-status" class="text-xs text-gray-400"></p>
-            <p id="ocr-error-msg" class="hidden text-xs text-red-400"></p>
+            <p id="ocr-status" class="text-sm text-gray-400"></p>
+            <p id="ocr-error-msg" class="hidden text-sm text-red-400"></p>
 
             <div id="ocr-results" class="hidden space-y-3">
                 <div class="flex items-center justify-between">
-                    <p class="text-xs font-bold text-amber-300">追加候補</p>
-                    <p id="ocr-count" class="text-xs text-gray-500"></p>
+                    <p class="text-sm font-bold text-amber-300">追加候補</p>
+                    <p id="ocr-count" class="text-sm text-gray-500"></p>
                 </div>
                 <div id="ocr-candidate-list" class="max-h-72 overflow-y-auto space-y-2 pr-1"></div>
             </div>
@@ -619,16 +630,16 @@
             </div>
             <p class="text-sm text-gray-400">施設から案内された6文字のコードを入力してください。</p>
             <div>
-                <label class="text-xs text-gray-400 block mb-1">施設コード <span class="text-red-400">*</span></label>
+                <label class="text-sm text-gray-400 block mb-1">施設コード <span class="text-red-400">*</span></label>
                 <input id="fc-code-input" type="text" placeholder="例: ABC123" maxlength="6"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500 placeholder-gray-600 uppercase tracking-widest text-center text-lg font-bold">
             </div>
             <div id="fc-confirm-area" class="hidden bg-blue-500/10 border border-blue-500/30 rounded-xl px-4 py-3">
-                <p class="text-xs text-blue-400 font-bold">テンプレを確認しました</p>
+                <p class="text-sm text-blue-400 font-bold">テンプレを確認しました</p>
                 <p id="fc-confirm-name" class="text-sm text-blue-200 mt-1"></p>
-                <p id="fc-confirm-facility" class="text-xs text-gray-400 mt-0.5"></p>
+                <p id="fc-confirm-facility" class="text-sm text-gray-400 mt-0.5"></p>
             </div>
-            <p id="fc-error-msg" class="hidden text-xs text-red-400"></p>
+            <p id="fc-error-msg" class="hidden text-sm text-red-400"></p>
             <div class="flex gap-2 pt-2">
                 <button id="fc-modal-cancel" class="flex-1 py-3 rounded-xl text-sm font-bold text-gray-200 bg-gray-700 hover:bg-gray-600 border border-gray-600 transition-colors">キャンセル</button>
                 <button id="fc-modal-submit" class="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 transition-colors">受け取る</button>
@@ -642,19 +653,19 @@
             <h3 class="text-lg font-bold text-teal-700">📝 お問い合わせ・ご意見</h3>
             <p class="text-sm text-gray-600">CareReady運営に届きます。使い方で困ったこと、不具合、よかった点などを送れます。</p>
             <div>
-                <label class="text-xs text-gray-500 block mb-1">メッセージ <span class="text-red-400">*</span></label>
+                <label class="text-sm text-gray-500 block mb-1">メッセージ <span class="text-red-400">*</span></label>
                 <textarea id="feedback-message" rows="4" maxlength="2000" placeholder="例: 箱に詰めるのが楽しいです。◯◯があると助かります。"
                     class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-teal-500 placeholder-gray-400 resize-none"></textarea>
             </div>
             <div>
-                <label class="text-xs text-gray-500 block mb-1">連絡先（任意・返信がほしい場合）</label>
+                <label class="text-sm text-gray-500 block mb-1">連絡先（任意・返信がほしい場合）</label>
                 <input id="feedback-contact" type="text" maxlength="200" placeholder="メール や LINE ID など"
                     class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-teal-500 placeholder-gray-400">
             </div>
-            <p id="feedback-privacy-note" class="text-xs leading-relaxed text-gray-600 bg-amber-50 border-l-4 border-amber-400 px-3 py-2">
+            <p id="feedback-privacy-note" class="text-sm leading-relaxed text-gray-600 bg-amber-50 border-l-4 border-amber-400 px-3 py-2">
                 送信内容、任意の連絡先、接続元IPアドレスをサーバーに保存します。氏名・病歴・施設名・共有コードは入力しないでください。
             </p>
-            <p id="feedback-error" class="hidden text-xs text-red-500"></p>
+            <p id="feedback-error" class="hidden text-sm text-red-500"></p>
             <div class="flex gap-2 pt-1">
                 <button id="feedback-cancel" class="flex-1 py-2.5 rounded-xl text-sm text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">キャンセル</button>
                 <button id="feedback-send" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-teal-500 hover:bg-teal-600 transition-colors">送信</button>
@@ -666,14 +677,14 @@
     <div id="special-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-end sm:items-center justify-center p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm space-y-4">
             <h3 class="text-lg font-bold text-pink-600">🎉 特別なおでかけ</h3>
-            <p class="text-xs text-gray-500 -mt-1">旅行・外食・お祝いごとなど、いつもと違う楽しいおでかけ用の持ち物リストを作れます。日付を入れると「あと◯日」のカウントダウンとお知らせつき。</p>
+            <p class="text-sm text-gray-500 -mt-1">旅行・外食・お祝いごとなど、いつもと違う楽しいおでかけ用の持ち物リストを作れます。日付を入れると「あと◯日」のカウントダウンとお知らせつき。</p>
             <div>
-                <label class="text-xs text-gray-500 block mb-1">おでかけの名前 <span class="text-red-400">*</span></label>
+                <label class="text-sm text-gray-500 block mb-1">おでかけの名前 <span class="text-red-400">*</span></label>
                 <input id="special-name-input" type="text" maxlength="30" placeholder="例: お花見、家族旅行、温泉、外食"
                     class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-pink-500 placeholder-gray-400">
             </div>
             <div>
-                <label class="text-xs text-gray-500 block mb-1">予定日（任意・カウントダウンに使います）</label>
+                <label for="special-date-input" class="text-sm text-gray-500 block mb-1">予定日（任意・カウントダウンに使います）</label>
                 <input id="special-date-input" type="date"
                     class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-pink-500">
             </div>
@@ -690,13 +701,13 @@
             <h3 id="add-modal-title" class="text-lg font-bold text-teal-300">持ち物を追加</h3>
 
             <div>
-                <label for="modal-item-name" class="text-xs text-gray-400 block mb-1">持ち物の名前 <span class="text-red-400">*</span></label>
+                <label for="modal-item-name" class="text-sm text-gray-400 block mb-1">持ち物の名前 <span class="text-red-400">*</span></label>
                 <input id="modal-item-name" type="text" placeholder="例: 耳栓、替えの眼鏡ケース…" maxlength="50"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-teal-500 placeholder-gray-600">
             </div>
 
             <div>
-                <label for="modal-category" class="text-xs text-gray-400 block mb-1">カテゴリー</label>
+                <label for="modal-category" class="text-sm text-gray-400 block mb-1">カテゴリー</label>
                 <select id="modal-category"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-teal-500">
                 </select>
@@ -711,12 +722,12 @@
                 <span>👤 個人の持ち物（目印をつける）</span>
             </label>
             <div id="modal-loc-block">
-                <label class="text-xs text-gray-400 block mb-1">必要な行き先 (複数選択可)</label>
+                <label class="text-sm text-gray-400 block mb-1">必要な行き先 (複数選択可)</label>
                 <div id="modal-locations" class="flex flex-wrap gap-2 mt-1"></div>
             </div>
 
             <div>
-                <label class="text-xs text-gray-400 block mb-1">必要な数量</label>
+                <label class="text-sm text-gray-400 block mb-1">必要な数量</label>
                 <div class="flex items-center gap-3">
                     <button id="modal-qty-minus" aria-label="数量を1減らす" class="w-11 h-11 rounded-full bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 font-bold text-xl leading-none flex items-center justify-center">−</button>
                     <span id="modal-qty-display" class="text-lg font-bold text-gray-200 w-8 text-center">1</span>
@@ -752,7 +763,7 @@
                     <input id="diaryAdd-photo-input" type="file" accept="image/*" class="hidden">
                     <button id="diaryAdd-photo-btn" type="button" class="text-sm font-bold text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 hover:bg-amber-500/20 transition-colors">📸 写真をえらぶ（任意）</button>
                     <img id="diaryAdd-photo-preview" class="hidden w-12 h-12 rounded-lg object-cover border border-amber-200" alt="写真プレビュー">
-                    <button id="diaryAdd-photo-clear" type="button" class="hidden text-xs text-gray-400 hover:text-red-400 underline">取り消す</button>
+                    <button id="diaryAdd-photo-clear" type="button" class="hidden text-sm text-gray-400 hover:text-red-400 underline">取り消す</button>
                 </div>
                 <button id="diaryAdd-save" class="w-full flex items-center justify-center gap-2 text-base font-bold text-white bg-amber-500 hover:bg-amber-600 active:scale-[0.98] rounded-2xl px-4 py-3 shadow-lg transition-all">
                     📔 日記に記録する
