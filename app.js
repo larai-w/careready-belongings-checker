@@ -291,11 +291,11 @@ function showDataBanner(source) {
     if (source === 'cache') {
         banner.textContent = '⚠️ サーバーに接続できないため、前回取得したデータを表示しています';
         banner.className =
-            'text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 mb-4 text-center';
+            'text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 mb-4 text-center';
     } else if (source === 'bundled' && API_URL) {
         banner.textContent = '⚠️ サーバーに接続できないため、標準リストを表示しています';
         banner.className =
-            'text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 mb-4 text-center';
+            'text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 mb-4 text-center';
     } else {
         banner.textContent = '';
         banner.className = 'hidden';
@@ -786,7 +786,7 @@ function renderOcrCandidates(items) {
         bottom.className = 'flex items-center gap-2';
 
         const select = document.createElement('select');
-        select.className = 'flex-1 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-amber-500';
+        select.className = 'flex-1 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 min-h-11 text-sm text-gray-300 focus:outline-none focus:border-amber-500';
         appData.categories.forEach((cat) => {
             const opt = document.createElement('option');
             opt.value = cat.id;
@@ -801,12 +801,12 @@ function renderOcrCandidates(items) {
 
         if (candidate.duplicate) {
             const badge = document.createElement('span');
-            badge.className = 'text-[10px] text-gray-500 border border-gray-700 rounded px-1.5 py-1';
+            badge.className = 'text-xs text-gray-500 border border-gray-700 rounded px-1.5 py-1';
             badge.textContent = '既存候補';
             bottom.appendChild(badge);
         } else if (candidate.confidence > 0) {
             const confidence = document.createElement('span');
-            confidence.className = 'text-[10px] text-gray-500';
+            confidence.className = 'text-xs text-gray-500';
             confidence.textContent = `${Math.round(candidate.confidence)}%`;
             bottom.appendChild(confidence);
         }
@@ -895,7 +895,7 @@ function renderConditionToggles() {
     wrap.classList.remove('hidden');
 
     const condLabel = document.createElement('span');
-    condLabel.className = 'text-xs text-gray-500 shrink-0';
+    condLabel.className = 'text-sm text-gray-500 shrink-0';
     condLabel.textContent = '条件:';
     wrap.appendChild(condLabel);
 
@@ -905,8 +905,8 @@ function renderConditionToggles() {
 
         const btn = document.createElement('button');
         btn.className = isOn
-            ? 'flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-colors bg-teal-500/20 text-teal-300 border-teal-500/40'
-            : 'flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-colors bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-600';
+            ? 'flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 min-h-11 rounded-full border transition-colors bg-teal-500/20 text-teal-300 border-teal-500/40'
+            : 'flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 min-h-11 rounded-full border transition-colors bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-600';
 
         const indicator = document.createElement('span');
         indicator.textContent = isOn ? '●' : '○';
@@ -1045,8 +1045,8 @@ function renderPushToggle() {
     btn.textContent = on ? '🔔 予定のお知らせ：ON中（タップでオフ）' : '🔔 予定のお知らせ：オフ（タップでオンにする）';
     // 任意の設定なので控えめに(細い枠のピル)。主役は「準備できた！」ボタン
     btn.className = on
-        ? 'w-full flex items-center justify-center gap-2 text-xs font-bold text-pink-600 bg-pink-500/10 border border-pink-300 hover:bg-pink-500/20 rounded-full px-4 py-1.5 transition-colors'
-        : 'w-full flex items-center justify-center gap-2 text-xs font-bold text-gray-400 bg-transparent border border-gray-300 hover:text-gray-300 hover:border-gray-400 rounded-full px-4 py-1.5 transition-colors';
+        ? 'w-full flex items-center justify-center gap-2 text-sm font-bold text-pink-600 bg-pink-500/10 border border-pink-300 hover:bg-pink-500/20 rounded-full px-4 py-1.5 min-h-11 transition-colors'
+        : 'w-full flex items-center justify-center gap-2 text-sm font-bold text-gray-400 bg-transparent border border-gray-300 hover:text-gray-300 hover:border-gray-400 rounded-full px-4 py-1.5 min-h-11 transition-colors';
 }
 
 // 予定日つきのおでかけがあるのに通知OFFのとき、上部にそっと誘導(見つけやすさ対策)。
@@ -1257,7 +1257,7 @@ function openModal(categoryId) {
     getAllLocations().forEach((loc) => {
         const label = document.createElement('label');
         label.className =
-            'flex items-center gap-1.5 text-sm text-gray-300 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 cursor-pointer hover:border-teal-500 transition-colors';
+            'flex items-center gap-1.5 text-sm text-gray-300 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 min-h-11 cursor-pointer hover:border-teal-500 transition-colors';
         const cb = document.createElement('input');
         cb.type = 'checkbox';
         cb.value = loc.id;
@@ -1350,8 +1350,8 @@ function switchReturnMode(enabled) {
 
     // 帰宅チェックボタン(小)のON/OFF表示。テキストはHTML側(🏠 帰宅チェック)を維持
     returnBtn.className = returnMode
-        ? 'shrink-0 text-[11px] font-bold leading-tight bg-green-500 text-slate-900 rounded-xl px-3 transition-colors shadow'
-        : 'shrink-0 text-[11px] font-bold leading-tight bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-3 transition-colors';
+        ? 'shrink-0 text-xs font-bold leading-tight bg-green-500 text-slate-900 rounded-xl px-3 transition-colors shadow'
+        : 'shrink-0 text-xs font-bold leading-tight bg-gray-800 border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/60 rounded-xl px-3 transition-colors';
 
     if (returnMode) {
         renderMood();
@@ -1387,9 +1387,9 @@ function switchViewMode(mode) {
     // おかえり中に表示を押したら、おでかけ準備に戻す(1タップで戻れる)
     if (returnMode) switchReturnMode(false);
     const active =
-        'flex-1 py-2.5 text-sm font-bold rounded-lg transition-all bg-teal-500 text-slate-900 shadow';
+        'flex-1 min-h-11 py-2.5 text-sm font-bold rounded-lg transition-all bg-teal-500 text-slate-900 shadow';
     const inactive =
-        'flex-1 py-2.5 text-sm font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200';
+        'flex-1 min-h-11 py-2.5 text-sm font-bold rounded-lg transition-all text-gray-400 hover:text-gray-200';
     $('mode-category').className = mode === 'category' ? active : inactive;
     $('mode-container').className = mode === 'container' ? active : inactive;
     renderChecklist();
@@ -1487,7 +1487,7 @@ function renderTabs() {
         const isActive = currentSubtype === loc.id;
         const button = document.createElement('button');
         // 行き先は最初に1回選ぶだけ → コンパクトに。特別なおでかけはピンク系で区別
-        button.className = `w-full py-1.5 px-2 rounded-lg text-sm font-bold leading-tight transition-all ${
+        button.className = `w-full min-h-11 py-1.5 px-2 rounded-lg text-sm font-bold leading-tight transition-all ${
             isActive
                 ? (loc.special ? 'bg-pink-500 text-white shadow' : 'bg-teal-500 text-slate-900 shadow')
                 : (loc.special
@@ -1502,7 +1502,7 @@ function renderTabs() {
         const sub = (loc.special || loc.date) ? countdownLabel(loc.date) : loc.sublabel;
         if (sub) {
             const subEl = document.createElement('span');
-            subEl.className = 'text-[10px] font-normal opacity-80 ml-1';
+            subEl.className = 'text-xs font-normal opacity-90 ml-1';
             subEl.textContent = sub;
             button.appendChild(subEl);
         }
@@ -1518,7 +1518,7 @@ function renderTabs() {
 
     // ＋ 特別なおでかけを追加
     const addBtn = document.createElement('button');
-    addBtn.className = 'w-full py-1.5 px-2 rounded-lg text-sm font-bold text-pink-600 bg-pink-50 border border-dashed border-pink-300 hover:bg-pink-100 transition-colors';
+    addBtn.className = 'w-full min-h-11 py-1.5 px-2 rounded-lg text-sm font-bold text-pink-600 bg-pink-50 border border-dashed border-pink-300 hover:bg-pink-100 transition-colors';
     addBtn.textContent = '🎉 ＋ 特別なおでかけ';
     addBtn.addEventListener('click', openSpecialModal);
     tabsContainer.appendChild(addBtn);
@@ -1526,7 +1526,7 @@ function renderTabs() {
     // 選択中が特別なおでかけなら削除リンク(2列ぶち抜き)
     if (isSpecialOuting(currentSubtype)) {
         const del = document.createElement('button');
-        del.className = 'col-span-2 text-[11px] text-gray-400 hover:text-red-400 underline transition-colors';
+        del.className = 'col-span-2 text-sm min-h-11 text-gray-400 hover:text-red-400 underline transition-colors';
         del.textContent = '🗑️ この特別なおでかけを削除';
         del.addEventListener('click', () => deleteSpecialOuting(currentSubtype));
         tabsContainer.appendChild(del);
@@ -1553,7 +1553,8 @@ function renderPresetDate() {
     card.className = 'bg-teal-500/10 border border-teal-500/30 rounded-xl px-3 py-2';
 
     const label = document.createElement('p');
-    label.className = 'text-xs font-bold text-teal-600 mb-1';
+    label.className = 'text-sm font-bold text-teal-600 mb-1';
+    label.id = 'preset-date-label';
     label.textContent = isHospital
         ? '🍀 入院はいつからですか？ 少しずつ準備すれば、その日を落ち着いて迎えられます'
         : `📅 ${name}はいつからですか？ あと何日か表示されます`;
@@ -1573,13 +1574,14 @@ function renderPresetDate() {
     row.className = 'flex items-center gap-2';
     const input = document.createElement('input');
     input.type = 'date';
+    input.setAttribute('aria-labelledby', 'preset-date-label');
     input.value = cur;
-    input.className = 'flex-1 bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:border-teal-500';
+    input.className = 'flex-1 min-h-11 bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:border-teal-500';
     input.addEventListener('change', () => save(input.value));
     row.appendChild(input);
     if (cur) {
         const clear = document.createElement('button');
-        clear.className = 'text-xs text-gray-400 hover:text-red-400 underline transition-colors shrink-0';
+        clear.className = 'text-sm min-h-11 text-gray-400 hover:text-red-400 underline transition-colors shrink-0';
         clear.textContent = 'クリア';
         clear.addEventListener('click', () => save(''));
         row.appendChild(clear);
@@ -1589,7 +1591,7 @@ function renderPresetDate() {
     const cd = countdownLabel(cur);
     if (cd) {
         const p = document.createElement('p');
-        p.className = 'text-xs font-bold text-teal-600 mt-1';
+        p.className = 'text-sm font-bold text-teal-600 mt-1';
         if (daysUntil(cur) === 0) {
             p.textContent = isHospital
                 ? '入院は きょうです。いっしょに準備していきましょう'
@@ -1777,7 +1779,7 @@ function renderPrepChecklist() {
             title.textContent = cat.name;
             const addBtn = document.createElement('button');
             addBtn.className =
-                'text-xs font-bold text-white bg-teal-500 hover:bg-teal-600 border border-teal-600 px-3 py-1 rounded-full shadow-sm transition-colors';
+                'text-sm min-h-11 font-bold text-white bg-teal-500 hover:bg-teal-600 border border-teal-600 px-3 py-1 rounded-full shadow-sm transition-colors';
             addBtn.textContent = '＋ 追加';
             addBtn.addEventListener('click', () => openModal(cat.id));
             titleRow.append(title, addBtn);
@@ -1880,7 +1882,7 @@ function renderPrepChecklist() {
             const section = document.createElement('div');
             section.className = 'bg-slate-800/60 border border-gray-700/60 rounded-xl p-3';
             const title = document.createElement('p');
-            title.className = 'text-xs font-bold text-gray-400 px-1 pb-2';
+            title.className = 'text-sm font-bold text-gray-400 px-1 pb-2';
             title.textContent = group.name;
             section.appendChild(title);
             const list = document.createElement('div');
@@ -2011,7 +2013,7 @@ function buildActiveBoxBar() {
     title.textContent = `いま詰めている${currentContainerWord()}`;
     const helpBtn = document.createElement('button');
     helpBtn.className =
-        'shrink-0 text-xs font-bold text-teal-400 hover:text-teal-300 border border-teal-500/40 rounded-lg px-2.5 py-1 transition-colors';
+        'shrink-0 text-sm font-bold text-teal-400 hover:text-teal-300 border border-teal-500/40 rounded-lg px-2.5 py-1 min-h-11 transition-colors';
     helpBtn.textContent = '❔ 使い方';
     helpBtn.addEventListener('click', () => {
         setState('packGuideOpen', !getState('packGuideOpen', false));
@@ -2095,14 +2097,14 @@ function buildActiveBoxBar() {
     actions.className = 'flex flex-wrap gap-2 mt-2';
     const renameBtn = document.createElement('button');
     renameBtn.className =
-        'inline-flex items-center gap-1.5 text-xs font-bold text-teal-500 bg-teal-500/10 border border-teal-500/30 hover:bg-teal-500/20 rounded-lg px-3 py-2 transition-colors';
+        'inline-flex items-center gap-1.5 text-sm font-bold text-teal-500 bg-teal-500/10 border border-teal-500/30 hover:bg-teal-500/20 rounded-lg px-3 py-2 min-h-11 transition-colors';
     renameBtn.textContent = `✏️「${activeName}」の名前を変更`;
     renameBtn.addEventListener('click', () => renameContainer(activeBox));
     actions.appendChild(renameBtn);
     if (isCustomContainer(activeBox)) {
         const deleteBtn = document.createElement('button');
         deleteBtn.className =
-            'inline-flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 rounded-lg px-3 py-2 transition-colors';
+            'inline-flex items-center gap-1.5 text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 rounded-lg px-3 py-2 min-h-11 transition-colors';
         deleteBtn.textContent = `🗑️ この${currentContainerWord()}を削除`;
         deleteBtn.addEventListener('click', () => deleteContainer(activeBox));
         actions.appendChild(deleteBtn);
@@ -2182,19 +2184,19 @@ function createPackItemRow(item, checked, currentBox, activeBox) {
     if (qty) {
         const qtyBadge = document.createElement('span');
         qtyBadge.className =
-            'text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded';
+            'text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded';
         qtyBadge.textContent = `×${qty}`;
         nameWrap.appendChild(qtyBadge);
     }
     if (item.isCustom) {
         const b = document.createElement('span');
-        b.className = 'text-[9px] text-teal-600 border border-teal-700/40 px-1 py-0.5 rounded';
+        b.className = 'text-xs text-teal-600 border border-teal-700/40 px-1 py-0.5 rounded';
         b.textContent = 'カスタム';
         nameWrap.appendChild(b);
     }
     if (item.isFacility) {
         const b = document.createElement('span');
-        b.className = 'text-[9px] text-blue-400 border border-blue-500/40 px-1 py-0.5 rounded';
+        b.className = 'text-xs text-blue-400 border border-blue-500/40 px-1 py-0.5 rounded';
         b.textContent = '🏥施設';
         nameWrap.appendChild(b);
     }
@@ -2202,10 +2204,10 @@ function createPackItemRow(item, checked, currentBox, activeBox) {
 
     const status = document.createElement('span');
     if (inBox) {
-        status.className = `shrink-0 text-xs font-bold text-white px-2.5 py-1 rounded-full ${color.badge}`;
+        status.className = `min-w-0 max-w-[40%] break-words text-xs font-bold text-white px-2.5 py-1 rounded-full ${color.badge}`;
         status.textContent = getContainerName(currentBox);
     } else {
-        status.className = 'shrink-0 text-xs text-gray-500';
+        status.className = 'min-w-0 max-w-[40%] text-right text-xs text-gray-500';
         status.textContent = `タップで${getContainerName(activeBox)}へ`;
     }
     row.appendChild(status);
@@ -2412,13 +2414,13 @@ function createReturnItemRow(item, returnChecked, currentBox) {
     if (qty) {
         const qtyBadge = document.createElement('span');
         qtyBadge.className =
-            'text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded';
+            'text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded';
         qtyBadge.textContent = `×${qty}`;
         nameWrap.appendChild(qtyBadge);
     }
     if (item.personalItem) {
         const personalBadge = document.createElement('span');
-        personalBadge.className = 'text-[10px] font-bold text-sky-700 border border-sky-500/50 bg-sky-500/10 px-1.5 py-0.5 rounded';
+        personalBadge.className = 'text-xs font-bold text-sky-700 border border-sky-500/50 bg-sky-500/10 px-1.5 py-0.5 rounded';
         personalBadge.textContent = '👤 個人';
         nameWrap.appendChild(personalBadge);
     }
@@ -2426,7 +2428,7 @@ function createReturnItemRow(item, returnChecked, currentBox) {
 
     if (boxId) {
         const boxBadge = document.createElement('span');
-        boxBadge.className = 'text-[10px] text-gray-500 mt-0.5';
+        boxBadge.className = 'text-xs text-gray-500 mt-0.5';
         boxBadge.textContent = `🧳 ${getContainerName(boxId)}`;
         textWrap.appendChild(boxBadge);
     }
@@ -2489,25 +2491,25 @@ function createItemRow(item, checked, currentBox, showCategoryBadge = false) {
     if (qty) {
         const qtyBadge = document.createElement('span');
         qtyBadge.className =
-            'text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded';
+            'text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded';
         qtyBadge.textContent = `×${qty}`;
         nameWrap.appendChild(qtyBadge);
     }
     if (item.personalItem) {
         const personalBadge = document.createElement('span');
-        personalBadge.className = 'text-[10px] font-bold text-sky-700 border border-sky-500/50 bg-sky-500/10 px-1.5 py-0.5 rounded';
+        personalBadge.className = 'text-xs font-bold text-sky-700 border border-sky-500/50 bg-sky-500/10 px-1.5 py-0.5 rounded';
         personalBadge.textContent = '👤 個人';
         nameWrap.appendChild(personalBadge);
     }
     if (item.isCustom) {
         const customBadge = document.createElement('span');
-        customBadge.className = 'text-[9px] text-teal-600 border border-teal-700/40 px-1 py-0.5 rounded';
+        customBadge.className = 'text-xs text-teal-600 border border-teal-700/40 px-1 py-0.5 rounded';
         customBadge.textContent = 'カスタム';
         nameWrap.appendChild(customBadge);
     }
     if (item.isFacility) {
         const facBadge = document.createElement('span');
-        facBadge.className = 'text-[9px] text-blue-400 border border-blue-500/40 px-1 py-0.5 rounded';
+        facBadge.className = 'text-xs text-blue-400 border border-blue-500/40 px-1 py-0.5 rounded';
         facBadge.textContent = '🏥施設';
         nameWrap.appendChild(facBadge);
     }
@@ -2515,7 +2517,7 @@ function createItemRow(item, checked, currentBox, showCategoryBadge = false) {
 
     if (showCategoryBadge && item.categoryName) {
         const badge = document.createElement('span');
-        badge.className = 'text-[10px] text-gray-500 mt-0.5';
+        badge.className = 'text-xs text-gray-500 mt-0.5';
         badge.textContent = item.categoryName;
         textWrap.appendChild(badge);
     }
@@ -2537,17 +2539,17 @@ function createItemRow(item, checked, currentBox, showCategoryBadge = false) {
         const icon = currentBox === 'bag' ? '👜' : '🧳';
         const color = getBoxColor(currentBox);
         boxBadge.className =
-            `text-[11px] font-bold text-white px-2 py-0.5 rounded-full whitespace-nowrap ${color.badge}`;
+            `text-xs font-bold text-white px-2 py-0.5 rounded-full whitespace-nowrap ${color.badge}`;
         boxBadge.textContent = `${icon} ${getContainerName(currentBox)}`;
     } else {
-        boxBadge.className = 'text-[11px] text-gray-500 whitespace-nowrap';
+        boxBadge.className = 'text-xs text-gray-500 whitespace-nowrap';
         boxBadge.textContent = '未指定';
     }
     right.append(boxBadge);
 
     if (item.isCustom) {
         const delBtn = document.createElement('button');
-        delBtn.className = 'text-xs text-red-600 hover:text-red-400 transition-colors px-1 font-bold';
+        delBtn.className = 'text-sm text-red-600 hover:text-red-400 transition-colors px-2 min-h-11 font-bold';
         delBtn.textContent = '×';
         delBtn.title = 'このアイテムを削除';
         delBtn.addEventListener('click', () => {
@@ -3080,7 +3082,7 @@ function renderDiary() {
 function buildMoodGraph(entries) {
     const wrap = document.createElement('div');
     const title = document.createElement('p');
-    title.className = 'text-xs font-bold text-gray-500 mb-2';
+    title.className = 'text-sm font-bold text-gray-500 mb-2';
     title.textContent = '調子の推移（最近）';
     wrap.appendChild(title);
 
@@ -3116,7 +3118,7 @@ function buildDiaryRow(e) {
     body.appendChild(top);
     if (e.note) {
         const note = document.createElement('p');
-        note.className = 'text-xs text-gray-500';
+        note.className = 'text-sm text-gray-500';
         note.textContent = e.note;
         body.appendChild(note);
     }
@@ -3168,10 +3170,10 @@ function maybeShowOnboarding() {
     if (getState('onboarded', false)) return false;
 
     const overlay = document.createElement('div');
-    overlay.className = 'fixed inset-0 z-[80] flex items-center justify-center p-5 bg-black/50';
+    overlay.className = 'fixed inset-0 z-[80] flex justify-center overflow-y-auto p-5 bg-black/50';
 
     const card = document.createElement('div');
-    card.className = 'bg-white rounded-3xl shadow-2xl p-6 max-w-sm w-full';
+    card.className = 'bg-white rounded-3xl shadow-2xl p-6 max-w-sm w-full my-auto';
 
     const h = document.createElement('p');
     h.className = 'text-xl font-bold text-teal-600 mb-1';
@@ -3199,7 +3201,7 @@ function maybeShowOnboarding() {
         t.className = 'text-sm font-bold text-gray-800';
         t.textContent = title;
         const d = document.createElement('p');
-        d.className = 'text-xs text-gray-500 mt-0.5 leading-snug';
+        d.className = 'text-sm text-gray-500 mt-0.5 leading-snug';
         d.textContent = desc;
         body.append(t, d);
         row.append(badge, body);
@@ -3210,7 +3212,7 @@ function maybeShowOnboarding() {
     startBtn.className = 'w-full text-base font-bold text-white bg-teal-500 hover:bg-teal-600 active:scale-[0.98] rounded-2xl px-4 py-3 shadow-lg transition-all';
     startBtn.textContent = 'はじめる';
     const skip = document.createElement('button');
-    skip.className = 'w-full text-xs text-gray-400 hover:text-gray-600 mt-2 py-1';
+    skip.className = 'w-full text-sm text-gray-400 hover:text-gray-600 mt-2 py-3';
     skip.textContent = 'あとで見る（スキップ）';
 
     function dismiss() {
