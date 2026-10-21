@@ -1554,6 +1554,7 @@ function renderPresetDate() {
 
     const label = document.createElement('p');
     label.className = 'text-xs font-bold text-teal-600 mb-1';
+    label.id = 'preset-date-label';
     label.textContent = isHospital
         ? '🍀 入院はいつからですか？ 少しずつ準備すれば、その日を落ち着いて迎えられます'
         : `📅 ${name}はいつからですか？ あと何日か表示されます`;
@@ -1573,6 +1574,7 @@ function renderPresetDate() {
     row.className = 'flex items-center gap-2';
     const input = document.createElement('input');
     input.type = 'date';
+    input.setAttribute('aria-labelledby', 'preset-date-label');
     input.value = cur;
     input.className = 'flex-1 bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:border-teal-500';
     input.addEventListener('change', () => save(input.value));

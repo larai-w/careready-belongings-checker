@@ -265,6 +265,12 @@
         #print-area {
             display: none;
         }
+
+        /* 使いやすさ: 14px未満の文字の底上げ / 押しやすさ(44px) */
+        .text-xs, .text-\[10px\], .text-\[11px\] { font-size: 0.875rem; line-height: 1.35; }
+        h1.app-title { font-size: min(1.875rem, 8vw); }
+        #diary-close, #fc-modal-x { min-width: 2.75rem; }
+        button, summary, select, input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { min-height: 2.75rem; }
         /* Backup remains readable independently of CDN utility styles. */
         #backup { background:#f7fcfa; color:#183b35; border:1px solid #779b8f; border-radius:16px; padding:20px; margin:28px auto; scroll-margin-top:16px; }
         #backup h2 { font-size:1.25rem; font-weight:700; }
@@ -295,7 +301,7 @@
                     <p class="text-sm text-gray-400 mt-0.5">持ちものを、わすれずに。</p>
                 </div>
             </div>
-            <div class="flex items-center justify-end gap-2">
+            <div class="flex flex-wrap items-center justify-end gap-2">
                 <button id="textsize-btn" class="w-11 h-11 flex items-center justify-center bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="文字の大きさ" aria-label="文字の大きさ"><span class="font-bold leading-none"><span class="text-base">A</span><span class="text-xs">A</span></span></button>
                 <button id="theme-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="テーマ切替" aria-label="テーマ切替">🌙</button>
                 <button id="print-btn" class="w-11 h-11 flex items-center justify-center text-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-teal-400 hover:border-teal-500/60 rounded-lg transition-colors" title="印刷する" aria-label="印刷する">🖨️</button>
@@ -440,7 +446,7 @@
             <div class="bg-white border border-amber-200 rounded-3xl p-4 mb-4 shadow-sm">
                 <p class="text-sm font-bold text-gray-600 mb-2 text-center">きょうの調子は？</p>
                 <div id="mood-row" class="flex justify-center gap-2 mb-3"></div>
-                <input id="diary-note-input" type="text" maxlength="100" placeholder="きょうのひとこと（任意・例: たくさん歩けた）"
+                <input id="diary-note-input" aria-label="きょうのひとこと（任意・例: たくさん歩けた）" type="text" maxlength="100" placeholder="きょうのひとこと（任意・例: たくさん歩けた）"
                     class="w-full bg-white border border-gray-300 rounded-2xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-amber-500 placeholder-gray-400 mb-3">
                 <div class="flex items-center gap-2 mb-3">
                     <input id="diary-photo-input" type="file" accept="image/*" class="hidden">
@@ -586,7 +592,7 @@
             <p class="text-sm text-gray-400">氏名・部屋番号・電話番号などが写らないように撮影してください。読み取った候補は確認してから追加します。</p>
 
             <div>
-                <label class="text-xs text-gray-400 block mb-1">写真を選択 <span class="text-red-400">*</span></label>
+                <label for="ocr-file-input" class="text-xs text-gray-400 block mb-1">写真を選択 <span class="text-red-400">*</span></label>
                 <input id="ocr-file-input" type="file" accept="image/*"
                     class="w-full text-sm text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-500 file:px-3 file:py-2 file:text-sm file:font-bold file:text-slate-900 hover:file:bg-amber-400">
             </div>
@@ -619,7 +625,7 @@
             </div>
             <p class="text-sm text-gray-400">施設から案内された6文字のコードを入力してください。</p>
             <div>
-                <label class="text-xs text-gray-400 block mb-1">施設コード <span class="text-red-400">*</span></label>
+                <label for="fc-code-input" class="text-xs text-gray-400 block mb-1">施設コード <span class="text-red-400">*</span></label>
                 <input id="fc-code-input" type="text" placeholder="例: ABC123" maxlength="6"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500 placeholder-gray-600 uppercase tracking-widest text-center text-lg font-bold">
             </div>
@@ -642,12 +648,12 @@
             <h3 class="text-lg font-bold text-teal-700">📝 お問い合わせ・ご意見</h3>
             <p class="text-sm text-gray-600">CareReady運営に届きます。使い方で困ったこと、不具合、よかった点などを送れます。</p>
             <div>
-                <label class="text-xs text-gray-500 block mb-1">メッセージ <span class="text-red-400">*</span></label>
+                <label for="feedback-message" class="text-xs text-gray-500 block mb-1">メッセージ <span class="text-red-400">*</span></label>
                 <textarea id="feedback-message" rows="4" maxlength="2000" placeholder="例: 箱に詰めるのが楽しいです。◯◯があると助かります。"
                     class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-teal-500 placeholder-gray-400 resize-none"></textarea>
             </div>
             <div>
-                <label class="text-xs text-gray-500 block mb-1">連絡先（任意・返信がほしい場合）</label>
+                <label for="feedback-contact" class="text-xs text-gray-500 block mb-1">連絡先（任意・返信がほしい場合）</label>
                 <input id="feedback-contact" type="text" maxlength="200" placeholder="メール や LINE ID など"
                     class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-teal-500 placeholder-gray-400">
             </div>
@@ -673,7 +679,7 @@
                     class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-pink-500 placeholder-gray-400">
             </div>
             <div>
-                <label class="text-xs text-gray-500 block mb-1">予定日（任意・カウントダウンに使います）</label>
+                <label for="special-date-input" class="text-xs text-gray-500 block mb-1">予定日（任意・カウントダウンに使います）</label>
                 <input id="special-date-input" type="date"
                     class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-pink-500">
             </div>
@@ -746,7 +752,7 @@
             <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
                 <p class="text-sm font-bold text-amber-700">📸 きょうの思い出を追加</p>
                 <div id="diaryAdd-mood-row" class="flex justify-center gap-2"></div>
-                <input id="diaryAdd-note" type="text" maxlength="100" placeholder="ひとこと（任意・例: たくさん歩けた）"
+                <input id="diaryAdd-note" aria-label="ひとこと（任意・例: たくさん歩けた）" type="text" maxlength="100" placeholder="ひとこと（任意・例: たくさん歩けた）"
                     class="w-full bg-white border border-gray-300 rounded-2xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-amber-500 placeholder-gray-400">
                 <div class="flex items-center gap-2">
                     <input id="diaryAdd-photo-input" type="file" accept="image/*" class="hidden">
