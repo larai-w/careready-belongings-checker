@@ -3,7 +3,7 @@
 # CI ではこのファイルを使って再現可能なビルドを行う:
 #   python3 -m pip install -r backend/requirements-test.lock.txt
 attrs==26.1.0
-boto3==1.43.114
+boto3==1.43.118
 botocore==1.43.114
 certifi==2026.10.23
 cffi==2.1.1
