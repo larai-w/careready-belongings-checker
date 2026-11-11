@@ -14,7 +14,7 @@ constructs==10.8.1
 jmespath==1.1.0
 jsii==1.142.0
 publication==0.0.3
-python-dateutil==2.9.0.post0
+python-dateutil==4.0.0
 s3transfer==0.19.3
 six==1.17.0
 typeguard==2.13.3
