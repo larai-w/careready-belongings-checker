@@ -145,7 +145,7 @@ for attempt in $(seq 1 "$E2E_ATTEMPTS"); do
     echo "E2E attempt $attempt timed out after 180 seconds."
     continue
   fi
-  if grep -qF "E2E_RESULT: ALL_PASS" "$E2E_DOM"; then
+  if python3 scripts/report_e2e.py "$E2E_DOM"; then
     echo "E2E PASS on attempt $attempt"
     E2E_OK=1
     break
@@ -153,7 +153,6 @@ for attempt in $(seq 1 "$E2E_ATTEMPTS"); do
   echo "E2E attempt $attempt did not reach ALL_PASS."
 done
 if [ "$E2E_OK" -ne 1 ]; then
-  grep -oE '(PASS|FAIL|WINDOW_ERR|ERR): [^<]*' "$E2E_DOM" | head -40 >&2 || true
   exit 1
 fi
 

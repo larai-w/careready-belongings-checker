@@ -130,8 +130,16 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
         const frame2 = await loadFrame('./index.html?t=' + encodeURIComponent(share(shareData)));
         const doc2 = () => frame2.contentDocument;
         const banner = () => doc2().getElementById('import-banner');
-        check('共有データで取込バナーが表示される',
-            await waitFor(() => !banner().classList.contains('hidden')));
+        const importReady = await waitFor(() => !banner().classList.contains('hidden'));
+        if (!importReady) {
+            log('DIAG: shared-import ' + JSON.stringify({
+                readyState: doc2().readyState,
+                hasShareParam: new URLSearchParams(frame2.contentWindow.location.search).has('t'),
+                renderedItems: doc2().querySelectorAll('#checklist-container input[type=checkbox]').length,
+                bannerHidden: banner().classList.contains('hidden'),
+            }));
+        }
+        check('共有データで取込バナーが表示される', importReady);
         doc2().getElementById('import-ok').click();
         check('取込でバナーが閉じる', await waitFor(() => banner().classList.contains('hidden')));
         const shown = await waitFor(
