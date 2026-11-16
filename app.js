@@ -3353,7 +3353,7 @@ function resetAll() {
 function handlePrint() {
     if (!appData) return;
 
-    const locationObj = appData.locations.find((l) => l.id === currentSubtype);
+    const locationObj = getAllLocations().find((l) => l.id === currentSubtype);
     const locationName = locationObj ? locationObj.name : currentSubtype;
     const today = new Date();
     const dateStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
