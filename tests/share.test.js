@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { encodeShareData, decodeShareData, isValidShareData, mergeById, createShareURL } from '../lib/share.js';
+import { encodeShareData, decodeShareData, isValidShareData, mergeById, createShareURL, sharedOutings } from '../lib/share.js';
 
 // ---------- encodeShareData / decodeShareData ----------
 
@@ -92,4 +92,23 @@ test('createShareURL: Base64の+を含む名前もURL経由で復元できる', 
     assert.deepEqual(decodeShareData(url.searchParams.get('t')), data);
     const legacy = new URL('http://localhost/?t=' + encodeShareData(data));
     assert.deepEqual(decodeShareData(legacy.searchParams.get('t')), data);
+});
+
+test('shared outings retain only usable unique IDs and labels, excluding schedules and private fields', () => {
+    const source = [{ id: 'so_123', name: ' おでかけ ', date: '2099-01-01', memo: 'private' },
+        { id: 'so_123', name: 'duplicate' }, { id: 'shortstay', name: 'preset' },
+        { id: 'so_bad', name: ' ' }, null, { id: 'so_other', name: 'あ'.repeat(40) }];
+    assert.deepEqual(sharedOutings(source), [{ id: 'so_123', name: 'おでかけ' }, { id: 'so_other', name: 'あ'.repeat(30) }]);
+    assert.equal(source[0].date, '2099-01-01');
+    assert.deepEqual(sharedOutings({}), []);
+});
+
+test('an outing-only template is valid but invalid outing metadata is rejected', () => {
+    assert.equal(isValidShareData({ specialOutings: [{ id: 'so_123', name: 'おでかけ' }] }), true);
+    assert.equal(isValidShareData({ specialOutings: [{ id: 'shortstay', name: 'x' }] }), false);
+});
+
+test('shared outings do not overwrite an existing recipient outing or its date', () => {
+    const existing = [{ id: 'so_123', name: '受信側の名前', date: '2099-02-01' }];
+    assert.deepEqual(mergeById(existing, sharedOutings([{ id: 'so_123', name: '送信側の名前' }])), existing);
 });

@@ -112,6 +112,28 @@ const server = transport.createServer(serverOptions, (request, response) => {
     assert.deepEqual(restored.checked, {}); // Sharing is a template, not a full-state backup.
     await other.goto(url); await other.locator('#import-ok').click();
     assert.equal(await other.evaluate(async () => (await import('/storage.js')).getState('customItems', []).length), 1);
+    // A shared custom item must retain a reachable named outing on a fresh device.
+    const outing = { id: 'so_share_sample', name: '合成のおでかけ', date: '2099-01-01' };
+    await page.evaluate(async outing => {
+      const s = await import('/storage.js');
+      s.setState('specialOutings', [outing]);
+      s.setState('customItems', [{ id: 'outing-sample', name: '合成の持ち物', categoryId: 'hygiene', applicable_locations: [outing.id] }]);
+    }, outing);
+    await page.locator('#share-btn').click();
+    const outingUrl = await page.evaluate(() => window.testShare.url);
+    const receiver = await appContext(); const received = await receiver.newPage();
+    await received.goto(outingUrl); await received.locator('#import-ok').click();
+    await received.waitForFunction(() => document.querySelector('#location-tabs').textContent.includes('合成のおでかけ'), null, { timeout: 5000 });
+    await received.locator('#location-tabs button').filter({ hasText: '合成のおでかけ' }).first().click();
+    await received.waitForFunction(() => document.querySelector('#checklist-container').textContent.includes('合成の持ち物'));
+    await received.reload();
+    await received.waitForFunction(() => document.querySelector('#location-tabs').textContent.includes('合成のおでかけ'));
+    await received.goto(outingUrl); await received.locator('#import-ok').click();
+    const importedOutings = await received.evaluate(async () => (await import('/storage.js')).getState('specialOutings', []));
+    assert.equal(importedOutings.length, 1);
+    assert.equal(importedOutings[0].name, outing.name);
+    assert.equal(importedOutings[0].date || '', ''); // A shared template does not carry the sender's schedule.
+    await receiver.close();
     await source.close(); await target.close();
     console.log(engine + ' Passed: failed/aborted/successful migration, conflicting/corrupt sources, reload recovery, local UI sharing, repeated import and share scope.');
   } finally {
