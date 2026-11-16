@@ -969,16 +969,27 @@ async function handleShare() {
 
 // ---------- LINE Share ----------
 
+// 印刷・共有でもカテゴリ未指定の施設品を専用セクションにまとめる。
+function getListOutputCategories() {
+    return [...appData.categories, { id: '__facility__', name: '🏥 施設指定アイテム', items: [] }];
+}
+
 // 共有用の読めるテキスト(持ち物 + メモ)
 function buildListShareText() {
     const locName = (getAllLocations().find((l) => l.id === currentSubtype) || {}).name || '持ち物';
     const customItems = getCustomItems();
     const hideSet = getFacilityHideSet();
+    const facilityItemsByCategory = getFacilityItemsByCategory();
     const lines = [`${locName}の持ち物リスト`, ''];
-    appData.categories.forEach((cat) => {
+    getListOutputCategories().forEach((cat) => {
         const items = [];
         (cat.items || []).forEach((item) => {
             if ((item.applicable_locations || []).includes(currentSubtype) && !hideSet.has(item.id) && isItemVisible(item)) {
+                items.push(item.name);
+            }
+        });
+        (facilityItemsByCategory[cat.id] || []).forEach((item) => {
+            if (!item.applicable_locations || item.applicable_locations.includes(currentSubtype)) {
                 items.push(item.name);
             }
         });
@@ -3409,7 +3420,7 @@ function handlePrint() {
     const facilityItemsByCategory = getFacilityItemsByCategory();
 
     // カテゴリ別にアイテムを出力(スキップ済みは除く)
-    appData.categories.forEach((cat) => {
+    getListOutputCategories().forEach((cat) => {
         const officialItems = (cat.items || []).filter(
             (item) =>
                 (item.applicable_locations || []).includes(currentSubtype) &&
