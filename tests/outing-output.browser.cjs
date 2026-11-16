@@ -60,12 +60,14 @@ const server = transport.createServer(serverOptions, (request, response) => {
     assert(!printed.includes('他の行き先だけの品物'));
     assert(!shared.includes('他の行き先だけの品物'));
     assert.deepEqual(result, { printIncludesAlwaysItem: true, lineIncludesAlwaysItem: true });
+    console.log(JSON.stringify({ printQuantity: printed.includes('×2'), lineQuantity: shared.includes('合成のいつもの持ち物 ×2') }));
+    assert(shared.includes('合成のいつもの持ち物 ×2'), 'LINE text must retain the requested quantity');
     await page.evaluate(async () => {
       const s = await import('/storage.js');
       s.setState('customItems', []);
       s.setState('facilityTemplate', { name: '合成テンプレート', items: [
-        { id: 'fac-category', name: '合成の施設カテゴリ品', categoryId: 'hygiene', applicable_locations: ['so_output'] },
-        { id: 'fac-only', name: '合成の施設指定品', applicable_locations: ['so_output'] },
+        { id: 'fac-category', name: '合成の施設カテゴリ品', quantity: 3, categoryId: 'hygiene', applicable_locations: ['so_output'] },
+        { id: 'fac-only', name: '合成の施設指定品', quantity: 4, applicable_locations: ['so_output'] },
         { id: 'fac-other', name: '別の行き先の施設品', applicable_locations: ['hospital'] },
       ] });
       await s.readBackupState(['customItems', 'facilityTemplate']);
@@ -90,6 +92,9 @@ const server = transport.createServer(serverOptions, (request, response) => {
     assert(!facilityPrint.includes('別の行き先の施設品'));
     assert(!facilityShare.includes('別の行き先の施設品'));
     assert.deepEqual(facilityResult, { categorizedPrint: true, uncategorizedPrint: true, categorizedLine: true, uncategorizedLine: true });
+    assert(facilityShare.includes('合成の施設カテゴリ品 ×3'));
+    assert(facilityShare.includes('合成の施設指定品 ×4'));
+    assert(!facilityShare.includes('×1'));
     await context.close();
   } finally {
     if (browser) await browser.close();

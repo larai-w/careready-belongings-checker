@@ -981,21 +981,22 @@ function buildListShareText() {
     const hideSet = getFacilityHideSet();
     const facilityItemsByCategory = getFacilityItemsByCategory();
     const lines = [`${locName}の持ち物リスト`, ''];
+    const itemLabel = (item) => item.quantity && item.quantity > 1 ? `${item.name} ×${item.quantity}` : item.name;
     getListOutputCategories().forEach((cat) => {
         const items = [];
         (cat.items || []).forEach((item) => {
             if ((item.applicable_locations || []).includes(currentSubtype) && !hideSet.has(item.id) && isItemVisible(item)) {
-                items.push(item.name);
+                items.push(itemLabel(item));
             }
         });
         (facilityItemsByCategory[cat.id] || []).forEach((item) => {
             if (!item.applicable_locations || item.applicable_locations.includes(currentSubtype)) {
-                items.push(item.name);
+                items.push(itemLabel(item));
             }
         });
         customItems.forEach((item) => {
             if (item.categoryId === cat.id && (item.myItem || (item.applicable_locations || []).includes(currentSubtype)) && isItemVisible(item)) {
-                items.push(item.name);
+                items.push(itemLabel(item));
             }
         });
         if (items.length) {
