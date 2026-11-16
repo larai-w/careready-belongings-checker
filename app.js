@@ -6,7 +6,7 @@ import {
     isKnownOcrItem as isKnownItemCore,
     guessQuantity,
 } from './lib/ocr-match.js';
-import { createShareURL, decodeShareData, isValidShareData, mergeById } from './lib/share.js';
+import { createShareURL, decodeShareData, isValidShareData, mergeById, sharedOutings } from './lib/share.js';
 import {
     isValidData,
     isConditionActive as isConditionActiveCore,
@@ -383,6 +383,12 @@ function handleImportOk() {
         const existing = getCustomContainers();
         const merged = mergeById(existing, pendingImportData.customContainers);
         if (merged.length > existing.length) setState('customContainers', merged);
+    }
+
+    const outings = sharedOutings(pendingImportData.specialOutings);
+    if (outings.length) {
+        setState('specialOutings', mergeById(getSpecialOutings(), outings));
+        if (appData) renderTabs();
     }
 
     pendingImportData = null;
@@ -937,6 +943,7 @@ function generateShareURL() {
         customItems: getCustomItems(),
         containerNames: getState('containerNames', {}),
         customContainers: getCustomContainers(),
+        specialOutings: sharedOutings(getSpecialOutings()),
     };
     const base = window.location.origin + window.location.pathname;
     return createShareURL(base, data);
