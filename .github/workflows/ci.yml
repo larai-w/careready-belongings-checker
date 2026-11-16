@@ -36,6 +36,9 @@ jobs:
           node --check lib/share.js
           node --check lib/checklist.js
 
+      - name: Test E2E result reporting
+        run: python3 -m unittest discover -s tests -p 'test_report_e2e.py'
+
       - name: Unit tests (frontend, node:test)
         run: node --test tests/*.test.js
 
@@ -125,9 +128,9 @@ jobs:
           # With headless --dump-dom plus --virtual-time-budget, how much virtual
           # time a multi-phase async flow consumes is non-deterministic, so the
           # dump occasionally happens before the run finishes and comes out
-          # truncated. Locally it is deterministic; in CI it is softened with
-          # retries. Getting ALL_PASS on all 25 checks once is a pass. A real
-          # regression fails the same check every time, so every retry fails.
+          # truncated. Keep the executed report for every attempt so incomplete
+          # runs and assertion failures can be distinguished. All checks must
+          # complete without assertion or runtime errors for an attempt to pass.
           python3 -m http.server 8001 --bind 127.0.0.1 &
           SRV=$!
           sleep 2
@@ -135,7 +138,8 @@ jobs:
           for attempt in 1 2 3 4; do
             google-chrome --headless=new --disable-gpu --no-sandbox \
               --virtual-time-budget=600000 --dump-dom "http://127.0.0.1:8001/test-e2e.html" > e2e-dom.html 2>/dev/null
-            if grep -qF "E2E_RESULT: ALL_PASS" e2e-dom.html; then
+            echo "E2E report (attempt $attempt):"
+            if python3 scripts/report_e2e.py e2e-dom.html; then
               echo "E2E OK (attempt $attempt)"; ok=1; break
             fi
             echo "E2E attempt $attempt incomplete/failed, retrying..."
@@ -144,7 +148,6 @@ jobs:
 
           if [ "$ok" -ne 1 ]; then
             echo "::error::E2E フローが4回とも ALL_PASS になりませんでした"
-            grep -oE '(PASS|FAIL|WINDOW_ERR|ERR): [^<]*' e2e-dom.html | head -40 || true
             exit 1
           fi
 
