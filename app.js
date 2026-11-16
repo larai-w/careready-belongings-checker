@@ -983,7 +983,7 @@ function buildListShareText() {
             }
         });
         customItems.forEach((item) => {
-            if (item.categoryId === cat.id && (item.applicable_locations || []).includes(currentSubtype) && isItemVisible(item)) {
+            if (item.categoryId === cat.id && (item.myItem || (item.applicable_locations || []).includes(currentSubtype)) && isItemVisible(item)) {
                 items.push(item.name);
             }
         });
@@ -3424,7 +3424,7 @@ function handlePrint() {
         const myCustomItems = customItems.filter(
             (item) =>
                 item.categoryId === cat.id &&
-                (item.applicable_locations || []).includes(currentSubtype) &&
+                (item.myItem || (item.applicable_locations || []).includes(currentSubtype)) &&
                 !skipped[item.id] &&
                 isItemVisible(item)
         );
