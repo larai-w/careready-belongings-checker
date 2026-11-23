@@ -60,7 +60,7 @@ const { setTimeout: delay } = require('node:timers/promises');
     const deadline = Date.now() + limit;
     while (Date.now() < deadline) {
       const { result, exceptionDetails } = await send('Runtime.evaluate', {
-        expression: "JSON.stringify({log:document.querySelector('pre#log')?.textContent||'',dom:document.documentElement.outerHTML})",
+        expression: "JSON.stringify({log:document.querySelector('pre#log')?.textContent||'',dom:document.documentElement?.outerHTML||''})",
         returnByValue: true,
       }, sessionId);
       if (exceptionDetails) throw new Error('Cannot read the E2E report');
