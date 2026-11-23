@@ -48,3 +48,16 @@ DOM、server log、Chrome profileは一時ディレクトリに置き、成功�
 Chromeの実時間上限はsmoke 120秒、E2E 1試行180秒。仮想時間が進まない場合も無限待ちせず失敗する。
 
 本番AWSへのdeploy、施設データ作成、本番認証情報の読取りは行わない。
+
+## 家族フローの待機方式
+
+家族フローE2Eは実時間で完了を待ちます。`scripts/run_browser_e2e.cjs`は毎回新しいChromeプロファイルを使い、専用パイプで実行済みログの`DONE`まで待機します。上限は180秒です。失敗は再試行で隠さず、`scripts/report_e2e.py`が実行結果を判定します。画面初期化やIndexedDB処理を待つための仮想時間加速は使いません。スモーク検査の方式は別です。
+
+```sh
+node tests/e2e-runner.browser.cjs
+# ローカルサーバーを起動したうえで実行
+node scripts/run_browser_e2e.cjs http://127.0.0.1:8000/test-e2e.html /tmp/careready-e2e.html
+python3 scripts/report_e2e.py /tmp/careready-e2e.html
+```
+
+ランナーの検査は、遅延した完了、失敗結果、時間切れ時の診断DOM保存、外部URLの拒否、一時プロファイルの後片づけを確認します。通常のブラウザプロファイルには接続しません。

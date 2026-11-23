@@ -132,29 +132,15 @@ for label in "おかえり" "どこへ" "箱に詰める" "の準備"; do
   fi
 done
 
-echo "[5/5] Headless family-flow E2E"
+echo "[5/5] Real-time family-flow E2E"
 E2E_DOM="$TMP_DIR/e2e-dom.html"
-E2E_ATTEMPTS="${E2E_ATTEMPTS:-4}"
-E2E_OK=0
-for attempt in $(seq 1 "$E2E_ATTEMPTS"); do
-  if ! run_with_timeout 180 "$CHROME" --headless=new --disable-gpu --no-sandbox \
-    --disable-background-networking --disable-default-apps --no-first-run \
-    --user-data-dir="$TMP_DIR/chrome-e2e-${attempt}" \
-    --virtual-time-budget=600000 --dump-dom "${BASE_URL}/test-e2e.html" \
-    >"$E2E_DOM" 2>/dev/null; then
-    echo "E2E attempt $attempt timed out after 180 seconds."
-    continue
-  fi
-  if python3 scripts/report_e2e.py "$E2E_DOM"; then
-    echo "E2E PASS on attempt $attempt"
-    E2E_OK=1
-    break
-  fi
-  echo "E2E attempt $attempt did not reach ALL_PASS."
-done
-if [ "$E2E_OK" -ne 1 ]; then
+CHROME_BIN="$CHROME" node tests/e2e-runner.browser.cjs
+if ! CHROME_BIN="$CHROME" node scripts/run_browser_e2e.cjs "${BASE_URL}/test-e2e.html" "$E2E_DOM"; then
+  python3 scripts/report_e2e.py "$E2E_DOM" || true
   exit 1
 fi
+python3 scripts/report_e2e.py "$E2E_DOM"
+echo "E2E PASS (real time, no retries)"
 
 cat <<'EOF'
 
