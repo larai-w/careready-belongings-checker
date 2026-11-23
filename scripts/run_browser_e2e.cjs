@@ -81,7 +81,7 @@ const { setTimeout: delay } = require('node:timers/promises');
         if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await exited; }
       }
       rejectPending(new Error('Chrome closed'));
-      await rm(profile, { recursive: true, force: true });
+      await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   }
   if (failure) throw failure;
