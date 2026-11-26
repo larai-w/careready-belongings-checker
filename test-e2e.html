@@ -50,13 +50,23 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
     try {
         // ================= Phase 1: 家族の準備フロー =================
         log('# Phase 1: 準備→帰宅チェック→印刷');
-        const frame = await loadFrame('./index.html');
+        const frame = await loadFrame('./index.html#list=shortstay');
         const doc = () => frame.contentDocument;
         const boxes = () => doc().querySelectorAll('#checklist-container input[type=checkbox]');
 
         const rendered = await waitFor(() => boxes().length >= 10);
         check('既定チェックリストが描画される (>=10)', rendered);
         if (!rendered) throw new Error('checklist did not render');
+
+        const welcome = doc().querySelector('dialog[open][aria-labelledby="onboarding-title"]');
+        const start = welcome?.querySelector('button');
+        check('記事リンクでショートステイの初回案内が出る',
+            welcome?.textContent.includes('「ショートステイ」の持ち物リストを開きました。'));
+        check('初回案内の開始ボタンにフォーカスがある', !!start && doc().activeElement === start);
+        if (!start) throw new Error('list-link welcome dialog did not open');
+        start.click();
+        check('案内を閉じると持ち物リストにフォーカスが移る',
+            await waitFor(() => !welcome.open && doc().activeElement.id === 'checklist-container'));
 
         const privacyLink = doc().querySelector('a[href="./privacy.html"]');
         check('データ取扱いページへの導線がある', !!privacyLink);
@@ -284,6 +294,14 @@ const share = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))))
         doc5().getElementById('print-btn').click();
         check('おでかけリストの印刷ビューを構築できる',
             await waitFor(() => doc5().getElementById('print-area').textContent.includes('財布')));
+
+        log('# Phase 8: デイサービスの記事リンク');
+        const dayFrame = await loadFrame('./index.html#list=dayservice');
+        const dayDoc = dayFrame.contentDocument;
+        const activeLocation = dayDoc.querySelector('#location-tabs button.bg-teal-500');
+        check('デイサービスの記事リンクで対応するリストが開く',
+            activeLocation?.textContent.includes('デイサービス') &&
+            dayDoc.querySelector('#checklist-container input[type=checkbox]') !== null);
     } catch (e) {
         log('ERR: ' + ((e && e.stack) || e));
         failures += 1;
