@@ -313,8 +313,8 @@ async function startApp() {
         showDataBanner(source);
         // A fragment keeps the existing offline entry URL and cache key.
         const requestedList = window.location.hash.match(/^#list=([a-z]+)$/)?.[1];
-        currentSubtype = appData.locations.find((location) => location.id === requestedList)?.id
-            ?? appData.locations[0].id;
+        const requestedLocation = appData.locations.find((location) => location.id === requestedList);
+        currentSubtype = requestedLocation?.id ?? appData.locations[0].id;
         updateFacilityBanner();
         renderConditionToggles();
         renderTabs();
@@ -326,7 +326,7 @@ async function startApp() {
         renderPushToggle();
         renderPushPrompt();
         // ⑤ 開いたときの寄り添う挨拶(名前があれば呼びかける)。初回は使い方カードを優先し挨拶は出さない
-        const shownOnboarding = maybeShowOnboarding();
+        const shownOnboarding = maybeShowOnboarding(requestedLocation?.name);
         setTimeout(() => {
             if (shownOnboarding) return;
             const n = getPersonName();
@@ -3188,7 +3188,7 @@ function showCelebrationOverlay(emojiChar, titleText, subText, titleColor) {
 }
 
 // 初回だけ・スキップ可の使い方カード(①行き先 ②準備 ③おかえり)。既読は storage.js で管理。
-function maybeShowOnboarding() {
+function maybeShowOnboarding(selectedLocationName) {
     if (getState('onboarded', false)) return false;
 
     const overlay = document.createElement('div');
@@ -3202,10 +3202,14 @@ function maybeShowOnboarding() {
     h.textContent = 'ようこそ CareReady へ';
     const lead = document.createElement('p');
     lead.className = 'text-sm text-gray-500 mb-4';
-    lead.textContent = '持ちものを、わすれずに。3つのステップで準備できます。';
+    lead.textContent = selectedLocationName
+        ? `「${selectedLocationName}」の持ち物リストを開きました。`
+        : '持ちものを、わすれずに。3つのステップで準備できます。';
 
     const steps = [
-        ['①', '🍀 いく先をえらぶ', 'きょうの行き先をタップします。'],
+        selectedLocationName
+            ? ['①', '🍀 持ち物をひとつチェック', 'リストを開いて、用意できた持ち物にチェックを入れます。']
+            : ['①', '🍀 いく先をえらぶ', 'きょうの行き先をタップします。'],
         ['②', '🧳 準備する', '「入れ物に詰める」か「持ち物リスト」で、チェックしながら準備。どちらでもOKです。'],
         ['③', '🏠 おかえりを記録', '帰ったら「おかえりチェック」で、写真やひとことを日記に残せます。'],
     ];
@@ -3232,7 +3236,7 @@ function maybeShowOnboarding() {
 
     const startBtn = document.createElement('button');
     startBtn.className = 'w-full text-base font-bold text-white bg-teal-500 hover:bg-teal-600 active:scale-[0.98] rounded-2xl px-4 py-3 shadow-lg transition-all';
-    startBtn.textContent = 'はじめる';
+    startBtn.textContent = selectedLocationName ? '持ち物リストへ' : 'はじめる';
     const skip = document.createElement('button');
     skip.className = 'w-full text-sm text-gray-400 hover:text-gray-600 mt-2 py-3';
     skip.textContent = 'あとで見る（スキップ）';
