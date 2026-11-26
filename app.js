@@ -3191,13 +3191,12 @@ function showCelebrationOverlay(emojiChar, titleText, subText, titleColor) {
 function maybeShowOnboarding(selectedLocationName) {
     if (getState('onboarded', false)) return false;
 
-    const overlay = document.createElement('div');
-    overlay.className = 'fixed inset-0 z-[80] flex justify-center overflow-y-auto p-5 bg-black/50';
+    const card = document.createElement('dialog');
+    card.className = 'm-auto max-h-[calc(100%_-_2rem)] w-[calc(100%_-_2rem)] max-w-sm overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl backdrop:bg-black/50';
+    card.setAttribute('aria-labelledby', 'onboarding-title');
 
-    const card = document.createElement('div');
-    card.className = 'bg-white rounded-3xl shadow-2xl p-6 max-w-sm w-full my-auto';
-
-    const h = document.createElement('p');
+    const h = document.createElement('h2');
+    h.id = 'onboarding-title';
     h.className = 'text-xl font-bold text-teal-600 mb-1';
     h.textContent = 'ようこそ CareReady へ';
     const lead = document.createElement('p');
@@ -3241,19 +3240,27 @@ function maybeShowOnboarding(selectedLocationName) {
     skip.className = 'w-full text-sm text-gray-400 hover:text-gray-600 mt-2 py-3';
     skip.textContent = 'あとで見る（スキップ）';
 
-    function dismiss() {
+    startBtn.autofocus = true;
+    startBtn.addEventListener('click', () => card.close());
+    skip.addEventListener('click', () => card.close());
+    card.addEventListener('click', (event) => {
+        if (event.target !== card) return;
+        const { left, right, top, bottom } = card.getBoundingClientRect();
+        if (event.clientX < left || event.clientX > right || event.clientY < top || event.clientY > bottom) {
+            card.close();
+        }
+    });
+    card.addEventListener('close', () => {
         setState('onboarded', true);
-        overlay.style.transition = 'opacity .3s';
-        overlay.style.opacity = '0';
-        setTimeout(() => overlay.remove(), 300);
-    }
-    startBtn.addEventListener('click', dismiss);
-    skip.addEventListener('click', dismiss);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) dismiss(); });
+        card.remove();
+        const checklist = $('checklist-container');
+        checklist.tabIndex = -1;
+        checklist.focus();
+    }, { once: true });
 
     card.append(h, lead, list, startBtn, skip);
-    overlay.appendChild(card);
-    document.body.appendChild(overlay);
+    document.body.appendChild(card);
+    card.showModal();
     try {
         card.animate(
             [{ transform: 'scale(0.9)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }],
