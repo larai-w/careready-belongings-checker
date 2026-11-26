@@ -311,7 +311,10 @@ async function startApp() {
         const { data, source } = await loadChecklist();
         appData = data;
         showDataBanner(source);
-        currentSubtype = appData.locations[0].id;
+        // A fragment keeps the existing offline entry URL and cache key.
+        const requestedList = window.location.hash.match(/^#list=([a-z]+)$/)?.[1];
+        currentSubtype = appData.locations.find((location) => location.id === requestedList)?.id
+            ?? appData.locations[0].id;
         updateFacilityBanner();
         renderConditionToggles();
         renderTabs();
